@@ -1,0 +1,9 @@
+# Core pipeline (always installed). Exact versions are pinned in requirements-lock.txt.
+numpy>=2.0
+pillow>=10.0
+pycairo>=1.25
+uharfbuzz>=0.40
+fonttools>=4.50
+jsonschema>=4.20
+PyYAML>=6.0
+pytest>=8.0

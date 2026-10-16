@@ -1,0 +1,38 @@
+# Repository defaults for "Generate Whiteboard Video".
+# Everything here is optional: delete a key to use the built-in default
+# (see engine/config.py). Explicit workflow inputs always override this file.
+
+languages:
+  english:    {enabled: true, script_path: input/scripts/english.txt,    audio_path: input/audio/english.mp3}
+  urdu:       {enabled: true, script_path: input/scripts/urdu.txt,       audio_path: input/audio/urdu.mp3}
+  roman_urdu: {enabled: true, script_path: input/scripts/roman_urdu.txt, audio_path: input/audio/roman_urdu.mp3}
+  pashto:     {enabled: true, script_path: input/scripts/pashto.txt,     audio_path: input/audio/pashto.mp3}
+
+voice:
+  generate_missing: true            # script without audio -> free TTS
+  transcribe_missing_scripts: true  # audio without script -> local speech recognition
+  allow_wrong_language_fallback: false
+  # Online voices are off unless listed. "edge_tts" uses an UNOFFICIAL Microsoft service.
+  online_providers: []
+  local_engines: [piper, mms, espeak]
+  # Meta MMS voices (Urdu/Pashto) are licensed CC-BY-NC-4.0 (non-commercial).
+  # Set to false if your channel is monetised and you do not want them.
+  allow_noncommercial_models: true
+
+video:
+  quality: standard                 # fast | standard | high
+  maximum_duration_seconds: 180
+  allow_longer_than_maximum: false  # never cuts narration; fails instead
+  captions_enabled: true
+  background_music_enabled: false
+
+animation:
+  background: "#FFFFFF"
+  primary_stroke: "#202020"
+  accent_color: "#246BCE"
+  hand_cursor_enabled: true
+  hand_cursor_style: hand           # hand | marker
+
+automation:
+  automatic_topic_discovery: false
+  continue_on_language_failure: true

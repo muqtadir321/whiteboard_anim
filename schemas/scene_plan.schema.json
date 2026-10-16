@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scene_plan.schema.json",
+  "title": "Whiteboard scene plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "language",
+    "scenes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "ur",
+        "roman_urdu",
+        "ps",
+        "ps_latn"
+      ]
+    },
+    "language_key": {
+      "type": "string"
+    },
+    "canvas": {
+      "type": "object"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "timing": {
+      "type": "object"
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
+    }
+  },
+  "$defs": {
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "scene_id",
+        "language",
+        "narration_text",
+        "start_seconds",
+        "end_seconds",
+        "concept",
+        "scene_type",
+        "visual_actions",
+        "caption_text",
+        "confidence"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "scene_id": {
+          "type": "string",
+          "pattern": "^scene_[0-9]{3,}$"
+        },
+        "language": {
+          "enum": [
+            "en",
+            "ur",
+            "roman_urdu",
+            "ps",
+            "ps_latn"
+          ]
+        },
+        "narration_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "end_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "concept": {
+          "type": "string"
+        },
+        "scene_type": {
+          "enum": [
+            "chart_growth",
+            "chart_decline",
+            "percentage",
+            "transaction",
+            "cause_effect",
+            "comparison",
+            "process",
+            "timeline",
+            "problem_solution",
+            "risk_reward",
+            "supply_demand",
+            "cycle",
+            "decision",
+            "person_object",
+            "concept",
+            "quantity",
+            "text_emphasis"
+          ]
+        },
+        "visual_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "action",
+              "position",
+              "draw_order"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^a[0-9]+$"
+              },
+              "action": {
+                "enum": [
+                  "draw",
+                  "write",
+                  "duplicate",
+                  "connect",
+                  "highlight",
+                  "cross_out"
+                ]
+              },
+              "object": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "left",
+                      "right",
+                      "center",
+                      "upper",
+                      "lower",
+                      "top",
+                      "bottom",
+                      "top_left",
+                      "top_right",
+                      "bottom_left",
+                      "bottom_right",
+                      "center_left",
+                      "center_right",
+                      "lower_left",
+                      "lower_right",
+                      "upper_center",
+                      "full",
+                      "between",
+                      "around"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^in_hand:a[0-9]+$"
+                  }
+                ]
+              },
+              "draw_order": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "anchor_char": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "params": {
+                "type": "object"
+              },
+              "emphasis": {
+                "type": "boolean"
+              },
+              "scale": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 2
+              },
+              "style": {
+                "enum": [
+                  "label",
+                  "number",
+                  "title"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "ink",
+                  "accent",
+                  "positive",
+                  "negative",
+                  "muted"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "pattern": "^a[0-9]+$"
+              },
+              "target": {
+                "type": "string",
+                "pattern": "^a[0-9]+$"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "draw"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "object"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "write"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "text"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "connect"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "source",
+                    "target"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "duplicate"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "source"
+                  ]
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "enum": [
+                        "highlight",
+                        "cross_out"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "target"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "caption_text": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "confidence_basis": {
+          "type": "object"
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "quantities": {
+          "type": "array"
+        },
+        "transition": {
+          "enum": [
+            "none",
+            "slide",
+            "erase",
+            "fade"
+          ]
+        },
+        "fallback": {
+          "type": "boolean"
+        },
+        "words": {
+          "type": "array"
+        },
+        "validation_problems": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timeline": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

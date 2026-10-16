@@ -1,0 +1,260 @@
+name: Generate Whiteboard Video
+
+# One click: Actions -> Generate Whiteboard Video -> Run workflow.
+# Every input is optional; blank values fall back to the repository defaults in
+# input/scripts/, input/audio/ and input/config.yaml.
+on:
+  workflow_dispatch:
+    inputs:
+      english_script:
+        description: "English script path (blank = input/scripts/english.txt)"
+        required: false
+        default: ""
+      english_audio:
+        description: "English voice-over path (blank = input/audio/english.mp3)"
+        required: false
+        default: ""
+      urdu_script:
+        description: "Urdu script path (blank = input/scripts/urdu.txt)"
+        required: false
+        default: ""
+      urdu_audio:
+        description: "Urdu voice-over path (blank = input/audio/urdu.mp3)"
+        required: false
+        default: ""
+      roman_urdu_script:
+        description: "Roman Urdu script path (blank = input/scripts/roman_urdu.txt)"
+        required: false
+        default: ""
+      roman_urdu_audio:
+        description: "Roman Urdu voice-over path (blank = input/audio/roman_urdu.mp3)"
+        required: false
+        default: ""
+      pashto_script:
+        description: "Pashto script path (blank = input/scripts/pashto.txt)"
+        required: false
+        default: ""
+      pashto_audio:
+        description: "Pashto voice-over path (blank = input/audio/pashto.mp3)"
+        required: false
+        default: ""
+      output_format:
+        description: "Output format"
+        required: false
+        type: choice
+        options: [shorts_9_16]
+        default: shorts_9_16
+      target_languages:
+        description: "Languages to render: auto, or a list such as english,urdu"
+        required: false
+        default: auto
+      generate_missing_narration:
+        description: "Generate narration when a script has no voice-over"
+        required: false
+        type: choice
+        options: ["true", "false"]
+        default: "true"
+      transcribe_missing_scripts:
+        description: "Transcribe voice-overs that have no script"
+        required: false
+        type: choice
+        options: ["true", "false"]
+        default: "true"
+      automatic_topic_discovery:
+        description: "Discover a topic from RSS when no content exists"
+        required: false
+        type: choice
+        options: ["false", "true"]
+        default: "false"
+      animation_quality:
+        description: "Animation quality"
+        required: false
+        type: choice
+        options: [standard, fast, high]
+        default: standard
+      max_duration:
+        description: "Maximum video duration in seconds"
+        required: false
+        default: "180"
+      captions:
+        description: "Burn captions into the video"
+        required: false
+        type: choice
+        options: ["true", "false"]
+        default: "true"
+      publish_artifacts:
+        description: "Upload videos as downloadable artifacts"
+        required: false
+        type: choice
+        options: ["true", "false"]
+        default: "true"
+  workflow_call:
+    inputs:
+      english_script: {type: string, required: false, default: ""}
+      english_audio: {type: string, required: false, default: ""}
+      urdu_script: {type: string, required: false, default: ""}
+      urdu_audio: {type: string, required: false, default: ""}
+      roman_urdu_script: {type: string, required: false, default: ""}
+      roman_urdu_audio: {type: string, required: false, default: ""}
+      pashto_script: {type: string, required: false, default: ""}
+      pashto_audio: {type: string, required: false, default: ""}
+      output_format: {type: string, required: false, default: shorts_9_16}
+      target_languages: {type: string, required: false, default: auto}
+      generate_missing_narration: {type: string, required: false, default: "true"}
+      transcribe_missing_scripts: {type: string, required: false, default: "true"}
+      automatic_topic_discovery: {type: string, required: false, default: "false"}
+      animation_quality: {type: string, required: false, default: standard}
+      max_duration: {type: string, required: false, default: "180"}
+      captions: {type: string, required: false, default: "true"}
+      publish_artifacts: {type: string, required: false, default: "true"}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whiteboard-video-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      # Inputs are passed through the environment (never interpolated into shell code).
+      INPUT_ENGLISH_SCRIPT: ${{ inputs.english_script }}
+      INPUT_ENGLISH_AUDIO: ${{ inputs.english_audio }}
+      INPUT_URDU_SCRIPT: ${{ inputs.urdu_script }}
+      INPUT_URDU_AUDIO: ${{ inputs.urdu_audio }}
+      INPUT_ROMAN_URDU_SCRIPT: ${{ inputs.roman_urdu_script }}
+      INPUT_ROMAN_URDU_AUDIO: ${{ inputs.roman_urdu_audio }}
+      INPUT_PASHTO_SCRIPT: ${{ inputs.pashto_script }}
+      INPUT_PASHTO_AUDIO: ${{ inputs.pashto_audio }}
+      INPUT_OUTPUT_FORMAT: ${{ inputs.output_format }}
+      INPUT_TARGET_LANGUAGES: ${{ inputs.target_languages }}
+      INPUT_GENERATE_MISSING: ${{ inputs.generate_missing_narration }}
+      INPUT_TRANSCRIBE_MISSING: ${{ inputs.transcribe_missing_scripts }}
+      INPUT_AUTO_TOPIC: ${{ inputs.automatic_topic_discovery }}
+      INPUT_QUALITY: ${{ inputs.animation_quality }}
+      INPUT_MAX_DURATION: ${{ inputs.max_duration }}
+      INPUT_CAPTIONS: ${{ inputs.captions }}
+      INPUT_PUBLISH: ${{ inputs.publish_artifacts }}
+      WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
+      HF_HOME: ${{ github.workspace }}/.model-cache/huggingface
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-lock.txt
+            requirements-optional.txt
+
+      - name: Install FFmpeg, eSpeak NG and Cairo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng libcairo2-dev pkg-config
+          ffmpeg -version | head -1
+          espeak-ng --version
+
+      - name: Install pinned Python dependencies
+        run: pip install -r requirements-lock.txt
+
+      - name: Build engine arguments
+        id: args
+        run: |
+          python - <<'PY'
+          import os, shlex
+          pairs = [
+              ("--english-script", "INPUT_ENGLISH_SCRIPT"), ("--english-audio", "INPUT_ENGLISH_AUDIO"),
+              ("--urdu-script", "INPUT_URDU_SCRIPT"), ("--urdu-audio", "INPUT_URDU_AUDIO"),
+              ("--roman-urdu-script", "INPUT_ROMAN_URDU_SCRIPT"), ("--roman-urdu-audio", "INPUT_ROMAN_URDU_AUDIO"),
+              ("--pashto-script", "INPUT_PASHTO_SCRIPT"), ("--pashto-audio", "INPUT_PASHTO_AUDIO"),
+              ("--output-format", "INPUT_OUTPUT_FORMAT"), ("--target-languages", "INPUT_TARGET_LANGUAGES"),
+              ("--generate-missing", "INPUT_GENERATE_MISSING"), ("--transcribe-missing", "INPUT_TRANSCRIBE_MISSING"),
+              ("--auto-topic", "INPUT_AUTO_TOPIC"), ("--quality", "INPUT_QUALITY"), ("--max-duration", "INPUT_MAX_DURATION"),
+              ("--captions", "INPUT_CAPTIONS"), ("--publish-artifacts", "INPUT_PUBLISH"),
+          ]
+          args = []
+          for flag, env in pairs:
+              value = os.environ.get(env, "").strip()
+              if value:
+                  args += [flag, value]
+          with open("engine_args.txt", "w") as fh:
+              fh.write("\n".join(args) + ("\n" if args else ""))
+          print("engine arguments:", shlex.join(args))
+          PY
+
+      - name: Validate configuration
+        run: |
+          mapfile -t ARGS < engine_args.txt
+          python -m engine.cli check-config "${ARGS[@]}"
+
+      - name: Detect optional engines needed by the inputs
+        id: deps
+        run: |
+          mapfile -t ARGS < engine_args.txt
+          python -m engine.cli deps "${ARGS[@]}"
+
+      - name: Restore model cache
+        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .model-cache
+          key: whiteboard-models-v1-${{ hashFiles('requirements-optional.txt', 'input/config.yaml') }}
+          restore-keys: whiteboard-models-v1-
+
+      - name: Install speech recognition (faster-whisper)
+        if: steps.deps.outputs.transcription == 'true'
+        run: pip install faster-whisper==1.2.1 || echo "::warning::faster-whisper could not be installed; audio-only inputs will fail with a clear message"
+
+      - name: Install Piper neural voice
+        if: steps.deps.outputs.piper == 'true'
+        run: pip install piper-tts==1.8.0 || echo "::warning::piper-tts could not be installed; eSpeak NG will be used"
+
+      - name: Install MMS voices (Urdu/Pashto, non-commercial licence)
+        if: steps.deps.outputs.mms == 'true'
+        run: |
+          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu && pip install transformers==4.46.3 \
+            || echo "::warning::MMS dependencies could not be installed"
+
+      - name: Install edge-tts (opt-in online voices)
+        if: steps.deps.outputs.edge_tts == 'true'
+        run: pip install edge-tts==7.3.1 || echo "::warning::edge-tts could not be installed"
+
+      - name: Generate videos
+        id: run
+        run: |
+          mapfile -t ARGS < engine_args.txt
+          df -h . | tail -1
+          set +e
+          python -m engine.cli run "${ARGS[@]}"
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload videos and reports
+        if: always() && env.INPUT_PUBLISH != 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: whiteboard-video-output
+          path: output/
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
+
+      - name: Final status
+        if: always()
+        env:
+          RUN_EXIT: ${{ steps.run.outputs.exit_code }}
+          OVERALL: ${{ steps.run.outputs.overall }}
+        run: |
+          echo "Overall result: ${OVERALL:-unknown}"
+          if [ "${RUN_EXIT:-1}" != "0" ]; then
+            echo "::error::No requested video could be generated. Download the artifact and read reports/generation_report.json."
+            exit 1
+          fi

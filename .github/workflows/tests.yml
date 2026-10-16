@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    paths-ignore: ["input/**", "**.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+      - name: System packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng libcairo2-dev pkg-config
+      - run: pip install -r requirements-lock.txt
+      - name: Run unit, integration and end-to-end tests
+        run: python -m pytest -q

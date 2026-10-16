@@ -1,0 +1,53 @@
+name: Make English + Urdu Video
+
+# Compatibility workflow: English, Urdu and Roman Urdu inputs only.
+# It runs the same engine as "Generate Whiteboard Video".
+on:
+  workflow_dispatch:
+    inputs:
+      english_script:
+        description: "English script path (blank = input/scripts/english.txt)"
+        required: false
+        default: ""
+      english_audio:
+        description: "English voice-over path (blank = input/audio/english.mp3)"
+        required: false
+        default: ""
+      urdu_script:
+        description: "Urdu script path (blank = input/scripts/urdu.txt)"
+        required: false
+        default: ""
+      urdu_audio:
+        description: "Urdu voice-over path (blank = input/audio/urdu.mp3)"
+        required: false
+        default: ""
+      roman_urdu_script:
+        description: "Roman Urdu script path (blank = input/scripts/roman_urdu.txt)"
+        required: false
+        default: ""
+      roman_urdu_audio:
+        description: "Roman Urdu voice-over path (blank = input/audio/roman_urdu.mp3)"
+        required: false
+        default: ""
+      animation_quality:
+        description: "Animation quality"
+        required: false
+        type: choice
+        options: [standard, fast, high]
+        default: standard
+
+permissions:
+  contents: read
+
+jobs:
+  make:
+    uses: ./.github/workflows/0-make-video.yml
+    with:
+      english_script: ${{ inputs.english_script }}
+      english_audio: ${{ inputs.english_audio }}
+      urdu_script: ${{ inputs.urdu_script }}
+      urdu_audio: ${{ inputs.urdu_audio }}
+      roman_urdu_script: ${{ inputs.roman_urdu_script }}
+      roman_urdu_audio: ${{ inputs.roman_urdu_audio }}
+      target_languages: auto
+      animation_quality: ${{ inputs.animation_quality }}

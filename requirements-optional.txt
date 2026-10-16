@@ -1,0 +1,10 @@
+# Optional engines. The workflow installs these only when the inputs need them.
+# Speech recognition for voice-overs without a script (MIT; downloads Whisper weights from Hugging Face):
+faster-whisper==1.2.1
+# Neural English voice (piper1-gpl, GPL-3.0; voice model downloaded from Hugging Face):
+piper-tts==1.8.0
+# Meta MMS voices for Urdu/Pashto (weights are CC-BY-NC-4.0 = non-commercial). torch from the CPU index:
+#   pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+transformers==4.46.3
+# Unofficial online voices (opt-in via voice.online_providers: [edge_tts]):
+edge-tts==7.3.1
