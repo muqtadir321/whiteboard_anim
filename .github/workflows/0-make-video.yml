@@ -218,7 +218,7 @@ jobs:
 
       - name: Install PyTorch (CPU)
         if: steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true'
-        run: pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu || echo "::warning::PyTorch could not be installed"
+        run: pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu || echo "::warning::PyTorch could not be installed"
 
       - name: Install MMS voices (Urdu/Pashto, non-commercial licence)
         if: steps.deps.outputs.mms == 'true'
@@ -227,9 +227,8 @@ jobs:
       - name: Install voice cloning (OmniVoice, Apache-2.0)
         if: steps.deps.outputs.voice_clone == 'true'
         run: |
-          pip install torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu \
-            && pip install omnivoice==0.2.1 \
-            && python -c "from omnivoice import OmniVoice; print('OmniVoice ready')" \
+          pip install omnivoice==0.2.1 \
+            && python -c "import torch, transformers; from omnivoice import OmniVoice; print('OmniVoice ready, torch', torch.__version__, 'transformers', transformers.__version__)" \
             || echo "::warning::OmniVoice could not be installed; trying the OpenVoice converter instead"
 
       - name: Install voice conversion fallback (OpenVoice V2, MIT)

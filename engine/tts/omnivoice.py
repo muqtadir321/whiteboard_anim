@@ -34,10 +34,11 @@ class OmniVoiceProvider(TTSProvider):
         if self.reference is None or language not in LANGUAGE_IDS:
             return False
         try:
-            import omnivoice  # noqa: F401
             import torch  # noqa: F401
+            from omnivoice import OmniVoice  # noqa: F401
             return True
-        except Exception:
+        except Exception as exc:
+            self.unavailable_reason = f"{type(exc).__name__}: {exc}"[:200]
             return False
 
     def _reference_clip(self) -> Path:

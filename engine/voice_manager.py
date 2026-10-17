@@ -87,7 +87,11 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
         texts = [_convert(s, conversion) for s in sentences]
         for provider in chain:
             if not provider.is_available(tts_lang):
-                attempts.append({"provider": provider.name, "language": tts_lang, "status": "unavailable"})
+                entry = {"provider": provider.name, "language": tts_lang, "status": "unavailable"}
+                if getattr(provider, "unavailable_reason", None):
+                    entry["reason"] = provider.unavailable_reason
+                    log(f"  {provider.name} unavailable: {provider.unavailable_reason}")
+                attempts.append(entry)
                 continue
             parts = []
             try:
