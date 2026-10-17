@@ -33,6 +33,8 @@ class OmniVoiceProvider(TTSProvider):
     def is_available(self, language: str) -> bool:
         if self.reference is None or language not in LANGUAGE_IDS:
             return False
+        if language not in self.cfg["voice"]["clone"].get("omnivoice_languages", list(LANGUAGE_IDS)):
+            return False
         try:
             import torch  # noqa: F401
             from omnivoice import OmniVoice  # noqa: F401

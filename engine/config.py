@@ -103,6 +103,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "engine": "omnivoice",
             "omnivoice_model": "k2-fsa/OmniVoice",
             "omnivoice_steps": 16,
+            # OmniVoice is slow on CPU runners; by default it is only used where no
+            # other voice exists (Pashto). Add "en"/"ur" for full cloning everywhere.
+            "omnivoice_languages": ["ps"],
             "reference_text": "",
             "tau": 0.3,
             "max_duration_change": 0.05,

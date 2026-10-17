@@ -18,6 +18,15 @@ voice:
   # Meta MMS voices (Urdu/Pashto) are licensed CC-BY-NC-4.0 (non-commercial).
   # Set to false if your channel is monetised and you do not want them.
   allow_noncommercial_models: true
+  clone:
+    # Your voice comes from input/voice/reference.*. OmniVoice (true cloning) is slow on
+    # GitHub's CPUs, so it is used only for Pashto by default; English and Urdu use
+    # Piper/MMS converted to your voice with OpenVoice (fast). Use [en, ur, ps] for
+    # OmniVoice everywhere (much slower).
+    omnivoice_languages: [ps]
+    # Optional: the exact words spoken in the first ~12 s of the reference recording.
+    # Skips the automatic transcription download and makes cloning faster/better.
+    reference_text: ""
 
 video:
   quality: standard                 # fast | standard | high

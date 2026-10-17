@@ -316,6 +316,16 @@
             },
             "reference_text": {
               "type": "string"
+            },
+            "omnivoice_languages": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "en",
+                  "ur",
+                  "ps"
+                ]
+              }
             }
           }
         }
