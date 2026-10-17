@@ -85,7 +85,7 @@ preserved in the visuals.
 | English | as written | Kalam handwriting font | Piper `en_US-ljspeech-medium` → eSpeak NG `en-us` | faster-whisper `en` |
 | Urdu | as written (Arabic script) | Noto Nastaliq Urdu, HarfBuzz shaping, RTL | MMS `urd-script_arabic` → eSpeak NG `ur` | faster-whisper `ur` |
 | Roman Urdu | kept in Latin script, **never translated** | Kalam | transliterated to Urdu script **only for the TTS input** (saved as `tts_input_text.txt`) → Urdu voice | Whisper `ur` → rule-based Roman transliteration (approximate, flagged) |
-| Pashto | separate language (not Urdu) | Noto Naskh Arabic, HarfBuzz shaping, RTL | MMS (`facebook/mms-tts-pbt`, configurable) | faster-whisper `ps` |
+| Pashto | separate language (not Urdu) | Noto Naskh Arabic, HarfBuzz shaping, RTL | OmniVoice in your voice (needs `input/voice/reference.*`); MMS has no Pashto model | faster-whisper `ps` |
 
 What was actually tested while building this project:
 
@@ -159,21 +159,27 @@ input discovery → script/audio validation → language detection
 
 ## Your own voice (voice cloning)
 
-Put 15–60 seconds of clear speech in your own voice at `input/voice/reference.wav`
-(`.mp3`/`.m4a` also work) and run the workflow. Every narration the engine *generates*,
-in English, Urdu, Roman Urdu or Pashto, is converted to your voice with the
-**OpenVoice V2** tone-colour converter (MIT licence). The workflow installs it only when a
-reference file exists.
+Put a recording of your own voice at `input/voice/reference.wav` (`.mp3`/`.m4a` also work)
+and run the workflow. Every narration the engine generates from a script is then spoken in
+your voice:
 
-* Cloning copies the *sound* of your voice (timbre). Pronunciation and rhythm come from
-  the underlying voice: Piper for English, and MMS (or eSpeak NG) for Urdu and Pashto.
+* **OmniVoice** (k2-fsa, Apache-2.0, 600+ languages) speaks English, Urdu (Roman Urdu is
+  read via derived Urdu text) and Pashto directly in the reference voice. It needs only
+  3–10 seconds of clean speech; the engine takes a 12-second excerpt from the start of your
+  file. This is also the only free voice that covers **Pashto**, because Meta MMS has no
+  Pashto model.
+* If OmniVoice can't be installed or loaded, the narration falls back to Piper/MMS/eSpeak NG
+  converted to your timbre with **OpenVoice V2** (MIT). If that fails too, the normal voice
+  is used.
 * Voice-overs you upload to `input/audio/` are never changed.
-* If cloning fails, the video is still made with the default voice, and `metadata.json`
-  says why.
+* `metadata.json` records which engine produced the voice and whether cloning was applied.
 * The reference file lives in your repository. If the repository is public, so is your
   voice sample.
-* OpenVoice was not run in the development container (its model host was unreachable).
-  The first GitHub run is its first real test.
+* Optional: put the exact words spoken in the first 12 seconds of the reference in
+  `voice.clone.reference_text` (in `input/config.yaml`). This skips automatic transcription
+  and improves cloning.
+* Both cloning engines are first exercised on GitHub (the development container could not
+  download their models).
 
 ## Configuration
 

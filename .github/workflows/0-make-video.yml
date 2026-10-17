@@ -224,13 +224,21 @@ jobs:
         if: steps.deps.outputs.mms == 'true'
         run: pip install transformers==4.46.3 uroman || echo "::warning::MMS dependencies could not be installed; eSpeak NG will be used"
 
-      - name: Install voice cloning (OpenVoice V2, MIT)
+      - name: Install voice cloning (OmniVoice, Apache-2.0)
+        if: steps.deps.outputs.voice_clone == 'true'
+        run: |
+          pip install torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu \
+            && pip install omnivoice==0.2.1 \
+            && python -c "from omnivoice import OmniVoice; print('OmniVoice ready')" \
+            || echo "::warning::OmniVoice could not be installed; trying the OpenVoice converter instead"
+
+      - name: Install voice conversion fallback (OpenVoice V2, MIT)
         if: steps.deps.outputs.voice_clone == 'true'
         run: |
           pip install librosa soundfile huggingface_hub inflect unidecode eng_to_ipa pypinyin jieba cn2an pydub \
             && pip install --no-deps "git+https://github.com/myshell-ai/OpenVoice.git" \
             && python -c "from openvoice.api import ToneColorConverter; print('OpenVoice ready')" \
-            || echo "::warning::OpenVoice could not be installed; narration will use the default voices"
+            || echo "::warning::OpenVoice could not be installed"
 
       - name: Install edge-tts (opt-in online voices)
         if: steps.deps.outputs.edge_tts == 'true'

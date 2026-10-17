@@ -291,6 +291,7 @@
             },
             "engine": {
               "enum": [
+                "omnivoice",
                 "openvoice",
                 "none"
               ]
@@ -304,6 +305,17 @@
               "type": "number",
               "minimum": 0,
               "maximum": 0.5
+            },
+            "omnivoice_model": {
+              "type": "string"
+            },
+            "omnivoice_steps": {
+              "type": "integer",
+              "minimum": 4,
+              "maximum": 64
+            },
+            "reference_text": {
+              "type": "string"
             }
           }
         }

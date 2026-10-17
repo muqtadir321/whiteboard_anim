@@ -98,7 +98,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "clone": {
             "enabled": "auto",
             "reference_path": "input/voice/reference.wav",
-            "engine": "openvoice",
+            # omnivoice: speak directly in the reference voice (all languages);
+            # openvoice: convert other voices' output to the reference timbre.
+            "engine": "omnivoice",
+            "omnivoice_model": "k2-fsa/OmniVoice",
+            "omnivoice_steps": 16,
+            "reference_text": "",
             "tau": 0.3,
             "max_duration_change": 0.05,
         },

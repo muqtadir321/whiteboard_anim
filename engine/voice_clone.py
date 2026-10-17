@@ -88,8 +88,19 @@ class OpenVoiceCloner(VoiceCloner):
             from huggingface_hub import hf_hub_download
             from openvoice.api import ToneColorConverter
 
+            from openvoice.api import OpenVoiceBaseClass
+
             paths = [hf_hub_download(CONVERTER_REPO, f, cache_dir=str(cache_dir("openvoice"))) for f in CONVERTER_FILES]
-            conv = ToneColorConverter(paths[0], device="cpu", enable_watermark=False)
+
+            class _Converter(ToneColorConverter):
+                """ToneColorConverter without the optional audio watermark (and its extra model)."""
+
+                def __init__(self, config_path, device):
+                    OpenVoiceBaseClass.__init__(self, config_path, device=device)
+                    self.watermark_model = None
+                    self.version = getattr(self.hps, "_version_", "v1")
+
+            conv = _Converter(paths[0], device="cpu")
             conv.load_ckpt(paths[1])
         except Exception as exc:
             raise CloneError(f"Could not load OpenVoice converter: {exc}", Status.RETRYABLE_FAILURE) from exc
@@ -130,7 +141,9 @@ class OpenVoiceCloner(VoiceCloner):
 
 
 def get_cloner(cfg: dict) -> VoiceCloner | None:
-    if cfg["voice"]["clone"]["engine"] == "openvoice":
+    """Tone-colour converter used for engines that cannot clone by themselves
+    (also the fallback when OmniVoice is unavailable)."""
+    if cfg["voice"]["clone"]["engine"] in ("openvoice", "omnivoice"):
         c = OpenVoiceCloner(cfg)
         return c if c.is_available() else None
     return None

@@ -48,9 +48,14 @@ class VoiceResult:
     clone: dict | None = None
 
 
-def build_chain(cfg: dict) -> list[TTSProvider]:
+def build_chain(cfg: dict, reference: Path | None = None) -> list[TTSProvider]:
     chain: list[TTSProvider] = []
     v = cfg["voice"]
+    if reference is not None and v["clone"]["engine"] == "omnivoice":
+        from .tts.omnivoice import OmniVoiceProvider
+
+        # Speaks directly in the reference voice; other engines follow as fallbacks.
+        chain.append(OmniVoiceProvider(cfg, reference))
     if v["allow_online_free_tts"]:
         for name in v.get("online_providers", []):
             if name in ONLINE:
@@ -71,7 +76,7 @@ def _convert(text: str, conversion: str | None) -> str:
 def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: Path, log=print, chain: list[TTSProvider] | None = None,
                          reference: Path | None = None, cloner=None) -> VoiceResult:
     work_dir.mkdir(parents=True, exist_ok=True)
-    chain = chain if chain is not None else build_chain(cfg)
+    chain = chain if chain is not None else build_chain(cfg, reference)
     attempts: list[dict] = []
     routes = list(TTS_ROUTES.get(lang, []))
     wrong = False
@@ -86,10 +91,15 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
                 continue
             parts = []
             try:
-                for i, text in enumerate(texts):
-                    raw = work_dir / f"tts_{provider.name}_{i:03d}.wav"
-                    with_retries(lambda: provider.synthesize(text, tts_lang, str(raw)), cfg["automation"]["retry_limit"] if provider.online else 0,
+                raws = [work_dir / f"tts_{provider.name}_{i:03d}.wav" for i in range(len(texts))]
+                retries = cfg["automation"]["retry_limit"] if provider.online else 0
+                if hasattr(provider, "synthesize_batch"):
+                    with_retries(lambda: provider.synthesize_batch(texts, tts_lang, [str(r) for r in raws]), max(retries, 1),
                                  cfg["automation"]["retry_base_seconds"], log)
+                else:
+                    for text, raw in zip(texts, raws):
+                        with_retries(lambda: provider.synthesize(text, tts_lang, str(raw)), retries, cfg["automation"]["retry_base_seconds"], log)
+                for i, raw in enumerate(raws):
                     norm = work_dir / f"tts_{provider.name}_{i:03d}_norm.wav"
                     normalize(raw, norm, cfg["video"]["audio_sample_rate"], trim_silence=True)
                     parts.append(norm)
@@ -98,7 +108,10 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
                 log(f"  TTS provider {provider.name} failed for {tts_lang}: {exc}")
                 continue
             clone_info = None
-            if reference is not None:
+            if reference is not None and getattr(provider, "clones_voice", False):
+                clone_info = {"requested": True, "reference": str(reference), "applied": True, "engine": provider.name,
+                              "license": provider.license, "method": "zero-shot voice-cloning TTS"}
+            elif reference is not None:
                 from .voice_clone import apply_clone
 
                 converted, clone_info = apply_clone(parts, reference, cfg, work_dir / "clone", cloner, log)

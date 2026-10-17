@@ -83,3 +83,47 @@ def test_deps_requests_mms_and_clone(repo, capsys):
     cli.main(["deps", "--repo-root", str(repo)])
     out = capsys.readouterr().out
     assert "mms=true" in out and "voice_clone=true" in out and "transcription=false" in out
+
+
+def test_omnivoice_speaks_in_reference_voice_for_pashto(cfg, tmp_path, monkeypatch):
+    """OmniVoice adapter contract, with a fake omnivoice package (no model download)."""
+    import sys
+    import types
+
+    import numpy as np
+
+    calls = {}
+
+    class FakeModel:
+        sampling_rate = 24000
+
+        @classmethod
+        def from_pretrained(cls, name, **kw):
+            calls["model"] = name
+            return cls()
+
+        def create_voice_clone_prompt(self, ref_audio, ref_text=None):
+            calls["ref"] = ref_audio
+            return "PROMPT"
+
+        def generate(self, text, language, voice_clone_prompt, num_step):
+            calls["generate"] = (list(text), language, voice_clone_prompt, num_step)
+            t = np.linspace(0, 1.5, int(1.5 * self.sampling_rate), endpoint=False)
+            return [0.3 * np.sin(2 * np.pi * 220 * t).astype("float32") for _ in text]
+
+    fake = types.ModuleType("omnivoice")
+    fake.OmniVoice = FakeModel
+    monkeypatch.setitem(sys.modules, "omnivoice", fake)
+    monkeypatch.setitem(sys.modules, "torch", types.SimpleNamespace(float32="float32"))
+    pytest.importorskip("soundfile")
+    monkeypatch.setenv("WHITEBOARD_CACHE", str(tmp_path / "cache"))
+    ref = tone(tmp_path / "ref.wav", 20)
+    from engine.voice_manager import build_chain
+
+    chain = build_chain(cfg, ref)
+    assert chain[0].name == "omnivoice"
+    r = synthesize_sentences(["یو سړی.", "پیسې زیاتې شوې."], "ps", cfg, tmp_path / "ps", log=lambda m: None, chain=chain[:1], reference=ref)
+    assert r.provider["provider"] == "omnivoice"
+    assert r.clone["applied"] and r.clone["engine"] == "omnivoice"
+    assert calls["generate"][1] == "ps" and len(calls["generate"][0]) == 2  # one batched call
+    assert Path(calls["ref"]).exists()
