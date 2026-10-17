@@ -230,7 +230,9 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
             continue
         cur = None
         for w, sym in CURRENCY_WORDS.items():
-            if before.endswith(w) or after.startswith(w + " ") or after == w or after.startswith(w + ".") or after.startswith(w + ","):
+            arabic_word = any("\u0600" <= ch <= "\u06ff" for ch in w)
+            # Arabic-script currency words inflect (ډالر -> ډالرو, روپے/روپیہ), so allow suffixes there.
+            if before.endswith(w) or after.startswith(w + " ") or after == w or after.startswith(w + ".") or after.startswith(w + ",") or (arabic_word and after.startswith(w)):
                 cur = sym
                 break
         if cur:

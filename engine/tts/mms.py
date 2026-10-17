@@ -30,24 +30,39 @@ class MMSProvider(TTSProvider):
         except Exception:
             return False
 
+    def describe(self, language: str) -> dict:
+        d = super().describe(language)
+        d["model"] = getattr(self, "loaded_model", None)
+        return d
+
     def is_available(self, language: str) -> bool:
         if not self.cfg["voice"].get("allow_noncommercial_models", False):
             return False
         return bool(self.cfg["voice"]["mms_models"].get(language)) and self._deps()
 
     def synthesize(self, text: str, language: str, output_path: str) -> str:
-        model_id = self.cfg["voice"]["mms_models"].get(language)
-        if not model_id:
+        ids = [m.strip() for m in (self.cfg["voice"]["mms_models"].get(language) or "").split(",") if m.strip()]
+        if not ids:
             raise TTSError(f"No MMS model configured for {language}")
         import numpy as np
         import torch
         from transformers import AutoTokenizer, VitsModel
 
-        if model_id not in self._models:
-            try:
-                self._models[model_id] = (VitsModel.from_pretrained(model_id), AutoTokenizer.from_pretrained(model_id))
-            except Exception as exc:
-                raise TTSError(f"Cannot load {model_id}: {exc}") from exc
+        # Several candidate model ids may be configured (comma separated); the first that loads is used.
+        errors = []
+        model_id = None
+        for mid in ids:
+            if mid not in self._models:
+                try:
+                    self._models[mid] = (VitsModel.from_pretrained(mid), AutoTokenizer.from_pretrained(mid))
+                except Exception as exc:
+                    errors.append(f"{mid}: {exc}")
+                    continue
+            model_id = mid
+            break
+        if model_id is None:
+            raise TTSError("Cannot load any MMS model: " + "; ".join(errors)[:500])
+        self.loaded_model = model_id
         model, tok = self._models[model_id]
         if getattr(tok, "is_uroman", False):
             try:

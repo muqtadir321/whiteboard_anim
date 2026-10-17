@@ -45,6 +45,7 @@ class VoiceResult:
     derived_text: list[str] | None = None
     attempts: list[dict] = field(default_factory=list)
     wrong_language: bool = False
+    clone: dict | None = None
 
 
 def build_chain(cfg: dict) -> list[TTSProvider]:
@@ -67,7 +68,8 @@ def _convert(text: str, conversion: str | None) -> str:
     return text
 
 
-def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: Path, log=print, chain: list[TTSProvider] | None = None) -> VoiceResult:
+def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: Path, log=print, chain: list[TTSProvider] | None = None,
+                         reference: Path | None = None, cloner=None) -> VoiceResult:
     work_dir.mkdir(parents=True, exist_ok=True)
     chain = chain if chain is not None else build_chain(cfg)
     attempts: list[dict] = []
@@ -95,6 +97,17 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
                 attempts.append({"provider": provider.name, "language": tts_lang, "status": "failed", "error": str(exc)[:300]})
                 log(f"  TTS provider {provider.name} failed for {tts_lang}: {exc}")
                 continue
+            clone_info = None
+            if reference is not None:
+                from .voice_clone import apply_clone
+
+                converted, clone_info = apply_clone(parts, reference, cfg, work_dir / "clone", cloner, log)
+                if clone_info.get("applied"):
+                    parts = []
+                    for i, c in enumerate(converted):
+                        norm = work_dir / f"clone_{i:03d}_norm.wav"
+                        normalize(c, norm, cfg["video"]["audio_sample_rate"], trim_silence=False)
+                        parts.append(norm)
             out = work_dir / "narration.wav"
             spans = concat_with_pauses(parts, out, cfg["voice"]["sentence_pause_seconds"], cfg["video"]["audio_sample_rate"])
             from .audio_processor import probe
@@ -105,7 +118,7 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
             desc = provider.describe(tts_lang)
             desc["conversion"] = conversion
             desc["wrong_language_fallback"] = wrong
-            return VoiceResult(str(out), exact_timing(sentences, spans, duration), desc, texts if conversion else None, attempts, wrong)
+            return VoiceResult(str(out), exact_timing(sentences, spans, duration), desc, texts if conversion else None, attempts, wrong, clone_info)
     raise StageError(
         f"No suitable free voice available for '{lang}'. Tried: "
         + (", ".join(f"{a['provider']}({a['language']}): {a['status']}" for a in attempts) or "no providers configured"),

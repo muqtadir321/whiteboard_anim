@@ -62,7 +62,7 @@ CONCEPTS: dict[str, dict] = {
         "en": ["wallet", "purse", "pocket"], "roman_urdu": ["batwa", "jeb", "wallet"], "ur": ["بٹوہ", "جیب", "پرس"], "ps": ["بټوه", "جیب"]}},
     "savings": {"kind": "entity", "visual": "piggy_bank", "kw": {
         "en": ["save", "saving", "savings", "saved", "emergency fund"], "roman_urdu": ["bachat", "bachana", "bachaen", "bachaye", "save"],
-        "ur": ["بچت", "بچانا", "بچائیں", "بچائے"], "ps": ["سپما", "سپمول", "خوندي"]}},
+        "ur": ["بچت", "بچانا", "بچائیں", "بچائے", "بچا"], "ps": ["سپما", "سپمول", "خوندي"]}},
     "bank": {"kind": "entity", "visual": "bank", "kw": {
         "en": ["bank", "banks", "account", "deposit", "atm"], "roman_urdu": ["bank", "account", "khata"], "ur": ["بینک", "اکاؤنٹ", "کھاتہ"], "ps": ["بانک", "حساب"]}},
     "investment": {"kind": "action", "visual": "money_growth", "kw": {

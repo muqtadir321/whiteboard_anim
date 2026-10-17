@@ -274,6 +274,38 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "clone": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "enum": [
+                "auto",
+                true,
+                false
+              ]
+            },
+            "reference_path": {
+              "type": "string"
+            },
+            "engine": {
+              "enum": [
+                "openvoice",
+                "none"
+              ]
+            },
+            "tau": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1.0
+            },
+            "max_duration_change": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
+          }
         }
       }
     },

@@ -96,6 +96,16 @@ def cmd_run(args) -> int:
             _log(f"automatic topic script: {topic_script[:120]}...")
         except Exception as exc:
             _log(f"automatic topic discovery failed: {exc}")
+    from .voice_clone import CloneError, get_cloner, resolve_reference
+
+    try:
+        reference = resolve_reference(cfg, repo)
+    except CloneError as exc:
+        print(f"::error::{exc}")
+        return 2
+    cloner = get_cloner(cfg) if reference else None
+    if reference:
+        _log(f"reference voice: {reference.relative_to(repo)} (cloning engine {'available' if cloner else 'NOT installed'})")
     for key in LANGUAGE_KEYS:
         li = inputs[key]
         if targets is not None and key not in targets:
@@ -109,7 +119,7 @@ def cmd_run(args) -> int:
             r = LanguageResult(key, li.code, Status.PERMANENT_FAILURE, "requested, but no script or voice-over was found")
             results.append(r)
             continue
-        job = LanguageJob(li, cfg, out_root, tmp_root, _log, script_text_override=override)
+        job = LanguageJob(li, cfg, out_root, tmp_root, _log, script_text_override=override, reference_voice=reference, cloner=cloner)
         r = job.run()
         results.append(r)
         _log(f"{key}: {r.status.value} - {r.message}")
@@ -139,7 +149,13 @@ def cmd_deps(args) -> int:
     cfg = load_config(args.config or None, build_overrides(args), repo)
     inputs = discover_inputs(cfg, explicit_paths(args), repo)
     targets = parse_target_languages(args.target_languages)
-    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False}
+    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False}
+    from .voice_clone import resolve_reference
+
+    try:
+        has_reference = resolve_reference(cfg, repo) is not None
+    except Exception:
+        has_reference = False
     for key, li in inputs.items():
         if targets is not None and key not in targets:
             continue
@@ -150,12 +166,16 @@ def cmd_deps(args) -> int:
             engines = cfg["voice"]["local_engines"] if cfg["voice"]["allow_local_tts"] else []
             if "piper" in engines and tts_lang in cfg["voice"]["piper_voices"]:
                 need["piper"] = True
-            if "mms" in engines and cfg["voice"]["allow_noncommercial_models"] and tts_lang in cfg["voice"]["mms_models"] and tts_lang not in cfg["voice"]["espeak_voices"]:
+            # MMS is preferred over eSpeak NG for Urdu/Pashto, so install it whenever it can be used.
+            if "mms" in engines and cfg["voice"]["allow_noncommercial_models"] and cfg["voice"]["mms_models"].get(tts_lang):
                 need["mms"] = True
+            if has_reference and cfg["voice"]["clone"]["engine"] != "none":
+                need["voice_clone"] = True
             if "edge_tts" in cfg["voice"]["online_providers"] and cfg["voice"]["allow_online_free_tts"]:
                 need["edge_tts"] = True
     if cfg["automation"]["automatic_topic_discovery"] and not any(li.has_content for li in inputs.values()):
         need["piper"] = True
+        need["voice_clone"] = need["voice_clone"] or has_reference
     for k, v in need.items():
         print(f"{k}={'true' if v else 'false'}")
     gh_out = os.environ.get("GITHUB_OUTPUT")

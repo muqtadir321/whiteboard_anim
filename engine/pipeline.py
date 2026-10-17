@@ -60,7 +60,7 @@ def file_hash(path: Path | None) -> str:
 
 class LanguageJob:
     def __init__(self, inputs: LanguageInputs, cfg: dict, out_root: Path, tmp_root: Path, log=print, transcriber=None, tts_chain=None,
-                 script_text_override: str | None = None):
+                 script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None):
         self.inp = inputs
         self.cfg = copy.deepcopy(cfg)
         self.key = inputs.key
@@ -72,6 +72,8 @@ class LanguageJob:
         self._transcriber = transcriber
         self._tts_chain = tts_chain
         self.script_text_override = script_text_override
+        self.reference_voice = reference_voice
+        self.cloner = cloner
 
     # -- stage helper ------------------------------------------------------
     def stage(self, name: str, fn):
@@ -223,7 +225,7 @@ class LanguageJob:
                 raise StageError("No script available to generate narration from")
             if not cfg["voice"]["generate_missing"]:
                 raise StageError("No voice-over supplied and narration generation is disabled", Status.SKIPPED)
-            key = hashlib.sha256(json.dumps([sentences, self.lang, cfg["voice"]], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+            key = hashlib.sha256(json.dumps([sentences, self.lang, cfg["voice"], file_hash(self.reference_voice)], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
             cache = self.tmp / f"voice_{key}.json"
             if cfg["automation"]["resume"] and cache.exists() and narration_wav.exists():
                 data = json.loads(cache.read_text())
@@ -233,7 +235,7 @@ class LanguageJob:
                 voice_desc = data["provider"]
                 st.message = "reused cached narration"
                 return
-            vr = synthesize_sentences(sentences, self.lang, cfg, self.tmp / "tts", self.log, self._tts_chain)
+            vr = synthesize_sentences(sentences, self.lang, cfg, self.tmp / "tts", self.log, self._tts_chain, self.reference_voice, self.cloner)
             shutil.copy(vr.audio_path, narration_wav)
             timing = vr.timing
             voice_desc = vr.provider
@@ -241,6 +243,12 @@ class LanguageJob:
             if vr.derived_text:
                 (self.tmp / "tts_text.txt").write_text("\n".join(vr.derived_text), encoding="utf-8")
                 voice_desc["derived_text_file"] = "tts_text.txt"
+            if vr.clone:
+                voice_desc["clone"] = vr.clone
+                if vr.clone.get("applied"):
+                    st.message = "narration converted to the reference voice"
+                else:
+                    st.warnings.append(f"reference voice not applied: {vr.clone.get('reason')}")
             if vr.wrong_language:
                 st.warnings.append("narration uses a different-language voice (allow_wrong_language_fallback)")
             cache.write_text(json.dumps({"timing": [s.__dict__ for s in timing.sentences], "confidence": timing.confidence, "provider": voice_desc}, ensure_ascii=False))

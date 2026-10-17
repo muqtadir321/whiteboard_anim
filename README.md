@@ -20,8 +20,8 @@ hand, in sync with the narration and with captions.
 3. When the run finishes, open the run page, scroll to **Artifacts** and download
    **`whiteboard-video-output`**. Each language folder contains `video.mp4`.
 
-The repository ships with sample `english.txt` and `urdu.txt` scripts, so the first click
-already produces two demo videos. Replace or delete them with your own content.
+The repository ships with sample `english.txt`, `urdu.txt` and `pashto.txt` scripts, so the first click
+already produces demo videos. Replace or delete them with your own content.
 
 | You supply | What happens |
 |---|---|
@@ -156,6 +156,24 @@ input discovery → script/audio validation → language detection
   and is labelled `estimated` (it is never presented as word-perfect).
 
 ---
+
+## Your own voice (voice cloning)
+
+Put 15–60 seconds of clear speech in your own voice at `input/voice/reference.wav`
+(`.mp3`/`.m4a` also work) and run the workflow. Every narration the engine *generates*,
+in English, Urdu, Roman Urdu or Pashto, is converted to your voice with the
+**OpenVoice V2** tone-colour converter (MIT licence). The workflow installs it only when a
+reference file exists.
+
+* Cloning copies the *sound* of your voice (timbre). Pronunciation and rhythm come from
+  the underlying voice: Piper for English, and MMS (or eSpeak NG) for Urdu and Pashto.
+* Voice-overs you upload to `input/audio/` are never changed.
+* If cloning fails, the video is still made with the default voice, and `metadata.json`
+  says why.
+* The reference file lives in your repository. If the repository is public, so is your
+  voice sample.
+* OpenVoice was not run in the development container (its model host was unreachable).
+  The first GitHub run is its first real test.
 
 ## Configuration
 

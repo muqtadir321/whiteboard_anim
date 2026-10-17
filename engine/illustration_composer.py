@@ -37,7 +37,7 @@ SLOTS = {
     "upper_center": (0.28, 0.12, 0.72, 0.3), "full": (0.02, 0.04, 0.98, 0.96),
 }
 TEXT_SIZES = {"title": 120.0, "number": 96.0, "label": 64.0}
-MAX_SIZE = {"person": 640, "people_group": 520, "chart": 99999, "object": 380}
+MAX_SIZE = {"person": 720, "people_group": 600, "chart": 99999, "object": 520}
 CHART_NAMES = set(CHARTS) | set(DIAGRAMS) | {"money_growth"}
 
 
@@ -258,7 +258,7 @@ class Composer:
         elif size_class == "object":
             s = min(s, cap / max(el.width, el.height))
         # Planner scales are relative importance; soften them so secondary items stay legible.
-        s *= 0.45 + 0.55 * scale
+        s *= 0.6 + 0.4 * scale
         w, h = el.width * s, el.height * s
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         if size_class in ("person", "people_group"):

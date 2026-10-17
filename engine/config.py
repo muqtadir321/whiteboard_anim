@@ -90,7 +90,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "piper_voices": {"en": "en_US-ljspeech-medium"},
         "mms_models": {
             "ur": "facebook/mms-tts-urd-script_arabic",
-            "ps": "facebook/mms-tts-pbt",
+            # Candidate ids, first one that loads wins.
+            "ps": "facebook/mms-tts-pbt,facebook/mms-tts-pus,facebook/mms-tts-pst",
+        },
+        # Make generated narration sound like your own voice (OpenVoice V2, MIT).
+        # "auto": used when the reference file exists. Supplied voice-overs are never changed.
+        "clone": {
+            "enabled": "auto",
+            "reference_path": "input/voice/reference.wav",
+            "engine": "openvoice",
+            "tau": 0.3,
+            "max_duration_change": 0.05,
         },
         "espeak_voices": {"en": "en-us", "ur": "ur"},
         "edge_voices": {
@@ -142,7 +152,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "seed": 7,
     },
     "planner": {
-        "max_scene_seconds": 9.0,
+        "max_scene_seconds": 6.0,
         "min_scene_seconds": 1.6,
         "local_llm": {"enabled": False, "endpoint": "http://127.0.0.1:11434/api/generate", "model": "qwen2.5:1.5b"},
     },

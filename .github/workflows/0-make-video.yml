@@ -201,7 +201,7 @@ jobs:
           python -m engine.cli deps "${ARGS[@]}"
 
       - name: Restore model cache
-        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true'
+        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true'
         uses: actions/cache@v4
         with:
           path: .model-cache
@@ -216,11 +216,21 @@ jobs:
         if: steps.deps.outputs.piper == 'true'
         run: pip install piper-tts==1.8.0 || echo "::warning::piper-tts could not be installed; eSpeak NG will be used"
 
+      - name: Install PyTorch (CPU)
+        if: steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true'
+        run: pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu || echo "::warning::PyTorch could not be installed"
+
       - name: Install MMS voices (Urdu/Pashto, non-commercial licence)
         if: steps.deps.outputs.mms == 'true'
+        run: pip install transformers==4.46.3 uroman || echo "::warning::MMS dependencies could not be installed; eSpeak NG will be used"
+
+      - name: Install voice cloning (OpenVoice V2, MIT)
+        if: steps.deps.outputs.voice_clone == 'true'
         run: |
-          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu && pip install transformers==4.46.3 \
-            || echo "::warning::MMS dependencies could not be installed"
+          pip install librosa soundfile huggingface_hub inflect unidecode eng_to_ipa pypinyin jieba cn2an pydub \
+            && pip install --no-deps "git+https://github.com/myshell-ai/OpenVoice.git" \
+            && python -c "from openvoice.api import ToneColorConverter; print('OpenVoice ready')" \
+            || echo "::warning::OpenVoice could not be installed; narration will use the default voices"
 
       - name: Install edge-tts (opt-in online voices)
         if: steps.deps.outputs.edge_tts == 'true'

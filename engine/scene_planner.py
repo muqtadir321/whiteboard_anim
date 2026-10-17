@@ -613,6 +613,8 @@ def choose_template(an: Analysis):
             return (lambda b, a, r, v, k=kind: plan_special(b, a, k, r, v)), f"relation:{kind}"
     if "comparison" in an.relations and (len(an.entities) + len(an.actors) >= 2 or len(an.quantities) >= 2):
         return plan_comparison, "relation:comparison"
+    if "savings" in concepts and _quantity_by_kind(an, "percent") and not an.trend:
+        return plan_percentage, "quantity:percent"
     growth_story = an.trend == "up" and bool({"investment", "savings", "profit"} & concepts)
     if ({"salary", "payment", "buy", "sell"} & concepts) and (an.actors or {"shop", "employer", "worker", "customer", "bank"} & concepts) and not growth_story:
         return plan_transaction, "action:transaction"
