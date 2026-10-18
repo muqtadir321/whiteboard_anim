@@ -17,6 +17,9 @@ SENTENCE_END = ".!?۔؟"
 ABBREVIATIONS = {"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "etc", "e.g", "i.e", "inc", "ltd", "co", "no", "rs", "approx"}
 
 
+STAGE_TAG = re.compile(r"\[[A-Za-z][A-Za-z _'-]{0,30}\]")
+
+
 class ScriptError(ValueError):
     pass
 
@@ -50,6 +53,9 @@ def normalize_script(raw: str | bytes) -> str:
     if "\x00" in raw:
         raise ScriptError("Script contains NUL bytes; it looks like a binary or corrupted file")
     text = unicodedata.normalize("NFC", raw.replace("\r\n", "\n").replace("\r", "\n"))
+    # Voice-direction tags such as [curious], [pause], [soft] (ElevenLabs style) are
+    # instructions for the narrator, not words: they never reach captions or planning.
+    text = STAGE_TAG.sub(" ", text)
     # Drop zero-width BOMs and control characters but keep ZWNJ/ZWJ (used in Urdu/Persian).
     text = "".join(c for c in text if c in "\n\t‌‍" or unicodedata.category(c)[0] != "C")
     lines = [re.sub(r"[ \t ]+", " ", line).strip() for line in text.split("\n")]

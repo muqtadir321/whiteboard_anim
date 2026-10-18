@@ -212,7 +212,11 @@ class LanguageJob:
                         transcript = tr.transcribe(str(narration_wav), self.lang)
                         timing, sim = align_words(sentences, transcript.words, info.duration)
                         st.data["script_audio_similarity"] = round(sim, 3)
-                        if sim < 0.6:
+                        if sim < 0.45:
+                            # Recognition too unreliable to trust word times: use pause-based timing instead.
+                            st.warnings.append(f"speech recognition matched only {sim:.0%} of the script; using pause-based timing")
+                            timing = None
+                        elif sim < 0.6:
                             st.warnings.append(f"script and voice-over differ materially (word similarity {sim:.2f}); "
                                                "audio timing is authoritative, captions use the supplied script")
                     except StageError as exc:
