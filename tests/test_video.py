@@ -196,3 +196,16 @@ def test_end_to_end_acceptance_standard_profile(repo):
     for name in ("captions.srt", "captions.vtt", "transcript.txt", "metadata.json", "thumbnail.png", "quality_report.json"):
         assert (out / name).exists(), name
     assert str(out / "video.mp4") in r.outputs.values()
+
+
+def test_broken_recogniser_does_not_fail_script_plus_audio(repo):
+    class Broken(FakeTranscriber):
+        def transcribe(self, audio_path, language):
+            raise TypeError("open() got an unexpected keyword argument 'metadata_errors'")
+
+    cfg = make_cfg()
+    (repo / "input/scripts/english.txt").write_text("[curious] Money grows over time. [pause] Prices rise every year.")
+    tone(repo / "input/audio/english.mp3", 5.0)
+    r = run_job(repo, "english", cfg, transcriber=Broken("", 5.0))
+    assert r.status == Status.SUCCESS, r.message
+    assert "[" not in (repo / "output/english/captions.srt").read_text()

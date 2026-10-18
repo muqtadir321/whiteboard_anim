@@ -210,7 +210,7 @@ jobs:
 
       - name: Install speech recognition (faster-whisper)
         if: steps.deps.outputs.transcription == 'true'
-        run: pip install faster-whisper==1.2.1 || echo "::warning::faster-whisper could not be installed; audio-only inputs will fail with a clear message"
+        run: pip install faster-whisper==1.2.1 "av<15" || echo "::warning::faster-whisper could not be installed; audio-only inputs will fail with a clear message"
 
       - name: Install Piper neural voice
         if: steps.deps.outputs.piper == 'true'

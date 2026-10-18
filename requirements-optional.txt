@@ -1,6 +1,7 @@
 # Optional engines. The workflow installs these only when the inputs need them.
 # Speech recognition for voice-overs without a script (MIT; downloads Whisper weights from Hugging Face):
 faster-whisper==1.2.1
+av<15  # newer PyAV removed an argument faster-whisper 1.2.1 uses
 # Neural English voice (piper1-gpl, GPL-3.0; voice model downloaded from Hugging Face):
 piper-tts==1.8.0
 # Meta MMS voices for Urdu/Pashto (weights are CC-BY-NC-4.0 = non-commercial). torch from the CPU index:

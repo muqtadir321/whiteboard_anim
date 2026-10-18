@@ -219,7 +219,7 @@ class LanguageJob:
                         elif sim < 0.6:
                             st.warnings.append(f"script and voice-over differ materially (word similarity {sim:.2f}); "
                                                "audio timing is authoritative, captions use the supplied script")
-                    except StageError as exc:
+                    except Exception as exc:  # recognition is optional when a script exists
                         st.warnings.append(f"alignment transcription failed ({exc}); using silence-based timing estimate")
                         timing = None
                 if timing is None:

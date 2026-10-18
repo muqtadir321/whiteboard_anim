@@ -71,13 +71,16 @@ class FasterWhisperTranscriber(Transcriber):
 
     def transcribe(self, audio_path: str, language: str) -> Transcript:
         model = self._load()
-        segments_iter, info = model.transcribe(audio_path, language=WHISPER_LANG.get(language, language), word_timestamps=True, vad_filter=True)
         segments, words, logps = [], [], []
-        for seg in segments_iter:
-            segments.append({"start": seg.start, "end": seg.end, "text": seg.text.strip(), "avg_logprob": seg.avg_logprob})
-            logps.append(seg.avg_logprob)
-            for w in seg.words or []:
-                words.append({"word": w.word.strip(), "start": w.start, "end": w.end, "probability": w.probability})
+        try:
+            segments_iter, info = model.transcribe(audio_path, language=WHISPER_LANG.get(language, language), word_timestamps=True, vad_filter=True)
+            for seg in segments_iter:
+                segments.append({"start": seg.start, "end": seg.end, "text": seg.text.strip(), "avg_logprob": seg.avg_logprob})
+                logps.append(seg.avg_logprob)
+                for w in seg.words or []:
+                    words.append({"word": w.word.strip(), "start": w.start, "end": w.end, "probability": w.probability})
+        except Exception as exc:  # library/runtime problems must not abort the whole language
+            raise StageError(f"Speech recognition failed: {type(exc).__name__}: {exc}", Status.RETRYABLE_FAILURE) from exc
         return finalize_transcript(segments, words, logps, language, self.name)
 
 
