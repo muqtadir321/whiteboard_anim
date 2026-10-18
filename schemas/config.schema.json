@@ -654,6 +654,20 @@
           "type": "boolean"
         }
       }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "forced_alignment": {
+          "type": "boolean"
+        },
+        "min_pause_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 2
+        }
+      }
     }
   }
 }

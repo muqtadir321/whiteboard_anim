@@ -117,6 +117,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "ps": "ps-AF-GulNawazNeural",
         },
     },
+    "timing": {
+        # Exact word timing of supplied voice-overs with torchaudio's MMS_FA aligner.
+        "forced_alignment": True,
+        "min_pause_seconds": 0.18,
+    },
     "transcription": {
         "engine": "faster_whisper",
         "model": "small",

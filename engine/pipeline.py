@@ -60,7 +60,7 @@ def file_hash(path: Path | None) -> str:
 
 class LanguageJob:
     def __init__(self, inputs: LanguageInputs, cfg: dict, out_root: Path, tmp_root: Path, log=print, transcriber=None, tts_chain=None,
-                 script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None):
+                 script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None, aligner="auto"):
         self.inp = inputs
         self.cfg = copy.deepcopy(cfg)
         self.key = inputs.key
@@ -74,6 +74,14 @@ class LanguageJob:
         self.script_text_override = script_text_override
         self.reference_voice = reference_voice
         self.cloner = cloner
+        self._aligner = aligner
+
+    def _get_aligner(self):
+        if self._aligner == "auto":
+            from .forced_alignment import get_aligner
+
+            self._aligner = get_aligner(self.cfg)
+        return self._aligner
 
     # -- stage helper ------------------------------------------------------
     def stage(self, name: str, fn):
@@ -94,6 +102,8 @@ class LanguageJob:
             raise StageError(st.message) from exc
         self.result.stages.append(st.done())
         self.log(f"stage {name}: {st.status.value} {st.message}")
+        for w in st.warnings:
+            self.log(f"  warning: {w}")
         return st
 
     def run(self) -> LanguageResult:
@@ -207,7 +217,21 @@ class LanguageJob:
                     script_text = transcript.text
                     sentences = [s.text for s in analyze_script(script_text, self.lang)]
                     timing, _ = align_words(sentences, transcript.words, info.duration)
-                elif tr is not None:
+                elif self._get_aligner() is not None:
+                    # Exact word timing for the known script (all languages).
+                    aligner = self._get_aligner()
+                    try:
+                        from .forced_alignment import timing_from_alignment
+
+                        tokens = [tok for sent in sentences for tok in sent.split()]
+                        spans = aligner.align(str(narration_wav), tokens, self.lang)
+                        timing = timing_from_alignment(sentences, spans, info.duration)
+                        st.data["alignment"] = timing.details
+                        st.message = f"word timing by forced alignment ({timing.details['aligned_words']}/{timing.details['words']} words)"
+                    except Exception as exc:
+                        st.warnings.append(f"forced alignment failed ({exc}); trying other timing methods")
+                        timing = None
+                if timing is None and script_text and tr is not None and transcript is None:
                     try:
                         transcript = tr.transcribe(str(narration_wav), self.lang)
                         timing, sim = align_words(sentences, transcript.words, info.duration)
@@ -223,7 +247,8 @@ class LanguageJob:
                         st.warnings.append(f"alignment transcription failed ({exc}); using silence-based timing estimate")
                         timing = None
                 if timing is None:
-                    timing = estimate_timing(sentences, info.duration, detect_silences(narration_wav))
+                    timing = estimate_timing(sentences, info.duration, detect_silences(narration_wav, min_duration=cfg["timing"]["min_pause_seconds"]))
+                    st.warnings.append("word timing estimated from pauses in the voice-over (install torchaudio + uroman for exact forced alignment)")
                 return
             if not script_text:
                 raise StageError("No script available to generate narration from")
@@ -258,6 +283,13 @@ class LanguageJob:
             cache.write_text(json.dumps({"timing": [s.__dict__ for s in timing.sentences], "confidence": timing.confidence, "provider": voice_desc}, ensure_ascii=False))
 
         self.stage("voice_over", do_voice)
+        if any(not ts.words for ts in timing.sentences):
+            from .audio_timing import distribute_words
+
+            pauses = detect_silences(narration_wav, min_duration=cfg["timing"]["min_pause_seconds"])
+            for ts in timing.sentences:
+                if not ts.words:
+                    ts.words = distribute_words(ts.text, ts.start, ts.end, pauses)
         meta["voice"] = voice_desc
         meta["timing"] = timing.to_dict()
 
@@ -290,8 +322,19 @@ class LanguageJob:
             max_s = cfg["planner"]["max_scene_seconds"]
             for i, ts in enumerate(timing.sentences):
                 d = ts.end - ts.start
-                if d > max_s and not ts.words:
+                if d > max_s:
                     pieces = split_long_sentence(ts.text, max(40, int(len(ts.text) * max_s / d)))
+                    if ts.words and len(ts.words) == len(ts.text.split()):
+                        # cut at word boundaries using the word timings
+                        k = 0
+                        for pi, p in enumerate(pieces):
+                            n = len(p.split())
+                            ws = ts.words[k:k + n]
+                            a = ts.start if pi == 0 else ws[0]["start"]
+                            b = ts.end if pi == len(pieces) - 1 else ts.words[k + n]["start"]
+                            segments.append(Segment(p, a, b, i, ws))
+                            k += n
+                        continue
                     tot = sum(len(p) for p in pieces) or 1
                     t = ts.start
                     for p in pieces:

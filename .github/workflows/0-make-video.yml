@@ -140,6 +140,7 @@ jobs:
       INPUT_PUBLISH: ${{ inputs.publish_artifacts }}
       WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
       HF_HOME: ${{ github.workspace }}/.model-cache/huggingface
+      TORCH_HOME: ${{ github.workspace }}/.model-cache/torch
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - name: Check out repository
@@ -201,7 +202,7 @@ jobs:
           python -m engine.cli deps "${ARGS[@]}"
 
       - name: Restore model cache
-        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true'
+        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true' || steps.deps.outputs.alignment == 'true'
         uses: actions/cache@v4
         with:
           path: .model-cache
@@ -217,8 +218,15 @@ jobs:
         run: pip install piper-tts==1.8.0 || echo "::warning::piper-tts could not be installed; eSpeak NG will be used"
 
       - name: Install PyTorch (CPU)
-        if: steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true'
+        if: steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true' || steps.deps.outputs.alignment == 'true'
         run: pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu || echo "::warning::PyTorch could not be installed"
+
+      - name: Install forced aligner (exact word timing of voice-overs)
+        if: steps.deps.outputs.alignment == 'true'
+        run: |
+          pip install uroman \
+            && python -c "import torchaudio; from torchaudio.pipelines import MMS_FA; print('aligner ready, torchaudio', torchaudio.__version__)" \
+            || echo "::warning::forced aligner unavailable; drawings will be timed from pauses in the voice-over"
 
       - name: Install MMS voices (Urdu/Pashto, non-commercial licence)
         if: steps.deps.outputs.mms == 'true'

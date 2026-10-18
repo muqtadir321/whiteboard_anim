@@ -209,3 +209,27 @@ def test_broken_recogniser_does_not_fail_script_plus_audio(repo):
     r = run_job(repo, "english", cfg, transcriber=Broken("", 5.0))
     assert r.status == Status.SUCCESS, r.message
     assert "[" not in (repo / "output/english/captions.srt").read_text()
+
+
+def test_supplied_audio_uses_forced_alignment_word_times(repo):
+    from engine.forced_alignment import ForcedAligner
+
+    class FakeAligner(ForcedAligner):
+        name = "fake"
+
+        def is_available(self):
+            return True
+
+        def align(self, audio_path, tokens, language):
+            return [(0.5 + i * 0.4, 0.8 + i * 0.4) for i in range(len(tokens))]
+
+    cfg = make_cfg()
+    text = "A person starts investing with fifty dollars. Money grows over time."
+    (repo / "input/scripts/english.txt").write_text(text)
+    tone(repo / "input/audio/english.mp3", 6.0)
+    r = run_job(repo, "english", cfg, aligner=FakeAligner())
+    assert r.status == Status.SUCCESS, r.message
+    meta = json.loads((repo / "output/english/metadata.json").read_text())
+    assert meta["timing"]["source"] == "forced_alignment"
+    plan = json.loads((repo / "output/english/scene_plan.json").read_text())
+    assert plan["scenes"][0]["timeline"]["timing_source"] == "word_timestamps"

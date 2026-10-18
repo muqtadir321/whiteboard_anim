@@ -87,3 +87,21 @@ def test_timeline_follows_narration(cfg):
     # "$50" is spoken last, so it is written after the person is drawn
     ids = [items[e.item_index].obj for e in tl.ops]
     assert ids.index("person") < ids.index("text")
+
+
+def test_spoken_number_is_written_on_its_word(cfg):
+    """Even when earlier drawings are heavy, the amount starts when it is said."""
+    from engine.illustration_composer import Composer, to_svg
+    from engine.scene_planner import Segment, plan_scenes
+
+    text = "A person starts investing with fifty dollars."
+    words = [{"word": w, "start": 1.0 + i * 0.5, "end": 1.4 + i * 0.5} for i, w in enumerate(text.split())]
+    p = plan_scenes([Segment(text, 0.0, 6.0, 0, words)], "en", cfg)
+    scene = p["scenes"][0]
+    c = Composer(cfg, "en")
+    items = order_by_mention(scene, load_program(to_svg(c.compose(scene), c.style)))
+    tl = build_timeline(scene, items, cfg, (900, 1500))
+    idx = next(i for i, it in enumerate(items) if any(t for t in [it.obj == "text"]) and it.anchor_char >= text.index("fifty"))
+    first = min(e.t0 for e in tl.ops if e.item_index == idx)
+    spoken = words[5]["start"]  # "fifty"
+    assert abs(first - (spoken - 0.12)) < 0.15, (first, spoken)

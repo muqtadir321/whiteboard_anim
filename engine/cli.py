@@ -149,7 +149,7 @@ def cmd_deps(args) -> int:
     cfg = load_config(args.config or None, build_overrides(args), repo)
     inputs = discover_inputs(cfg, explicit_paths(args), repo)
     targets = parse_target_languages(args.target_languages)
-    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False}
+    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False, "alignment": False}
     from .voice_clone import resolve_reference
 
     try:
@@ -161,6 +161,8 @@ def cmd_deps(args) -> int:
             continue
         if li.audio_path and (cfg["voice"]["transcribe_missing_scripts"]) and cfg["transcription"]["engine"] != "none":
             need["transcription"] = True  # also used to align supplied script and audio
+        if li.audio_path and li.script_path and cfg["timing"]["forced_alignment"]:
+            need["alignment"] = True  # exact word timing of the voice-over
         if li.script_path and not li.audio_path and cfg["voice"]["generate_missing"]:
             tts_lang = {"english": "en", "urdu": "ur", "roman_urdu": "ur", "pashto": "ps"}[key]
             engines = cfg["voice"]["local_engines"] if cfg["voice"]["allow_local_tts"] else []

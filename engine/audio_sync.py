@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 from .svg_draw_order import DrawItem, travel_cost
 
-TRANSITION_SECONDS = {"none": 0.0, "slide": 0.45, "erase": 0.5, "fade": 0.4}
+TRANSITION_SECONDS = {"none": 0.0, "slide": 0.3, "erase": 0.3, "fade": 0.25}
 
 
 @dataclass
@@ -73,7 +73,7 @@ def char_to_time(scene: dict, char_index: int) -> tuple[float, str]:
         idx = sum(1 for s in tokens if s <= char_index) - 1
         idx = max(0, min(len(words) - 1, int(round(idx * len(words) / max(1, len(tokens))))))
         w = words[idx]
-        return float(w.get("start", start)), "word_timestamps"
+        return float(w.get("start", start)), ("estimated" if w.get("estimated") else "word_timestamps")
     frac = min(1.0, max(0.0, char_index / max(1, len(text))))
     return start + frac * (end - start) * 0.92, "estimated"
 
@@ -153,7 +153,9 @@ def order_by_mention(scene: dict, items: list[DrawItem]) -> list[DrawItem]:
         eff[iid] = val
         return val
 
-    return sorted(items, key=lambda it: (effective(it.id), it.order))
+    # Within the same spoken moment, written words/numbers come first so they appear exactly
+    # when said; the related picture is drawn right after.
+    return sorted(items, key=lambda it: (effective(it.id), 0 if it.obj == "text" else 1, it.order))
 
 
 def build_timeline(scene: dict, items: list[DrawItem], cfg: dict, pen_rest: tuple[float, float]) -> SceneTimeline:
@@ -168,36 +170,72 @@ def build_timeline(scene: dict, items: list[DrawItem], cfg: dict, pen_rest: tupl
     w1 = max(w0 + 0.3, end - hold)
     window = w1 - w0
 
-    # Total work at nominal speed (drawing + pen travel).
-    pen = pen_rest
-    work = 0.0
-    for it in items:
-        for op in it.ops:
-            work += op.cost + travel_cost(pen, op.start_point)
-            pen = op.end_point
-        if it.emphasis:
-            work += 0.25
-    speed = float(cfg["animation"]["drawing_speed"])
-    if work / speed > window * 0.92:
-        speed = work / (window * 0.92)
-        tl.compressed = speed > 4 * float(cfg["animation"]["drawing_speed"])
-    elif work / speed < window * 0.5:
-        # Very short drawings in a long sentence: draw a little more slowly (natural pace).
-        speed = max(speed * 0.6, work / (window * 0.6)) if work > 0 else speed
-    tl.speed_factor = speed
-
+    # Each item gets a deadline: it must start when its trigger word is spoken. Items are
+    # drawn in spoken order; an item that would run into the next item's moment is drawn
+    # faster, so later items (numbers, labels) never lag behind the narration.
+    base_speed = float(cfg["animation"]["drawing_speed"])
+    lead = 0.12  # start a hair before the word so the stroke is visibly under way
+    targets = []
     sources = set()
-    t = w0
-    pen = pen_rest
-    remaining = work
-    for ii, it in enumerate(items):
-        item_work = sum(op.cost for op in it.ops) + (0.25 if it.emphasis else 0)
+    for it in items:
         anchor_t, src = char_to_time(scene, it.anchor_char)
         sources.add(src)
-        latest = w1 - remaining / speed
-        target = anchor_t - 0.25
-        if target > t:
-            t = min(target, max(t, latest))
+        targets.append(min(w1 - 0.2, max(w0, anchor_t - lead)))
+    for k in range(1, len(targets)):
+        targets[k] = max(targets[k], targets[k - 1])  # spoken order is non-decreasing
+    pen = pen_rest
+    t = w0
+    speeds = []
+    natural = []
+    for it in items:
+        natural.append(sum(op.cost for op in it.ops) + (0.25 if it.emphasis else 0.0) + 0.05)
+    for ii, it in enumerate(items):
+        # the pen travels to the item beforehand, so ink touches the board on the word
+        approach = travel_cost(pen, it.ops[0].start_point) / base_speed if it.ops else 0.0
+        # Written words/numbers appear exactly on their word; pictures may be started a
+        # little early (like an illustrator anticipating) when the pen is free.
+        anticipation = 0.0 if it.obj == "text" else 1.2
+        start_t = max(t, targets[ii] - approach - anticipation)
+        # Items mentioned at (almost) the same moment share the time until the next mention.
+        j = ii + 1
+        while j < len(items) and targets[j] <= targets[ii] + 0.05:
+            j += 1
+        if j < len(items):
+            nxt = items[j]
+            end_pt = items[j - 1].ops[-1].end_point if items[j - 1].ops else pen
+            next_approach = travel_cost(end_pt, nxt.ops[0].start_point) / base_speed if nxt.ops else 0.0
+            group_end = targets[j] - next_approach
+        else:
+            group_end = w1
+        group_work = sum(natural[ii:j])
+        if j - ii > 1:
+            # several items share this moment: each gets its share, but never more than its
+            # natural drawing time, so the following item (often its label) is not kept waiting
+            share = max(0.0, group_end - start_t) * natural[ii] / max(1e-6, group_work)
+            slot_end = start_t + min(share, natural[ii] / base_speed)
+        else:
+            slot_end = group_end
+        # natural work for this item, including pen travel
+        p = pen
+        work = 0.0
+        for op in it.ops:
+            work += op.cost + travel_cost(p, op.start_point)
+            p = op.end_point
+        if it.emphasis:
+            work += 0.25
+        slot = max(0.0, slot_end - start_t)
+        speed = base_speed
+        if work / speed > slot:
+            # squeeze into the slot so the next spoken item is not delayed
+            # (strokes stay visible: at most 10x faster and never under 0.2 s)
+            needed = max(0.2, slot)
+            speed = min(base_speed * 10.0, max(base_speed, work / needed))
+        elif slot > 0 and work / speed < slot * 0.45 and j < len(items) and ii == j - 1:
+            # lots of time before the next mention: draw a little more calmly
+            # (never while other items of the same moment are still waiting)
+            speed = max(base_speed * 0.8, work / (slot * 0.6))
+        speeds.append(speed)
+        t = start_t
         for oi, op in enumerate(it.ops):
             tc = travel_cost(pen, op.start_point) / speed
             if tc > 0:
@@ -209,7 +247,8 @@ def build_timeline(scene: dict, items: list[DrawItem], cfg: dict, pen_rest: tupl
             pen = op.end_point
         if it.emphasis:
             t += 0.25 / speed
-        remaining -= item_work
+    tl.speed_factor = max(speeds) if speeds else base_speed
+    tl.compressed = tl.speed_factor >= base_speed * 9.9
     tl.drawing_end = t
     tl.timing_source = "word_timestamps" if sources == {"word_timestamps"} else "estimated"
     return tl
