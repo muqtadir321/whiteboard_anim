@@ -175,6 +175,8 @@ def cmd_deps(args) -> int:
                 need["voice_clone"] = True
             if "edge_tts" in cfg["voice"]["online_providers"] and cfg["voice"]["allow_online_free_tts"]:
                 need["edge_tts"] = True
+            if cfg["timing"]["forced_alignment"]:
+                need["alignment"] = True  # cuts the breath/noise after each generated clip, word timing
     if cfg["automation"]["automatic_topic_discovery"] and not any(li.has_content for li in inputs.values()):
         need["piper"] = True
         need["voice_clone"] = need["voice_clone"] or has_reference
