@@ -84,3 +84,41 @@ def test_bounded_retry_with_backoff():
     with pytest.raises(StageError):
         with_retries(bad_input, limit=3, base=0, sleep=lambda s: None)
     assert len(permanent) == 1
+
+
+def test_paragraph_voice_is_continuous_and_tail_is_cut(cfg, tmp_path):
+    """Voices that speak whole paragraphs get one clip per paragraph; the breath/noise after
+    the last word is cut using word timing, and the pauses between clips stay short."""
+    from engine.audio_processor import probe
+
+    class ParagraphTone(ToneTTS):
+        speaks_paragraphs = True
+
+    class FakeAligner:
+        calls = 0
+
+        def align(self, path, tokens, language):
+            FakeAligner.calls += 1
+            d = probe(path).duration
+            # pretend the last word ends 1 s before the clip does (a 1 s "aaaf" tail)
+            step = max(0.05, (d - 1.0) / max(1, len(tokens)))
+            return [(i * step, (i + 1) * step) for i in range(len(tokens))]
+
+    voice = ParagraphTone(cfg, languages=("ur",))
+    sentences = ["Number ek.", "Har cheez qist par lena.", "Number do.", "Log kya kahenge."]
+    r = synthesize_sentences(sentences, "roman_urdu", cfg, tmp_path, log=lambda m: None, chain=[voice],
+                             paragraphs=[0, 0, 1, 1], aligner=FakeAligner())
+    assert len(voice.calls) in (1, 2) and r.provider["speech_units"] == "paragraphs"
+    raw = sum(probe(tmp_path / f"tts_test_tone_{i:03d}_norm.wav").duration for i in range(2))
+    total = r.timing.sentences[-1].end
+    assert total < raw - 1.3  # both 1 s tails cut to 0.12 s, only a 0.3 s paragraph pause added
+    assert len(r.timing.sentences) == 4 and r.timing.sentences[2].start > r.timing.sentences[1].start
+
+
+def test_speech_units():
+    from engine.voice_manager import speech_units
+
+    s = ["a b.", "c d.", "e f.", "g."]
+    assert speech_units(s, [0, 0, 1, 1], True) == [[0, 1], [2, 3]]
+    assert speech_units(s, [0, 0, 1, 1], False) == [[0], [1], [2], [3]]
+    assert speech_units(s, [0, 0], True) == [[0], [1], [2], [3]]  # mismatched data: safe default

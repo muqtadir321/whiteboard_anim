@@ -114,6 +114,16 @@ def normalize(src: str | Path, dst: str | Path, sample_rate: int = 48000, trim_s
     return probe(dst)
 
 
+def trim_clip(src: str | Path, dst: str | Path, start: float, end: float, fade_out: float = 0.05) -> AudioInfo:
+    """Cut [start, end] from a WAV and fade the last few milliseconds (no click)."""
+    d = max(0.05, end - start)
+    fade = min(fade_out, d / 4)
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(src), "-af",
+         f"atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.01,afade=t=out:st={d - fade:.3f}:d={fade:.3f}",
+         "-c:a", "pcm_s16le", str(dst)], timeout=300)
+    return probe(dst)
+
+
 def detect_silences(path: str | Path, noise_db: float = -35.0, min_duration: float = 0.22) -> list[tuple[float, float]]:
     proc = run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", f"silencedetect=noise={noise_db}dB:d={min_duration}", "-f", "null", "-"],
                timeout=300, check=False)
@@ -127,8 +137,9 @@ def detect_silences(path: str | Path, noise_db: float = -35.0, min_duration: flo
     return out
 
 
-def concat_with_pauses(parts: list[str | Path], dst: str | Path, pause: float, sample_rate: int = 48000) -> list[tuple[float, float]]:
-    """Concatenate WAV parts with fixed pauses; returns exact (start, end) per part."""
+def concat_with_pauses(parts: list[str | Path], dst: str | Path, pause: float | list[float], sample_rate: int = 48000) -> list[tuple[float, float]]:
+    """Concatenate WAV parts with pauses (one value, or one per part); returns exact (start, end) per part."""
+    pauses = list(pause) if isinstance(pause, (list, tuple)) else [pause] * len(parts)
     inputs: list[str] = []
     filters = []
     spans = []
@@ -137,8 +148,9 @@ def concat_with_pauses(parts: list[str | Path], dst: str | Path, pause: float, s
         inputs += ["-i", str(p)]
         d = probe(p).duration
         spans.append((t, t + d))
-        t += d + pause
-        filters.append(f"[{i}:a]aresample={sample_rate},aformat=channel_layouts=mono,apad=pad_dur={pause}[p{i}]")
+        t += d + pauses[i]
+        pad = f",apad=pad_dur={pauses[i]}" if pauses[i] > 0 else ""
+        filters.append(f"[{i}:a]aresample={sample_rate},aformat=channel_layouts=mono{pad}[p{i}]")
     chain = "".join(f"[p{i}]" for i in range(len(parts)))
     graph = ";".join(filters) + f";{chain}concat=n={len(parts)}:v=0:a=1[out]"
     run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex", graph, "-map", "[out]", "-ac", "1", "-ar", str(sample_rate),

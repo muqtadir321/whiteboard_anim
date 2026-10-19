@@ -23,6 +23,9 @@ class OmniVoiceProvider(TTSProvider):
     license = "Apache-2.0 (OmniVoice); you must have the right to use the reference voice"
     commercial_use = "yes (Apache-2.0); reference voice must be yours or licensed"
     clones_voice = True
+    # Whole paragraphs sound continuous; sentence-by-sentence output adds an
+    # audible breath/tail and a gap at every full stop.
+    speaks_paragraphs = True
 
     def __init__(self, cfg: dict, reference: Path | None = None):
         super().__init__(cfg)

@@ -130,13 +130,14 @@ class LanguageJob:
         warnings: list[str] = list(self.inp.errors)
         script_text = None
         sentences: list[str] = []
+        paragraphs: list[int] = []
         transcript: Transcript | None = None
         meta = self.result.metadata
         meta.update({"language": self.key, "code": self.lang, "engine_version": __version__, "inputs": self.inp.to_dict()})
 
         # 1. Script
         def do_script(st):
-            nonlocal script_text, sentences
+            nonlocal script_text, sentences, paragraphs
             raw = self.script_text_override if self.script_text_override is not None else (self.inp.script_path.read_bytes() if self.inp.script_path else None)
             if raw is None:
                 st.status, st.message = Status.SKIPPED, "no script supplied"
@@ -154,7 +155,9 @@ class LanguageJob:
             st.data["detected_language"] = det.to_dict()
             if det.code != self.lang and det.confidence >= 0.8:
                 st.warnings.append(f"script looks like '{det.code}' (confidence {det.confidence:.2f}) but was supplied as '{self.lang}'; using '{self.lang}'")
-            sentences = [s.text for s in analyze_script(script_text, self.lang)]
+            analysed = analyze_script(script_text, self.lang)
+            sentences = [s.text for s in analysed]
+            paragraphs = [s.paragraph for s in analysed]
             st.data["sentences"] = len(sentences)
             st.data["characters"] = len(script_text)
 
@@ -264,7 +267,8 @@ class LanguageJob:
                 voice_desc = data["provider"]
                 st.message = "reused cached narration"
                 return
-            vr = synthesize_sentences(sentences, self.lang, cfg, self.tmp / "tts", self.log, self._tts_chain, self.reference_voice, self.cloner)
+            vr = synthesize_sentences(sentences, self.lang, cfg, self.tmp / "tts", self.log, self._tts_chain, self.reference_voice, self.cloner,
+                                      paragraphs=paragraphs or None, aligner=self._get_aligner())
             shutil.copy(vr.audio_path, narration_wav)
             timing = vr.timing
             voice_desc = vr.provider

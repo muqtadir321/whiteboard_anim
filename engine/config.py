@@ -86,7 +86,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "local_engines": ["piper", "mms", "espeak"],
         # Meta MMS voices are CC-BY-NC-4.0 (non-commercial). Reported in metadata.
         "allow_noncommercial_models": True,
-        "sentence_pause_seconds": 0.35,
+        # Pauses in generated narration (supplied voice-overs are never changed).
+        "sentence_pause_seconds": 0.15,
+        "paragraph_pause_seconds": 0.3,
         "piper_voices": {"en": "en_US-ljspeech-medium"},
         "mms_models": {
             "ur": "facebook/mms-tts-urd-script_arabic",

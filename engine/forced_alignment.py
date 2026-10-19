@@ -91,10 +91,11 @@ class MMSForcedAligner(ForcedAligner):
             keep = [i for i, r in enumerate(roman) if r]
             if not keep:
                 raise StageError("no alignable words in script", Status.PERMANENT_FAILURE)
-            model = bundle.get_model(with_star=False)
-            model.eval()
-            tokenizer = bundle.get_tokenizer()
-            aligner = bundle.get_aligner()
+            if self._bundle is None:  # load once; generated narration is aligned clip by clip
+                model = bundle.get_model(with_star=False)
+                model.eval()
+                self._bundle = (model, bundle.get_tokenizer(), bundle.get_aligner())
+            model, tokenizer, aligner = self._bundle
             wav, sr = _load_wav(audio_path)
             wav = torch.from_numpy(wav).unsqueeze(0)
             if sr != bundle.sample_rate:

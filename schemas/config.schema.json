@@ -328,6 +328,11 @@
               }
             }
           }
+        },
+        "paragraph_pause_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3
         }
       }
     },
