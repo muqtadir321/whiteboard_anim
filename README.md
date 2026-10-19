@@ -78,6 +78,40 @@ preserved in the visuals.
 
 ---
 
+## Find viral finance topics (research workflow)
+
+**Actions → Research Viral Finance Topics → Run workflow.** In a few minutes it collects what is
+gaining attention right now and ranks finance topics for your next video:
+
+| Source | What it measures | Access |
+|---|---|---|
+| YouTube channel feeds (`research/config.yaml`) | views per hour of recent uploads | public RSS |
+| YouTube Data API (optional `YOUTUBE_API_KEY` secret) | most-viewed uploads of the last days per keyword | free official API |
+| Google Trends | searches trending today per region | public RSS |
+| Google News | fresh stories per keyword and region | public RSS |
+| Reddit | top posts of the week in finance communities | public RSS |
+| YouTube search suggestions | what people type (SEO keywords) | suggestion endpoint |
+
+X (Twitter), TikTok and Instagram are not crawled: they have no free official access and their terms
+forbid scraping.
+
+Download the **`viral-topic-research`** artifact:
+
+- `report.md`: ranked ideas (High / Medium / Emerging potential) with the evidence behind each.
+- `briefs/NN-topic.md`: SEO titles (English + Roman Urdu), opening hooks, description, tags,
+  hashtags and a script outline in the same `[tag]` style as `input/scripts`. Numbers are
+  `{VERIFY: ...}` placeholders; nothing is invented.
+- `ideas.json`, `signals.json`, `sources.json`: raw data and which sources worked.
+
+Turn on **draft_scripts** to have a free local AI model (Qwen 2.5 3B via Ollama) also write a DRAFT
+script for the top 3 ideas. Then fill in the checked numbers, save the script to `input/scripts/`,
+add your voice-over (optional) and run **Generate Whiteboard Video**.
+
+Edit keywords, regions, channels and subreddits in `research/config.yaml`, or add keywords for one
+run with the `niche_keywords` input. To add the YouTube API key: Google Cloud console → enable
+"YouTube Data API v3" → create an API key → repository **Settings → Secrets and variables →
+Actions → New repository secret** named `YOUTUBE_API_KEY`.
+
 ## Languages and voices
 
 | Language | Script handling | Captions / labels | Generated narration (script only) | Transcription (audio only) |

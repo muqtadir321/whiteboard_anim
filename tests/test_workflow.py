@@ -79,3 +79,15 @@ def test_quality_report_rejects_failures():
     assert r.passed
     r.add("c", False, True)
     assert not r.passed and r.to_dict()["critical_failures"] == ["c"]
+
+
+def test_research_workflow_is_one_click():
+    wf = load("1-research-viral-topics.yml")
+    inputs = wf["on"]["workflow_dispatch"]["inputs"]
+    assert all(not spec.get("required", False) for spec in inputs.values())
+    steps = wf["jobs"]["research"]["steps"]
+    for s in steps:
+        assert "${{ inputs." not in s.get("run", "")
+    upload = [s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact")]
+    assert upload and upload[0]["with"]["name"] == "viral-topic-research"
+    assert wf["permissions"]["contents"] == "read"

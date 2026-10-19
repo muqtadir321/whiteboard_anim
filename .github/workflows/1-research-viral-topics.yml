@@ -1,0 +1,107 @@
+name: Research Viral Finance Topics
+
+# One click: finds finance topics that are gaining attention right now (YouTube uploads gaining
+# views fast, Google Trends, Google News, Reddit, YouTube search suggestions) and writes a
+# ranked report with SEO titles, hooks, tags and script outlines for each idea.
+# Optional secret YOUTUBE_API_KEY (free, Google Cloud console) adds YouTube search by views.
+
+on:
+  workflow_dispatch:
+    inputs:
+      niche_keywords:
+        description: "Extra keywords for your niche (comma separated, added to research/config.yaml)"
+        required: false
+        default: ""
+      replace_keywords:
+        description: "Use ONLY the keywords above instead of the config list"
+        type: boolean
+        required: false
+        default: false
+      regions:
+        description: "Regions, e.g. US,PK,AE,IN,GB (empty = config)"
+        required: false
+        default: ""
+      ideas:
+        description: "How many ideas"
+        required: false
+        default: "10"
+      draft_scripts:
+        description: "Also write DRAFT scripts for the top 3 ideas with a free local AI model (adds ~10 min)"
+        type: boolean
+        required: false
+        default: false
+      draft_languages:
+        description: "Draft languages: english, roman_urdu"
+        required: false
+        default: "english"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      DRAFT_MODEL: qwen2.5:3b
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install
+        run: pip install pyyaml
+
+      - name: Restore AI model cache
+        if: ${{ inputs.draft_scripts }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-qwen2.5-3b-v1
+
+      - name: Start local AI model (drafts only)
+        if: ${{ inputs.draft_scripts }}
+        continue-on-error: true
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
+          ollama pull "$DRAFT_MODEL"
+          echo "DRAFTS_READY=1" >> "$GITHUB_ENV"
+
+      - name: Research trending topics
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          IN_KEYWORDS: ${{ inputs.niche_keywords }}
+          IN_REPLACE: ${{ inputs.replace_keywords }}
+          IN_REGIONS: ${{ inputs.regions }}
+          IN_IDEAS: ${{ inputs.ideas }}
+          IN_DRAFT_LANGS: ${{ inputs.draft_languages }}
+        run: |
+          args=(--config research/config.yaml --out research_output)
+          if [ -n "$IN_KEYWORDS" ]; then
+            if [ "$IN_REPLACE" = "true" ]; then args+=(--seeds "$IN_KEYWORDS"); else args+=(--extra-seeds "$IN_KEYWORDS"); fi
+          fi
+          [ -n "$IN_REGIONS" ] && args+=(--regions "$IN_REGIONS")
+          [[ "$IN_IDEAS" =~ ^[0-9]+$ ]] && args+=(--ideas "$IN_IDEAS")
+          if [ "${DRAFTS_READY:-0}" = "1" ]; then args+=(--draft-model "$DRAFT_MODEL" --draft-languages "${IN_DRAFT_LANGS:-english}"); fi
+          python -m engine.research.cli "${args[@]}"
+
+      - name: Upload research
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viral-topic-research
+          path: research_output/
+          if-no-files-found: warn
+          retention-days: 30

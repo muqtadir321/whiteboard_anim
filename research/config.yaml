@@ -1,0 +1,60 @@
+# Viral topic research settings (used by "Research Viral Finance Topics").
+# Every list can be edited. Workflow inputs override niche keywords, regions and counts.
+
+niche: personal finance
+# Seed keywords: the research looks for trending ideas around these.
+seed_keywords:
+  - salary
+  - saving money
+  - budget
+  - investing
+  - inflation
+  - taxes
+  - side hustle
+  - passive income
+  - credit card debt
+  - interest rates
+  - stock market
+  - gold price
+  - dollar rate
+  - real estate
+  - retirement
+  - dubai salary
+  - overseas jobs
+  - remittance
+  - pakistan economy
+  - cost of living
+
+# Regions for Google Trends / News (ISO codes).
+regions: [US, PK, AE, IN, GB]
+
+# YouTube finance channels to watch (handles). Recent uploads that gain views fast are a strong
+# "what is going viral now" signal. Handles that cannot be resolved are reported and skipped.
+youtube_channels:
+  - "@GrahamStephan"
+  - "@AndreiJikh"
+  - "@MinorityMindset"
+  - "@ThePlainBagel"
+  - "@TwoCentsPBS"
+  - "@nischa"
+  - "@MarkTilbury"
+  - "@TheRamseyShow"
+  - "@HumphreyYang"
+  - "@CNBCMakeIt"
+  - "@BusinessInsider"
+  - "@SamaaMoney"
+
+# Reddit communities (public RSS feeds).
+reddit_subreddits: [personalfinance, povertyfinance, financialindependence, investing, Money, pakistan, dubai]
+
+sources:
+  google_trends: true       # public Google Trends "trending now" RSS per region
+  google_news: true         # public Google News RSS search
+  youtube_channels: true    # public YouTube channel RSS feeds (views + upload time)
+  youtube_api: true         # official YouTube Data API, only if the YOUTUBE_API_KEY secret is set
+  youtube_autocomplete: true  # YouTube search suggestions (unofficial endpoint; for SEO keywords)
+  reddit: true              # public subreddit RSS feeds
+
+lookback_days: 10
+ideas: 10
+request_timeout_seconds: 20

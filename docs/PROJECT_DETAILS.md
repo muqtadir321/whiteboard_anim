@@ -144,6 +144,7 @@ input files ─► script cleaning + language check ─► voice-over (yours / g
 | `timing.forced_alignment` | `true` | Exact word timing of voice-overs |
 | `animation.hand_cursor_style` | `hand` | `hand` or `marker` |
 | `animation.accent_color` | `#246BCE` | Colour of highlighted numbers and drawings |
+| `animation.drawing_density` | `2` | `0` = main drawing only, `1` = + side icons and number highlights, `2` = + headline (board never blank) |
 
 Workflow inputs can override these for a single run: target languages, quality, maximum duration,
 captions, and file paths.
@@ -168,14 +169,24 @@ A video is published only if all critical checks pass:
 | Workflow | Purpose |
 |---|---|
 | `0-make-video.yml`: **Generate Whiteboard Video** | Main one-click workflow (17 optional inputs). Installs only the engines your inputs need and uploads the artifact. |
+| `1-research-viral-topics.yml`: **Research Viral Finance Topics** | Finds trending finance topics (YouTube, Google Trends, Google News, Reddit, YouTube suggestions) and writes SEO briefs and script outlines. See the README. |
 | `3-make-english-urdu.yml`: **Make English + Urdu Video** | Compatibility workflow; runs the same engine. |
 | `tests.yml`: **Tests** | Runs the automated tests on every push. |
 
 ---
 
+## 7.1 Research workflow
+
+`research/config.yaml` holds the niche, seed keywords, regions, YouTube channels and subreddits.
+The engine (`engine/research/`) collects signals, keeps finance-related ones, extracts 2–3 word topic
+phrases that recur across items, and scores them: YouTube views per hour 35%, Google Trends 20%,
+news 15%, YouTube suggestions 15%, Reddit 10%, number of agreeing sources 5%. Each idea gets a brief
+with SEO titles, hooks, description, tags and a `[tag]`-style script outline (numbers left as
+`{VERIFY}`), plus an optional local-AI DRAFT script.
+
 ## 8. Tests
 
-- **91 automated tests** (`tests/`): input handling, languages, numbers, transliteration, scene
+- **97 automated tests** (`tests/`): input handling, languages, numbers, transliteration, scene
   planning, SVG drawing, captions and right-to-left text, voices, cloning, timing, full video
   renders, workflow files.
 - Run locally with `python -m pytest`.
