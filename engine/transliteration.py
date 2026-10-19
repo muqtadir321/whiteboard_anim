@@ -39,6 +39,18 @@ LEXICON = {
     "samjho": "سمجھو", "pata": "پتا", "aaj": "آج", "kal": "کل", "ab": "اب", "abhi": "ابھی", "sirf": "صرف", "har": "ہر",
     "sab": "سب", "baat": "بات", "tarah": "طرح", "mushkil": "مشکل", "hal": "حل", "masla": "مسئلہ", "wajah": "وجہ",
     "nateeja": "نتیجہ", "dugna": "دگنا", "gunna": "گنا", "guna": "گنا", "hoga": "ہوگا", "hogi": "ہوگی", "honge": "ہوں گے",
+    "garib": "غریب", "gareeb": "غریب", "ghareeb": "غریب", "ameer": "امیر", "amir": "امیر", "kyu": "کیوں", "kyon": "کیوں",
+    "rehta": "رہتا", "rehti": "رہتی", "rehte": "رہتے", "saat": "سات", "chhe": "چھ", "chay": "چھ", "chaar": "چار", "paanch": "پانچ",
+    "aadat": "عادت", "aadatein": "عادتیں", "aadaten": "عادتیں", "aadatain": "عادتیں", "khatam": "ختم", "deti": "دیتی", "deta": "دیتا",
+    "dete": "دیتے", "kabhi": "کبھی", "bachega": "بچے گا", "bachta": "بچتا", "bachate": "بچاتے", "bachana": "بچانا", "bache": "بچے",
+    "number": "نمبر", "taqreeban": "تقریباً", "karta": "کرتا", "cheez": "چیز", "qist": "قسط", "qiston": "قسطوں", "par": "پر",
+    "lena": "لینا", "bike": "بائیک", "tv": "ٹی وی", "kahenge": "کہیں گے", "dikhawe": "دکھاوے", "dikhawa": "دکھاوا", "kharcha": "خرچہ",
+    "kharche": "خرچے", "kharch": "خرچ", "chahe": "چاہے", "jeb": "جیب", "khaali": "خالی", "khali": "خالی", "hi": "ہی", "to": "تو",
+    "roz": "روز", "mahine": "مہینے", "mahina": "مہینہ", "aakhir": "آخر", "sach": "سچ", "salary": "سیلری", "badhi": "بڑھی",
+    "badh": "بڑھ", "barhi": "بڑھی", "ya": "یا", "aisi": "ایسی", "aisa": "ایسا", "jagah": "جگہ", "jahan": "جہاں", "emergency": "ایمرجنسی",
+    "fund": "فنڈ", "seedha": "سیدھا", "hafte": "ہفتے", "hafta": "ہفتہ", "badal": "بدل", "lein": "لیں", "len": "لیں", "tar": "تر",
+    "aage": "آگے", "nikal": "نکل", "jayenge": "جائیں گے", "jaenge": "جائیں گے", "batayein": "بتائیں", "batain": "بتائیں",
+    "kitni": "کتنی", "kitna": "کتنا", "comment": "کمنٹ", "likhein": "لکھیں", "likhen": "لکھیں", "kahan": "کہاں", "jaati": "جاتی",
     "us": "اس", "is": "اس", "un": "ان", "in": "ان", "ki": "کی", "jaata": "جاتا", "jata": "جاتا", "jati": "جاتی",
 }
 REVERSE_LEXICON = {}
