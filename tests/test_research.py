@@ -114,3 +114,10 @@ def test_cli_fails_when_every_source_fails(tmp_path, monkeypatch):
     cfg.write_text("seed_keywords: [gold]\nregions: [US]\n")
     assert cli.main(["--config", str(cfg), "--out", str(tmp_path / "o")]) == 1
     assert json.loads((tmp_path / "o" / "sources.json").read_text())[0]["failed"] == 1
+
+
+def test_phrases_keep_inner_small_words_and_drop_filler():
+    from engine.research.analysis import phrases
+    p = phrases("Social Security announces 3.6% cost-of-living adjustment", set())
+    assert "cost of living" in p and "social security" in p and not any(x.startswith("6") for x in p)
+    assert "much money" not in phrases("I Regret Saving Too Much Money", set())

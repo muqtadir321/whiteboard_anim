@@ -39,6 +39,7 @@ it its this that these those as you your yours we our they their he she his her 
 would can could should may might just only also more most less least very really what which who whom whose when where why how all any
 each every some such new now today week weeks year years day days time vs via per up down out off amp s t don doesn isn aren
 here there get gets got make makes made one two three first last next video watch official live full episode shorts short
+much many too lot lots way ways thing things need needs know want like still even big biggest really ever never why's it's
 """.split())
 
 
@@ -69,12 +70,17 @@ def is_finance(text: str, seeds: list[str]) -> bool:
 
 def phrases(text: str, seed_tokens: set[str]) -> set[str]:
     """Candidate topic phrases (2-3 word n-grams) that contain a finance or seed word."""
-    toks = tokens(text)
+    # n-grams over the real word sequence; they may contain inner small words ("cost of living")
+    # but must start and end with a content word
+    words = [w for w in re.findall(r"[a-z0-9$%&']+", text.lower().replace("’", "'"))]
     out = set()
     for n in (2, 3):
-        for i in range(len(toks) - n + 1):
-            gram = toks[i:i + n]
-            if any(g in FINANCE_TERMS or g in seed_tokens for g in gram) and not all(g.isdigit() for g in gram):
+        for i in range(len(words) - n + 1):
+            gram = words[i:i + n]
+            if any(e in STOP or len(e) < 2 or re.fullmatch(r"[\d$%&']+", e) for e in (gram[0], gram[-1])):
+                continue
+            content = [g for g in gram if g not in STOP]
+            if any(g in FINANCE_TERMS or g in seed_tokens for g in content) and not all(g.isdigit() for g in content):
                 out.add(" ".join(gram))
     return out
 
@@ -121,7 +127,7 @@ def rank_topics(signals: list[Signal], autocomplete: dict[str, list[str]], seeds
             ev[ph].append((impact, s))
     all_sugg = [q.lower() for v in autocomplete.values() for q in v]
     for ph in comp:
-        toks = ph.split()
+        toks = [t for t in ph.split() if t not in STOP]
         comp[ph]["demand"] = sum(1 for q in all_sugg if all(t in q for t in toks))
         if comp[ph]["demand"]:
             srcs[ph].add("search")
@@ -144,8 +150,8 @@ def rank_topics(signals: list[Signal], autocomplete: dict[str, list[str]], seeds
     # de-duplicate overlapping phrases ("dubai salary", "salary dubai jobs")
     chosen: list[tuple[float, str, dict]] = []
     for sc, p, parts in scored:
-        pt = set(p.split())
-        if any(len(pt & set(q.split())) / len(pt | set(q.split())) >= 0.5 for _, q, _ in chosen):
+        pt = set(p.split()) - STOP
+        if any(len(pt & (set(q.split()) - STOP)) / max(1, len(pt | (set(q.split()) - STOP))) >= 0.5 for _, q, _ in chosen):
             continue
         chosen.append((sc, p, parts))
         if len(chosen) >= top_n:
@@ -165,7 +171,7 @@ def rank_topics(signals: list[Signal], autocomplete: dict[str, list[str]], seeds
                              "traffic": int(s.traffic) or None, "channel": s.extra.get("channel") or s.extra.get("subreddit")})
             if len(evidence) >= 6:
                 break
-        toks = p.split()
+        toks = [t for t in p.split() if t not in STOP]
         kw = [q for q in dict.fromkeys(all_sugg) if any(t in q for t in toks)][:15]
         rel = sc / best if best else 0
         potential = "High" if rel >= 0.75 else "Medium" if rel >= 0.45 else "Emerging"
