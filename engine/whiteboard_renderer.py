@@ -195,7 +195,8 @@ class WhiteboardRenderer:
             fctx.save()
             tl = scenes[scene_idx].timeline if scenes else None
             if tl and prev_board is not None and t < tl.transition_end and tl.transition != "none":
-                e = _ease((t - tl.start) / max(1e-6, tl.transition_end - tl.start))
+                t0 = getattr(tl, "transition_start", tl.start)
+                e = _ease((t - t0) / max(1e-6, tl.transition_end - t0))
                 fctx.set_source_rgb(*self.bg)
                 fctx.paint()
                 if tl.transition == "slide":

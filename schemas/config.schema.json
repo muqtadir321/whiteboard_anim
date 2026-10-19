@@ -503,6 +503,11 @@
         },
         "seed": {
           "type": "integer"
+        },
+        "drawing_density": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
         }
       }
     },

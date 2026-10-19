@@ -47,6 +47,7 @@ class SceneTimeline:
     end: float
     transition: str
     transition_end: float
+    transition_start: float = 0.0
     ops: list[OpEvent] = field(default_factory=list)
     travel: list[TravelEvent] = field(default_factory=list)
     captions: list[CaptionCue] = field(default_factory=list)
@@ -162,11 +163,11 @@ def build_timeline(scene: dict, items: list[DrawItem], cfg: dict, pen_rest: tupl
     start, end = float(scene["start_seconds"]), float(scene["end_seconds"])
     transition = scene.get("transition", "none")
     tr = min(TRANSITION_SECONDS.get(transition, 0.0), (end - start) * 0.2)
-    tl = SceneTimeline(scene["scene_id"], start, end, transition, start + tr)
+    tl = SceneTimeline(scene["scene_id"], start, end, transition, start + tr, start)
     tl.captions = caption_cues(scene)
     duration = end - start
     hold = min(0.9, max(0.25, duration * 0.18))
-    w0 = start + tr + 0.05
+    w0 = start + 0.05
     w1 = max(w0 + 0.3, end - hold)
     window = w1 - w0
 
@@ -250,5 +251,11 @@ def build_timeline(scene: dict, items: list[DrawItem], cfg: dict, pen_rest: tupl
     tl.speed_factor = max(speeds) if speeds else base_speed
     tl.compressed = tl.speed_factor >= base_speed * 9.9
     tl.drawing_end = t
+    # The previous scene stays on screen until just before this scene's first stroke, so the
+    # board is never left blank; the transition runs into that first stroke.
+    if tl.ops and tr > 0:
+        first = min(e.t0 for e in tl.ops)
+        tl.transition_end = max(start + 0.05, first)
+        tl.transition_start = max(start, tl.transition_end - tr)
     tl.timing_source = "word_timestamps" if sources == {"word_timestamps"} else "estimated"
     return tl

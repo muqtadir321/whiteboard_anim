@@ -162,6 +162,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "semantic_scene_planning": True,
         "progressive_strokes": True,
         "drawing_speed": 1.0,
+        # 0 = only the core picture, 1 = + one extra icon and number circles, 2 = rich (default)
+        "drawing_density": 2,
         "seed": 7,
     },
     "planner": {

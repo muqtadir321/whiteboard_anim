@@ -85,8 +85,10 @@ def test_timeline_follows_narration(cfg):
     assert all(a.t1 <= b.t0 + 1e-6 for a, b in zip(tl.ops, tl.ops[1:]))  # one pen, sequential strokes
     assert tl.drawing_end <= scene["end_seconds"] + 1e-6
     # "$50" is spoken last, so it is written after the person is drawn
-    ids = [items[e.item_index].obj for e in tl.ops]
-    assert ids.index("person") < ids.index("text")
+    money_id = next(a["id"] for a in scene["visual_actions"] if a.get("text") == "$50")
+    ids = [items[e.item_index].id for e in tl.ops]
+    person_id = next(a["id"] for a in scene["visual_actions"] if a.get("object") == "person")
+    assert ids.index(person_id) < ids.index(money_id)
 
 
 def test_spoken_number_is_written_on_its_word(cfg):

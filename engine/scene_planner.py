@@ -274,6 +274,8 @@ def plan_chart(b: PlanBuilder, an: Analysis, rng: random.Random, variant: int) -
         chart = b.draw("line_chart", "upper", anchor=anchor, params={"direction": direction, "start_label": amounts[0].display if amounts else "", "end_label": percents[0].display if percents else ""})
         if not amounts and not percents and entity and subject:
             b.draw(_entity_visual(entity), other, anchor=entity.start, scale=0.7)
+        for q in (amounts + percents)[:1]:
+            b.write(q.display, "top", anchor=q.span[0], style="number", color="positive" if direction == "up" else "negative")
     b.draw("trend_arrow", other if not (entity and subject and not amounts and not percents) else "center_right", anchor=anchor, params={"direction": direction}, scale=0.7)
     for extra in percents[1:2] + amounts[4:5]:
         b.write(extra.display, "bottom", anchor=extra.span[0], style="number")
@@ -714,6 +716,55 @@ def _repair(scene: dict, an: Analysis, problems: list[str]) -> list[str]:
     return remaining
 
 
+CORNER_SLOTS = ["top_left", "top_right", "bottom_left", "bottom_right", "center_left", "center_right"]
+SLOT_OVERLAPS = {
+    "left": {"top_left", "center_left", "bottom_left", "lower_left"}, "right": {"top_right", "center_right", "bottom_right", "lower_right"},
+    "upper": {"top_left", "top_right", "top", "upper_center", "center_left", "center_right"}, "lower": {"bottom_left", "bottom_right", "bottom", "lower_left", "lower_right"},
+    "full": set(CORNER_SLOTS) | {"top", "bottom"}, "center": {"center_left", "center_right"},
+    "lower_left": {"bottom_left", "center_left"}, "lower_right": {"bottom_right", "center_right"},
+}
+
+
+def enrich_scene(b: PlanBuilder, an: Analysis, scene_type: str, density: int) -> None:
+    """Add more narration-linked drawings so the board stays busy.
+
+    Everything added comes from the sentence itself and is anchored to the word that
+    mentions it: icons for further concepts, circles around spoken amounts and a short
+    handwritten headline. `density` 0 disables enrichment; 1 = moderate; 2 = rich.
+    """
+    if density <= 0:
+        return
+    used = set()
+    for a in b.actions:
+        pos = a["position"]
+        used.add(pos)
+        used |= SLOT_OVERLAPS.get(pos, set())
+    free = [s for s in CORNER_SLOTS if s not in used]
+    drawn = {a.get("object") for a in b.actions if a["action"] == "draw"}
+    written = {a.get("text") for a in b.actions if a["action"] == "write"}
+    max_icons = 1 if density == 1 else 3
+    # 1) further concepts mentioned in the sentence, as small icons at their word
+    for e in an.entities:
+        if not free or max_icons <= 0:
+            break
+        vis = _entity_visual(e)
+        if vis in drawn or vis in ("label_box",):
+            continue
+        b.draw(vis, free.pop(0), anchor=e.start, scale=0.45)
+        drawn.add(vis)
+        max_icons -= 1
+    # 2) hand-drawn circle around every spoken amount (drawn right after it is written)
+    for a in list(b.actions):
+        if a["action"] == "write" and a.get("style") in ("number", "title") and any(ch.isdigit() for ch in a.get("text", "")):
+            b.highlight(a["id"], anchor=a.get("anchor_char", 0), color="accent")
+    # 3) short headline with the sentence's key words (verbatim), if the top is free
+    if density >= 2 and scene_type not in ("text_emphasis",) and "top" not in used and "upper_center" not in used:
+        label = _short_label(an.text, an.lang, 3, 24)
+        if label and label not in written and len(label) >= 4:
+            first_tok = content_tokens(an.text, an.lang)
+            b.write(label, "top", anchor=first_tok[0][1] if first_tok else 0, style="label", color="muted")
+
+
 def merge_short_segments(segments: list[Segment], min_seconds: float) -> list[Segment]:
     out: list[Segment] = []
     for seg in segments:
@@ -755,6 +806,7 @@ def plan_scenes(segments: list[Segment], lang: str, cfg: dict, language_key: str
             scene_type = func(b, an, rng, variant + 1)
             signature = (scene_type, tuple((a.get("object"), a["position"]) for a in b.actions))
         prev_signature = signature
+        enrich_scene(b, an, scene_type, int(cfg["animation"].get("drawing_density", 2)))
         type_counts[rule] = type_counts.get(rule, 0) + 1
         scene = {
             "schema_version": SCHEMA_VERSION,
