@@ -146,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
         files[idea.topic] = name
 
     report = report_markdown(cfg, ideas, statuses, files, now)
+    print("\n" + report, flush=True)
     (out / "report.md").write_text(report, encoding="utf-8")
     (out / "ideas.json").write_text(json.dumps([dict(idea.to_dict(), brief=files[idea.topic]) for idea in ideas],
                                                indent=2, ensure_ascii=False), encoding="utf-8")

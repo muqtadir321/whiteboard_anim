@@ -297,7 +297,9 @@ def collect_autocomplete(seeds: list[str], timeout: float, st: SourceStatus) -> 
 
 def collect_reddit(subs: list[str], timeout: float, st: SourceStatus) -> list[Signal]:
     out = []
-    for sub in subs:
+    for k, sub in enumerate(subs):
+        if k:
+            time.sleep(3)  # Reddit rate-limits unauthenticated feeds; space the requests out
         try:
             sig = parse_rss_items(fetch(f"https://www.reddit.com/r/{sub}/top/.rss?t=week", timeout), "reddit")
             for s in sig:
