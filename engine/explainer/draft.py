@@ -70,6 +70,14 @@ def roman_urdu_prompt(english: str) -> str:
             f"{english}")
 
 
+def urdu_prompt(english: str) -> str:
+    return ("Translate this YouTube Shorts narration into natural spoken Urdu written in Urdu script (Nastaliq letters, "
+            "e.g. 'گھر خریدنا مشکل کیوں ہو گیا؟'). Write common English loanwords the way Urdu speakers say them, in Urdu script "
+            "(e.g. پولیس، اکاؤنٹ، ٹرانسفر). Keep every [tag] exactly as it is, including the English words in quotes, at the same "
+            "place. Keep the numbers as digits. Return only the narration.\n\n"
+            f"{english}")
+
+
 def clean_output(text: str) -> str:
     text = re.sub(r"^```\w*|```$", "", text.strip(), flags=re.M).strip()
     text = re.sub(r"^(script|narration)\s*:\s*", "", text, flags=re.I)

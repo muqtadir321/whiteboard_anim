@@ -366,3 +366,27 @@ def test_spoken_currency_word_is_not_repeated(ex_cfg):
         scene = {"narration_text": text, "quantities": [q.to_dict() for q in extract_quantities(text, lang)]}
         tokens, flags, _ = ExplainerLayout.board_tokens(scene, [(0.0, 0.3)] * len(text.split()))
         assert want in tokens and not any(t.lower().startswith(("dollar", "rupay")) for t in tokens), tokens
+
+
+def test_board_shows_only_key_amounts(ex_cfg):
+    from engine.numbers import extract_quantities
+
+    text = "Darr ke maare usne 51 lakh rupay fraudsters ke account mein bhej diye."
+    scene = {"scene_id": "scene_001", "narration_text": text, "start_seconds": 0, "end_seconds": 3, "visual_actions": [],
+             "quantities": [q.to_dict() for q in extract_quantities(text, "roman_urdu")]}
+    words, _ = ExplainerLayout(ex_cfg, "roman_urdu", None, 1.0).layout_words(scene, [(0.0, 0.3)] * len(text.split()))
+    assert [w.text for w in words] == ["Rs 51 lakh"]  # no subtitles, only the amount
+    scene["quantities"], scene["narration_text"] = [], "Call kaatein aur verify karein."
+    assert ExplainerLayout(ex_cfg, "roman_urdu", None, 1.0).layout_words(scene, [(0.0, 0.3)] * 4)[0] == []
+
+
+def test_voice_text_for_urdu_and_roman_urdu():
+    from engine.numbers import extract_quantities
+    from engine.transliteration import roman_to_urdu, spell_numbers, urdu_number_words
+
+    assert urdu_number_words(4057) == "چار ہزار ستاون" and urdu_number_words(2026) == "دو ہزار چھبیس"
+    assert urdu_number_words(1_500_000) == "پندرہ لاکھ"
+    assert spell_numbers("لوگ 4,057.7 کروڑ روپے") == "لوگ چار ہزار ستاون اعشاریہ سات کروڑ روپے"
+    assert roman_to_urdu("Police video call par arrest nahi karti.") == "پولیس ویڈیو کال پر اریسٹ نہیں کرتی۔"
+    assert roman_to_urdu("Pune mein", {"pune": "پُونے"}) == "پُونے میں"
+    assert [q.display for q in extract_quantities("اس نے 51 لاکھ روپے بھیج دیے", "ur")] == ["Rs 51 lakh"]

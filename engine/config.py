@@ -73,6 +73,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
     },
     "voice": {
+        # Roman word -> Urdu spelling used when Roman Urdu is converted for the voice (topic folders add pronunciations.yaml)
+        "pronunciations": {},
         "generate_missing": True,
         "transcribe_missing_scripts": True,
         "prefer_supplied_audio": True,
@@ -180,6 +182,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "max_zoom": 1.9,
             "source_label": True,
             "max_icons": 2,
+            # write the narration on the board word by word (off: only key amounts pop up, no subtitles)
+            "write_narration": False,
         },
     },
     "planner": {

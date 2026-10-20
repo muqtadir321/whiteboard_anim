@@ -1,9 +1,9 @@
 """Prepare a topic folder: articles, screenshots, charts, logos and draft scripts.
 
     python -m engine.explainer.prepare --topic "why buying a house got harder" [--region US]
-        [--languages english,roman_urdu] [--model qwen2.5:7b] [--out input/topics]
+        [--languages english,urdu] [--model qwen2.5:7b] [--out input/topics]
 
-Writes input/topics/<date>-<slug>/ with english.txt / roman_urdu.txt (drafts to review),
+Writes input/topics/<date>-<slug>/ with english.txt / urdu.txt / roman_urdu.txt (drafts to review),
 evidence/ (screenshots + manifest.json), notes.md (what to check) and topic.yaml.
 Render it with:  python -m engine.cli run --topic-dir input/topics/<date>-<slug>
 """
@@ -77,7 +77,7 @@ def model_available(host: str, model: str) -> bool:
         return False
 
 
-def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("english", "roman_urdu"), out_root: Path | None = None,
+def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("english", "urdu"), out_root: Path | None = None,
             model: str = "qwen2.5:7b", host: str = "http://127.0.0.1:11434", max_articles: int = 2, log=print) -> Path:
     from .capture import Browser, snippet_from
 
@@ -155,21 +155,23 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
     english, en_notes = draft.validate(english, evidence.articles, set(evidence.charts), logo_names, known, "en")
     notes += [f"english: {n}" for n in en_notes]
     scripts = {"english": english}
-    if "roman_urdu" in languages:
+    for lang, prompt, code, label in (("urdu", draft.urdu_prompt, "ur", "Urdu-script"), ("roman_urdu", draft.roman_urdu_prompt, "roman_urdu", "Roman Urdu")):
+        if lang not in languages:
+            continue
         if use_model:
-            log("drafting the Roman Urdu script")
-            ru = draft.clean_output(draft.ollama(draft.roman_urdu_prompt(english), model, host, temperature=0.3))
-            ru, ru_notes = draft.validate(ru, evidence.articles, set(evidence.charts), logo_names, known, "roman_urdu")
-            notes += [f"roman_urdu: {n}" for n in ru_notes]
+            log(f"drafting the {label} script")
+            text = draft.clean_output(draft.ollama(prompt(english), model, host, temperature=0.3))
+            text, lang_notes = draft.validate(text, evidence.articles, set(evidence.charts), logo_names, known, code)
+            notes += [f"{lang}: {n}" for n in lang_notes]
         else:
-            ru = "{VERIFY: write the Roman Urdu script (keep the [tags] from english.txt)}\n"
-        scripts["roman_urdu"] = ru
+            text = f"{{VERIFY: write the {label} script (keep the [tags] from english.txt)}}\n"
+        scripts[lang] = text
     for lang, text in scripts.items():
         if lang in languages:
             (folder / f"{lang}.txt").write_text(text, encoding="utf-8")
     (folder / "audio").mkdir(exist_ok=True)
     (folder / "audio" / "README.txt").write_text(
-        "Optional: put your own voice-over here as english.mp3 / roman_urdu.mp3 (any audio format).\n"
+        "Optional: put your own voice-over here as english.mp3 / urdu.mp3 / roman_urdu.mp3 (any audio format).\n"
         "Without it, the narration is generated in your cloned voice from input/voice/reference.*\n", encoding="utf-8")
 
     meta = {"topic": topic, "region": region, "created": now.isoformat(timespec="seconds"), "model": model if use_model else "none (extractive)",
@@ -183,10 +185,10 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
 
 def review_notes(topic, folder, brief, articles, charts, logo_rows, notes, scripts) -> str:
     lines = [f"# {topic}", "", "## Before you render", "",
-             "1. Read `english.txt` (and `roman_urdu.txt`). Rewrite anything that sounds off; keep it 45–60 seconds.",
+             "1. Read `english.txt` (and `urdu.txt` / `roman_urdu.txt`). Rewrite anything that sounds off; keep it 45–60 seconds.",
              "2. Replace every `{VERIFY: ...}` with a checked fact (rendering refuses to start while one is left).",
              "3. Check each screenshot in `evidence/` and the quotes in `[article N \"...\"]` tags (copy them exactly from the article text below).",
-             "4. Optional: add your voice-over as `audio/english.mp3` / `audio/roman_urdu.mp3`.",
+             "4. Optional: add your voice-over as `audio/english.mp3` / `audio/urdu.mp3`.",
              f"5. Run **Generate Whiteboard Video** with `topic_dir` = `{folder.relative_to(REPO_ROOT) if folder.is_relative_to(REPO_ROOT) else folder}`.", "",
              "## Tags you can use", "",
              "- `[news]` headline cards", "- `[article N \"exact words\"]` article screenshot with those words highlighted",
@@ -211,16 +213,16 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--topic", required=True)
     p.add_argument("--region", default="US")
-    p.add_argument("--languages", default="english,roman_urdu")
+    p.add_argument("--languages", default="english,urdu")
     p.add_argument("--model", default=os.environ.get("DRAFT_MODEL", "qwen2.5:7b"))
     p.add_argument("--host", default="http://127.0.0.1:11434")
     p.add_argument("--max-articles", type=int, default=2)
     p.add_argument("--out", default="")
     a = p.parse_args(argv)
     langs = tuple(x.strip() for x in a.languages.split(",") if x.strip())
-    bad = [x for x in langs if x not in ("english", "roman_urdu")]
+    bad = [x for x in langs if x not in ("english", "urdu", "roman_urdu")]
     if bad:
-        print(f"::error::explainer topics support english and roman_urdu, not {', '.join(bad)}")
+        print(f"::error::explainer topics support english, urdu and roman_urdu, not {', '.join(bad)}")
         return 2
     folder = prepare(a.topic.strip(), a.region.strip().upper() or "US", langs, Path(a.out).resolve() if a.out else None, a.model, a.host, a.max_articles,
                      log=lambda m: print(m, flush=True))

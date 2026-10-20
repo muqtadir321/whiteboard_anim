@@ -333,6 +333,13 @@
           "type": "number",
           "minimum": 0,
           "maximum": 3
+        },
+        "pronunciations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -562,6 +569,9 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 4
+            },
+            "write_narration": {
+              "type": "boolean"
             }
           }
         }

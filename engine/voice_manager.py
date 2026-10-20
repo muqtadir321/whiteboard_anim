@@ -15,7 +15,7 @@ from .audio_processor import concat_with_pauses, detect_silences, normalize, pro
 from .audio_timing import Timing, exact_timing
 from .results import StageError, Status
 from .retry import with_retries
-from .transliteration import roman_to_urdu
+from .transliteration import roman_to_urdu, spell_numbers
 from .tts.base import TTSError, TTSProvider
 from .tts.edge import EdgeTTSProvider
 from .tts.espeak import EspeakProvider
@@ -67,9 +67,11 @@ def build_chain(cfg: dict, reference: Path | None = None) -> list[TTSProvider]:
     return chain
 
 
-def _convert(text: str, conversion: str | None) -> str:
+def _convert(text: str, conversion: str | None, tts_lang: str = "", pronunciations: dict | None = None) -> str:
     if conversion == "roman_to_urdu":
-        return roman_to_urdu(text)
+        return roman_to_urdu(text, pronunciations)
+    if tts_lang == "ur":
+        return spell_numbers(text)  # digits in Urdu-script narration are spoken as Urdu words
     return text
 
 
@@ -150,7 +152,7 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
         routes.append(WRONG_LANGUAGE_FALLBACK[lang])
     for ri, (tts_lang, conversion) in enumerate(routes):
         is_wrong = ri >= len(TTS_ROUTES.get(lang, []))
-        texts = [_convert(s, conversion) for s in sentences]
+        texts = [_convert(s, conversion, tts_lang, cfg["voice"].get("pronunciations")) for s in sentences]
         for provider in chain:
             if not provider.is_available(tts_lang):
                 entry = {"provider": provider.name, "language": tts_lang, "status": "unavailable"}
@@ -220,7 +222,7 @@ def synthesize_sentences(sentences: list[str], lang: str, cfg: dict, work_dir: P
             desc["conversion"] = conversion
             desc["wrong_language_fallback"] = wrong
             desc["speech_units"] = "paragraphs" if len(units) < len(sentences) else "sentences"
-            return VoiceResult(str(out), timing, desc, texts if conversion else None, attempts, wrong, clone_info)
+            return VoiceResult(str(out), timing, desc, texts if (conversion or texts != sentences) else None, attempts, wrong, clone_info)
     raise StageError(
         f"No suitable free voice available for '{lang}'. Tried: "
         + (", ".join(f"{a['provider']}({a['language']}): {a['status']}" for a in attempts) or "no providers configured"),

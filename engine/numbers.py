@@ -42,7 +42,7 @@ PS_WORDS = {
     "يو": 1, "درې": 3, "اووه": 7, "شپږ": 6,
 }
 SCALE_WORDS = {"sau": 100, "hazar": 1000, "hazaar": 1000, "lakh": 100_000, "laakh": 100_000, "crore": 10_000_000, "karor": 10_000_000,
-               "arab": 1_000_000_000, "kharab": 100_000_000_000,
+               "arab": 1_000_000_000, "kharab": 100_000_000_000, "ارب": 1_000_000_000, "کھرب": 100_000_000_000,
                "سو": 100, "ہزار": 1000, "لاکھ": 100_000, "کروڑ": 10_000_000, "سل": 100, "زر": 1000, "لک": 100_000,
                "سوه": 100, "زره": 1000, "زرو": 1000, "لکه": 100_000}
 
@@ -61,6 +61,8 @@ YEAR_RE = re.compile(r"\b(1[89]\d\d|20\d\d)\b")
 # Scales shown by name on screen (smaller ones are written out in full, e.g. 50,000).
 LARGE_SCALES = {"lakh": 100_000, "laakh": 100_000, "million": 1_000_000, "crore": 10_000_000, "karor": 10_000_000,
                 "billion": 1_000_000_000, "arab": 1_000_000_000, "kharab": 100_000_000_000, "trillion": 1_000_000_000_000}
+# Scale words in other spellings/scripts -> the name written on screen.
+SCALE_NAMES = {"laakh": "lakh", "karor": "crore", "لاکھ": "lakh", "کروڑ": "crore", "ارب": "arab", "کھرب": "kharab"}
 _SCALE_AFTER = re.compile(r"\s+(" + "|".join(sorted(set(EN_SCALES) | set(SCALE_WORDS) - {"sau", "hundred"}, key=len, reverse=True)) + r")\b", re.I)
 
 
@@ -204,7 +206,8 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
         if sm:  # "51 lakh", "1.33 million", "4,057.7 crore"
             w = sm.group(1).lower()
             value *= {**EN_SCALES, **SCALE_WORDS}[w]
-            end, scale_word = sm.end(), (w if w in LARGE_SCALES else "")
+            name = SCALE_NAMES.get(w, w)
+            end, scale_word = sm.end(), (name if name in LARGE_SCALES else "")
         found.append(Quantity(value, "plain", "", (m.start(), end), text[m.start():end], scale_word))
         taken.append((m.start(), end))
 
@@ -230,6 +233,7 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
             ambiguous = single and tokens[i][0].lower() in ("do", "so", "no", "sat", "che", "tin", "ik", "ek", "یو", "سو", "نو", "دو", "ایک", "one", "aik", "a")
             if not overlaps(*span) and (not ambiguous or _unit_follows(lower, span[1])):
                 last = tokens[j - 1][0].lower()
+                last = SCALE_NAMES.get(last, last)
                 found.append(Quantity(float(value), "plain", "", span, text[span[0]:span[1]], last if last in LARGE_SCALES and j - i > 1 else ""))
                 taken.append(span)
             i = j

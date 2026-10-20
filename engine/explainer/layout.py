@@ -228,6 +228,11 @@ class ExplainerLayout:
                 continue
             before = {t.lower().strip(",.") for t in tokens[max(0, i - 3):i]}
             colors.append(self.ex["low_number_color"] if before & LOW_WORDS else self.ex["number_color"])
+        if not self.ex["write_narration"]:  # no subtitles: only the key amounts pop up on the board
+            keep = [i for i, n in enumerate(is_num) if n]
+            tokens, is_num, times, colors = ([seq[i] for i in keep] for seq in (tokens, is_num, times, colors))
+            if not tokens:
+                return [], TEXT_ZONE[1]
         x0, y0, x1, y1 = TEXT_ZONE
         k = 1.0
         while True:
@@ -414,7 +419,7 @@ class ExplainerLayout:
     def region_for(self, t0: float, t1: float) -> tuple[float, float, float, float]:
         """Stage region below the tallest text block shown while the stage is visible."""
         bottoms = [b for s0, s1, b in self.text_spans if s0 < t1 and t0 < s1]
-        top = min(900.0, max(380.0, max(bottoms, default=STAGE_ZONE[1] - 50) + 50))
+        top = min(900.0, max(260.0, max(bottoms, default=STAGE_ZONE[1] - 50) + 50))
         return (STAGE_ZONE[0], top, STAGE_ZONE[2], STAGE_ZONE[3])
 
     def top_view(self, st: Stage) -> tuple[float, float, float]:

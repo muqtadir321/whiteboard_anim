@@ -43,6 +43,11 @@ def build_overrides(args) -> dict:
         # A topic folder holds everything for one video: <lang>.txt, audio/<lang>.*, evidence/
         o["languages"] = {key: {"script_path": f"{topic}/{key}.txt", "audio_path": f"{topic}/audio/{key}.mp3"} for key in LANGUAGE_KEYS}
         o["animation"] = {"style": "explainer"}
+        pron = Path(getattr(args, "repo_root", REPO_ROOT)) / topic / "pronunciations.yaml"
+        if pron.is_file():  # Roman word -> Urdu spelling for the voice, e.g. {Pune: پونے}
+            import yaml
+
+            o["voice"]["pronunciations"] = {str(k): str(v) for k, v in (yaml.safe_load(pron.read_text(encoding="utf-8")) or {}).items()}
     return {k: v for k, v in o.items() if v}
 
 

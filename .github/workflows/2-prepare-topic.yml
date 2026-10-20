@@ -16,9 +16,9 @@ on:
         required: false
         default: "US"
       languages:
-        description: "Scripts to draft: english,roman_urdu"
+        description: "Scripts to draft: english, urdu (Urdu script, best pronunciation), roman_urdu"
         required: false
-        default: "english,roman_urdu"
+        default: "english,urdu"
       model:
         description: "Local AI model (Ollama) that drafts the script"
         required: false
@@ -94,7 +94,7 @@ jobs:
         run: |
           max="$IN_MAX"; [[ "$max" =~ ^[0-9]+$ ]] || max=2
           python -m engine.explainer.prepare --topic "$IN_TOPIC" --region "${IN_REGION:-US}" \
-            --languages "${IN_LANGS:-english,roman_urdu}" --model "$IN_MODEL" --max-articles "$max"
+            --languages "${IN_LANGS:-english,urdu}" --model "$IN_MODEL" --max-articles "$max"
 
       - name: Commit the topic folder
         env:

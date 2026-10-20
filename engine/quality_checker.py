@@ -205,7 +205,11 @@ def check_semantics(report: QualityReport, plan: dict, cfg: dict) -> None:
 def check_explainer(report: QualityReport, layout, cfg: dict) -> None:
     """Explainer style: the narration is written on the board and evidence is real and sourced."""
     q = cfg["quality"]
-    empty = [sc.scene_id for sc in layout.scenes if not sc.words]
+    def shown(sc):  # words, a doodle, or an evidence stage on screen at the end of the scene
+        t = sc.end - 0.05
+        return sc.words or sc.sprites or any(st.t_in <= t < st.t_out for st in layout.stages)
+
+    empty = [sc.scene_id for sc in layout.scenes if not shown(sc)]
     report.add("every_scene_has_visuals", not empty, True, empty)
     outside = [f"{sc.scene_id}:{w.text}" for sc in layout.scenes for w in sc.words
                if w.bbox[0] < SAFE_MARGIN - 1 or w.bbox[2] > DESIGN_W - SAFE_MARGIN + 1 or w.bbox[1] < SAFE_MARGIN - 1]
