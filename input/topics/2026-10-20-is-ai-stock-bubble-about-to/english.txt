@@ -1,0 +1,5 @@
+[news] Will the AI bubble pop? How to protect your money if tech stocks suddenly plunge (The Sun).
+
+During the last decade, the S&P 500 has roughly doubled, with the Nasdaq Composite doing even better. But investor skepticism is rising. [chart CPIAUCSL 2022-06-01] Inflation hit 8.98% in 2022, a stark contrast to just 0.20% in 2020. As inflation and interest rates climb, the AI bubble could be at risk. [article 1 "Total Conviction"] For the first time in years, a similar signal is flashing for a smaller company in the AI sector. The growth of computing technology, similar to the PC boom, suggests the AI boom could continue, but economic cycles may pose a threat.
+
+[chart FEDFUNDS 2023-08-01] The Federal Funds Effective Rate reached 5.33% in August 2023, signaling a tightening of monetary policy. [article 2 "late stages of a bubble"] Economists at Capital Economics predict the AI bubble may start to burst by 2027. While AI will likely transform the economy, current earnings expectations might be too high. Consider the lessons from the dot-com era as you navigate the AI landscape.

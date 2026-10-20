@@ -1,0 +1,23 @@
+The AI bubble that has propelled U.S. stocks to record highs is starting to deflate, according to some Wall Street analysts.
+
+"There are plenty of signs that we are now in the late stages of a bubble in AI," John Higgins, chief economic adviser for financial markets at Capital Economics, said in a report on Monday.
+
+The investment advisory firm's "best guess" is that the AI bubble will begin to burst in 2027. Capital Economics also forecasts a correction, or when stocks fall at least 20% from their most recent high, in the S&P 500 stock index next year.
+
+"If you look at the rate at which leading AI firms' earnings are expected to grow, versus how fast the U.S. economy has been growing, by many measures they look really stretched — as in this is the dot-com bubble all over again," Capital Economics senior markets economist James Reilly told CBS News. "And while we believe AI will be transformative and produce profits, we don't think they'll be as high as analysts are expecting."
+
+In 2026, global capital expenditures on AI-related projects are projected to hit $1 trillion, including $581 billion in the U.S., according to Goldman Sachs. That boom has fueled an epic run for stocks over the last two years, with investors hopping on the bandwagon in anticipation of robust future profits from companies leading the way in AI.
+
+Economists caution that it is difficult to identify investment bubbles, or periods of speculative excess, let alone predict when one will pop.
+
+"We have to be very careful with the bubble terminology, specifically, because every type of technological revolution tends to have a great dose of investment in the first phase," EY-Parthenon chief economist Greg Daco told CBS News. "But at the same time, there are often excesses. There is often exuberance because a new technology is very attractive and promises to revolutionize the way we do things."
+
+Kenneth R. French, an investment strategist at Dartmouth College's Tuck School of Business, said investors commonly pile into hot tech stocks long before a technology's full economic impact becomes clear. He is less convinced that the AI boom is at risk of losing steam anytime soon.
+
+"People get optimistic, and it's conceivable that five years from now, we'll be looking back and saying people were pessimistic about AI, and that it was more important than we expected," he told CBS News. "It's already having a huge impact on earnings, so it could really be that we have underestimated AI's positive impact."
+
+"We don't have enough information to judge if these prices are right or wrong, too high or too low," French added.
+
+More certain is that the public narrative around AI is shifting amid a slew of warnings from AI researchers and corporate leaders about the threat posed by the technology. Those concerns, along with calls from leading industry figures for a slowdown in AI development, could cast a pall over tech stocks.
+
+Yet concerns about the lack of guardrails around AI are distinct from uncertainty over the technology's potential to drive corporate profits, Daco noted. "That's slightly different than a bubble fear. It's more fear of not having the right guardrails to control tech and avoid excesses of the tech itself — not about investments and returns."

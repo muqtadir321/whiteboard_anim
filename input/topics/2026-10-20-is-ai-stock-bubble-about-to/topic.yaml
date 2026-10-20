@@ -1,0 +1,42 @@
+topic: Is the AI Stock Bubble About to Pop?
+region: US
+created: '2026-10-20T09:38:05+00:00'
+model: qwen2.5:7b
+languages:
+- english
+sources:
+- kind: news
+  title: Will the AI bubble pop? How to protect your money if tech stocks suddenly
+    plunge
+  publisher: The Sun
+  url: https://news.google.com/rss/articles/CBMiiwFBVV95cUxOdnh4SGxCX19qRXpYbGJXSVM4a01zaVhDWHNNSUlrZm9qRi1sYmtjN3NiTXpxbEpfLUpLYW12NlBnZFJqZDNBcVhpWmliN3pWcmdlck9DbUVTR2VmZ2xEbU0tX3k5VGdYUmQ2TXVrMWpCNVc1b2Vjb0VIM09uWnNmeDJOdHJMYTVVZlA0?oc=5
+- kind: news
+  title: Is Fed Chair Kevin Warsh About To Pop CoreWeave's Bubble?
+  publisher: The Motley Fool
+  url: https://news.google.com/rss/articles/CBMioAFBVV95cUxOOUVZUzRQd18wbGJQZE9IVTI0dFFzMXFKUnQyZlM2Y3RETzl6NFBGSl96VTFOczM1OXhJNFM1azBTdnVKRS0wR2FrdHgwSmV3dk1LT3NFYVJObW94ZXBHQ2lqRi1Id2tDQlNMZ3ZOSFdrSXU5ZTk2NF9YZEVmQUt5VWVXdlZlUWFROFZ1cmZpUXY1WjJ2SWR2ZXUzYjRVN0RJ?oc=5
+- kind: news
+  title: AI, stock valuations, and investing in a bubble
+  publisher: Britannica
+  url: https://news.google.com/rss/articles/CBMihAFBVV95cUxPbmxyaHB4Z1RmYUFHSzBCYTBYcEpWVUNUQk13VUVXa3BKa2NLYlJwNkY3QjdHdkRTSFJrTDlzWG9IOUpLd0RYdElHNEVpVnB2UlluaXpFWVFKZ3hXTXFNM3pjQVl5RG9uZ3JSNE1BbmsyYXdqczZDUDAtaG01Y1dlYzFsWno?oc=5
+- kind: news
+  title: 'Monopoly Round-Up: Goodbye AI Bubble, Hello Real Economy'
+  publisher: BIG by Matt Stoller
+  url: https://news.google.com/rss/articles/CBMid0FVX3lxTE9VVTdMZ3k5LWtYbGRJZEhveU41M0xlcmcyX191STExd2xkM0NWdXB1WlJTOEVqaVY5TFJ0di01bDdWQ3BvN1JJNS1LMWNIblI0bFlKN2VDWFZycjJScmhqWExfRm1ybFFrYmRVLWY5dkRPTVJOMFFZ?oc=5
+- kind: article
+  title: Worried About an AI Bubble? You Need To See This 1 Chart Now.
+  publisher: Yahoo Finance
+  url: https://finance.yahoo.com/technology/ai/articles/worried-ai-bubble-see-1-130501202.html
+- kind: article
+  title: The AI bubble is leaking air, some economists say. Should investors worry?
+  publisher: CBS News
+  url: https://www.cbsnews.com/news/ai-bubble-stocks-investors/
+- kind: chart
+  title: Federal Funds Effective Rate
+  publisher: Board of Governors of the Federal Reserve System via FRED
+  url: https://fred.stlouisfed.org/series/FEDFUNDS
+- kind: chart
+  title: 'Inflation: Consumer Prices, Percent Change from a Year Ago'
+  publisher: U.S. Bureau of Labor Statistics via FRED
+  url: https://fred.stlouisfed.org/series/CPIAUCSL
+notice: Screenshots and logos belong to their owners; they are shown as evidence for
+  commentary. Check each source before publishing.

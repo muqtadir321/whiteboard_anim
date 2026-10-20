@@ -1,0 +1,47 @@
+The above button links to Coinbase. Yahoo Finance is not a broker-dealer or investment adviser and does not offer securities or cryptocurrencies for sale or facilitate trading. Coinbase pays us for certain activity generated through this link. Prices displayed are informational.
+
+We're nearing the fourth anniversary of the launch of ChatGPT, and with it, the end of the fourth year of the AI bull market.
+
+During that time, the S&P 500 has roughly doubled, and the Nasdaq Composite has done even better, but the trillions of dollars of new wealth haven't come without investor skepticism. Forecasts of an AI bubble have not gone out of style, even as they have been dead wrong so far.
+
+Missed Nvidia in 2009? This Rare Signal Is Flashing Again. In 2009, a "Double Down" signal flashed for a little-known chipmaker called Nvidia. For the first time in years, that same "Total Conviction" signal is flashing for a company 1/100th the size of Nvidia. Continue »
+
+Billionaire Ray Dalio recently said that an AI bubble is "close," citing rising interest rates and the level of debt being raised for the data-center build-out. Contrarian investor Michael Burry of The Big Short fame said this week that the stock market is in its first stage of grief: denial.
+
+The historical analog that most investors compare the current moment to is the dot-com boom, which was similarly sparked by a revolutionary technology: the internet. However, there are some important differences between that boom and the current one. The dot-com bubble was driven in part by a wave of unprofitable IPOs bid up based on invented metrics like eyeballs, and that had not demonstrated a viable business model.
+
+The current boom has been primarily driven by entrenched tech giants that are all very profitable, as well as the semiconductor sector, which has reaped the gains from a wave of capital investment. Chip stocks have almost all seen profits soar or are forecasting major gains as the AI boom plays out.
+
+The two AI labs at the center of the boom, Anthropic and OpenAI, have yet to go public but are chasing valuations of around $2 trillion. Anthropic did report a profit in its second quarter, while OpenAI is still operating at a wide loss.
+
+When investors talk about an AI bubble bursting, they are mostly referring to a potential collapse in chip stocks, which have been the biggest winners. As the chart below shows, one popular semiconductor ETF, the VanEck Semiconductor ETF (Nasdaq: SMH), has quadrupled in the last three years.
+
+Instead of comparing the recent semiconductor boom to the dot-com era, the growth of the personal computer (PC) since its invention in the 1970s may be more informative. After all, the PC is powered by chips and has been at the center of earlier tech booms like the dot-com one.
+
+The chart below shows the quarterly dollar sales of computers in the U.S. since the late 1970s.
+
+As you can see, there have been pullbacks in PC sales, including during the dot-com bust and the great financial crisis, but there hasn't been a dramatic crash in total sales, the way you might expect based on current talk about an AI bubble and the dot-com bust.
+
+There aren't any perfect analogies in history, and the growth of PCs isn't the same as the AI boom. PCs are consumer products, while AI can be applied to a wide range of services. However, the underlying demand for chips and useful technology is similar, and unlike with PCs, AI can't really reach maturity.
+
+At a certain point, the PC market becomes saturated. Most people only need one. For AI, the applications are virtually limitless, especially as things like robotics and self-driving cars go mainstream.
+
+Moore's Law states that the number of transistors on a microchip doubles roughly every two years, while the cost of computers is cut in half.
+
+Moore's Law has since approached its physical limits, and Nvidia (Nasdaq: NVDA) CEO Jensen Huang has declared it dead, but the principle that technology continues to get more advanced remains.
+
+Computing technology will continue to improve, as it has over the past 50 years, and that should help sustain the AI boom, even amid the threat of economic cycles.
+
+While the fate of individual AI stocks will be determined by a range of factors, investors should be confident that AI demand and the computing power driving it will continue to grow, which favors these stocks over the long run.
+
+Before you buy stock in VanEck ETF Trust - VanEck Semiconductor ETF, consider this:
+
+The Motley Fool Stock Advisor analyst team just identified what they believe are the 10 best stocks for investors to buy now… and VanEck ETF Trust - VanEck Semiconductor ETF wasn't one of them. The 10 stocks that made the cut could produce monster returns in the coming years.
+
+Consider when Netflix made this list on December 17, 2004... if you invested $1,000 at the time of our recommendation, you'd have $379,123!* Or when Nvidia made this list on April 15, 2005... if you invested $1,000 at the time of our recommendation, you'd have $1,408,822!*
+
+Now, it's worth noting Stock Advisor's total average return is 950% — a market-crushing outperformance compared to 215% for the S&P 500. Don't miss the latest top 10 list, available with Stock Advisor, and join an investing community built by individual investors for individual investors.
+
+Jeremy Bowman has positions in Nvidia and VanEck ETF Trust - VanEck Semiconductor ETF. The Motley Fool has positions in and recommends Nvidia. The Motley Fool has a disclosure policy.
+
+Worried About an AI Bubble? You Need To See This 1 Chart Now. was originally published by The Motley Fool
