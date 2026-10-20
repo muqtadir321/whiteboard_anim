@@ -229,6 +229,10 @@ class ExplainerLayout:
         while True:
             sizes = [(self.ex["number_size"] if n else self.ex["text_size"]) * k for n in is_num]
             shaped = [shape_line(tok, sz, self.lang) for tok, sz in zip(tokens, sizes)]
+            for i, sl in enumerate(shaped):
+                if sl.width > x1 - x0:  # one word wider than the board ("Rs 4,057.7 crore"): shrink just that word
+                    sizes[i] *= (x1 - x0) * 0.98 / sl.width
+                    shaped[i] = shape_line(tokens[i], sizes[i], self.lang)
             for sl in shaped:
                 self.missing_glyphs.update(sl.missing_chars)
             lines, cur, cur_w = [], [], 0.0

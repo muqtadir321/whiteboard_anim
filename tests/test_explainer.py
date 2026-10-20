@@ -342,3 +342,17 @@ def test_large_amounts_keep_their_scale_word():
     assert shown("fifty thousand dollars") == ["$50,000"]
     q = extract_quantities("Rs 10.73 crore", "en")[0]
     assert q.value == 107_300_000 and q.kind == "currency"
+
+
+def test_wide_amount_is_shrunk_to_fit_the_board(ex_cfg):
+    from engine.illustration_composer import DESIGN_W, SAFE_MARGIN
+
+    text = "India mein log 4,057.7 crore rupay gawa chuke hain."
+    from engine.numbers import extract_quantities
+
+    qs = [q.to_dict() for q in extract_quantities(text, "roman_urdu")]
+    scene = {"scene_id": "scene_001", "narration_text": text, "start_seconds": 0, "end_seconds": 3, "visual_actions": [], "quantities": qs}
+    words, _ = ExplainerLayout(ex_cfg, "roman_urdu", None, 1.0).layout_words(scene, [(0.0, 0.3)] * len(text.split()))
+    big = next(w for w in words if "crore" in w.text)
+    assert big.text == "Rs 4,057.7 crore"
+    assert all(SAFE_MARGIN <= w.bbox[0] and w.bbox[2] <= DESIGN_W - SAFE_MARGIN for w in words)
