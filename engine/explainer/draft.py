@@ -147,3 +147,20 @@ def extractive_draft(news: list[dict], articles: list[dict], charts: list[dict])
             paras.append(f'[article {a["id"]} "{quote}"] {s}')
     paras.append("{VERIFY: write the takeaway line}")
     return "\n\n".join(paras) + "\n"
+
+
+def drop_unverified(script: str) -> tuple[str, int]:
+    """One-click mode: remove every sentence that still holds a {VERIFY: ...} placeholder
+    (a number the evidence does not support), together with its tags."""
+    removed = 0
+    paras = []
+    for para in script.split("\n\n"):
+        keep = []
+        for sent in re.split(r"(?<=[.!?۔؟])\s+", para.strip()):
+            if "{VERIFY" in sent:
+                removed += 1
+            elif sent.strip():
+                keep.append(sent.strip())
+        if keep:
+            paras.append(" ".join(keep))
+    return "\n\n".join(paras) + "\n", removed

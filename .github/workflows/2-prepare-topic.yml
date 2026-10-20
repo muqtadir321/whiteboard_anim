@@ -1,9 +1,10 @@
 name: Prepare Topic (explainer video)
 
-# Step 1 of 2. Type a topic idea; this finds recent articles, takes screenshots, downloads a
-# data chart (FRED) and logos, and drafts the script with a free local AI model (Ollama).
-# Everything is committed to input/topics/<date>-<topic>/ so you can review and edit it.
-# Step 2: run "Generate Whiteboard Video" with topic_dir = that folder.
+# One click: type a topic idea; this finds recent articles, takes screenshots, downloads a data
+# chart (FRED) and logos, drafts the script with a free local AI model (Ollama), commits it to
+# input/topics/<date>-<topic>/ and renders the video in your cloned voice (artifact
+# "whiteboard-video-output"). Set render to false to review the scripts first, then run
+# "Generate Whiteboard Video" with topic_dir = that folder.
 
 on:
   workflow_dispatch:
@@ -23,12 +24,18 @@ on:
         description: "Local AI model (Ollama) that drafts the script"
         required: false
         type: choice
-        options: ["qwen2.5:7b", "qwen2.5:3b", "none"]
+        options: ["qwen2.5:7b", "qwen2.5:14b", "qwen2.5:3b", "none"]
         default: "qwen2.5:7b"
       max_articles:
         description: "Article screenshots to capture"
         required: false
         default: "2"
+      render:
+        description: "Render the video right away (false = stop after the scripts so you can review them)"
+        required: false
+        type: choice
+        options: ["true", "false"]
+        default: "true"
 
 permissions:
   contents: write
@@ -41,12 +48,16 @@ jobs:
   prepare:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    outputs:
+      topic_dir: ${{ steps.prep.outputs.topic_dir }}
+      sha: ${{ steps.commit.outputs.sha }}
     env:
       IN_TOPIC: ${{ inputs.topic }}
       IN_REGION: ${{ inputs.region }}
       IN_LANGS: ${{ inputs.languages }}
       IN_MODEL: ${{ inputs.model }}
       IN_MAX: ${{ inputs.max_articles }}
+      IN_RENDER: ${{ inputs.render }}
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - name: Check out repository
@@ -93,10 +104,12 @@ jobs:
         id: prep
         run: |
           max="$IN_MAX"; [[ "$max" =~ ^[0-9]+$ ]] || max=2
+          auto=(); [ "$IN_RENDER" != "false" ] && auto=(--auto)  # no review step: drop unverified sentences
           python -m engine.explainer.prepare --topic "$IN_TOPIC" --region "${IN_REGION:-US}" \
-            --languages "${IN_LANGS:-english,urdu}" --model "$IN_MODEL" --max-articles "$max"
+            --languages "${IN_LANGS:-english,urdu}" --model "$IN_MODEL" --max-articles "$max" "${auto[@]}"
 
       - name: Commit the topic folder
+        id: commit
         env:
           TOPIC_DIR: ${{ steps.prep.outputs.topic_dir }}
         run: |
@@ -106,10 +119,13 @@ jobs:
           git commit -m "Topic: $IN_TOPIC" -m "Prepared by the Prepare Topic workflow. Review $TOPIC_DIR/notes.md before rendering."
           git pull --rebase --autostash
           git push
-          {
-            echo ""
-            echo "**Next:** review \`$TOPIC_DIR\`, then run **Generate Whiteboard Video** with \`topic_dir\` = \`$TOPIC_DIR\`."
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "$IN_RENDER" = "false" ]; then
+            next="review \`$TOPIC_DIR\`, then run **Generate Whiteboard Video** with \`topic_dir\` = \`$TOPIC_DIR\`."
+          else
+            next="the video is rendering in the **render** job; download **whiteboard-video-output** when it finishes."
+          fi
+          printf '\n**Next:** %s\n' "$next" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload topic folder
         if: always()
@@ -119,3 +135,12 @@ jobs:
           path: input/topics/
           if-no-files-found: warn
           retention-days: 14
+
+  render:
+    needs: prepare
+    if: inputs.render != 'false'
+    uses: ./.github/workflows/0-make-video.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+      topic_dir: ${{ needs.prepare.outputs.topic_dir }}
+      target_languages: ${{ inputs.languages }}

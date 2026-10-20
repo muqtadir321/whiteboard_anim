@@ -78,7 +78,8 @@ def model_available(host: str, model: str) -> bool:
 
 
 def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("english", "urdu"), out_root: Path | None = None,
-            model: str = "qwen2.5:7b", host: str = "http://127.0.0.1:11434", max_articles: int = 2, log=print) -> Path:
+            model: str = "qwen2.5:7b", host: str = "http://127.0.0.1:11434", max_articles: int = 2, log=print, auto: bool = False) -> Path:
+    """`auto`: one-click mode, no human review: sentences with unverified numbers are dropped."""
     from .capture import Browser, snippet_from
 
     out_root = out_root or REPO_ROOT / "input" / "topics"
@@ -166,6 +167,13 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
         else:
             text = f"{{VERIFY: write the {label} script (keep the [tags] from english.txt)}}\n"
         scripts[lang] = text
+    if auto:
+        for lang in list(scripts):
+            scripts[lang], removed = draft.drop_unverified(scripts[lang])
+            if removed:
+                notes.append(f"{lang}: one-click mode removed {removed} sentence(s) whose numbers were not in the evidence")
+            if len(re.sub(r"\[[^\]]*\]", " ", scripts[lang]).split()) < 25 and lang in languages:
+                raise SystemExit(f"The {lang} draft is too short after removing unverified sentences; try another topic wording or review it by hand.")
     for lang, text in scripts.items():
         if lang in languages:
             (folder / f"{lang}.txt").write_text(text, encoding="utf-8")
@@ -218,6 +226,7 @@ def main(argv=None) -> int:
     p.add_argument("--host", default="http://127.0.0.1:11434")
     p.add_argument("--max-articles", type=int, default=2)
     p.add_argument("--out", default="")
+    p.add_argument("--auto", action="store_true", help="one-click: drop unverified sentences instead of leaving {VERIFY} for review")
     a = p.parse_args(argv)
     langs = tuple(x.strip() for x in a.languages.split(",") if x.strip())
     bad = [x for x in langs if x not in ("english", "urdu", "roman_urdu")]
@@ -225,7 +234,7 @@ def main(argv=None) -> int:
         print(f"::error::explainer topics support english, urdu and roman_urdu, not {', '.join(bad)}")
         return 2
     folder = prepare(a.topic.strip(), a.region.strip().upper() or "US", langs, Path(a.out).resolve() if a.out else None, a.model, a.host, a.max_articles,
-                     log=lambda m: print(m, flush=True))
+                     log=lambda m: print(m, flush=True), auto=a.auto)
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
         with open(gh_out, "a") as fh:

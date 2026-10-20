@@ -94,6 +94,7 @@ on:
         default: "true"
   workflow_call:
     inputs:
+      ref: {type: string, required: false, default: ""}  # commit to render (Prepare Topic passes the one it just pushed)
       topic_dir: {type: string, required: false, default: ""}
       english_script: {type: string, required: false, default: ""}
       english_audio: {type: string, required: false, default: ""}
@@ -151,6 +152,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5

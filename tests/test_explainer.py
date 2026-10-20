@@ -390,3 +390,11 @@ def test_voice_text_for_urdu_and_roman_urdu():
     assert roman_to_urdu("Police video call par arrest nahi karti.") == "پولیس ویڈیو کال پر اریسٹ نہیں کرتی۔"
     assert roman_to_urdu("Pune mein", {"pune": "پُونے"}) == "پُونے میں"
     assert [q.display for q in extract_quantities("اس نے 51 لاکھ روپے بھیج دیے", "ur")] == ["Rs 51 lakh"]
+
+
+def test_one_click_drops_unverified_sentences():
+    script = ('[news] Rates hit 7%. Banks charge {VERIFY: 42%} more.\n\n'
+              '[article 1 "x"] Only {VERIFY: 9 million} people moved.\n\nPrices stay high. ہے {VERIFY: ۵} ۔ Done.\n')
+    out, removed = draft.drop_unverified(script)
+    assert removed == 3 and "VERIFY" not in out
+    assert out == "[news] Rates hit 7%.\n\nPrices stay high. Done.\n"
