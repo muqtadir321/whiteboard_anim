@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 import cairo
 
 from ..illustration_composer import Style, build_visual
+from ..numbers import CURRENCY_WORDS
 from ..object_generator import OBJECTS
 from ..text_shaper import shape_line
 from .charts import ChartPainter
@@ -29,7 +30,7 @@ TEXT_ZONE = (60.0, 120.0, 1020.0, 640.0)
 STAGE_ZONE = (0.0, 670.0, 1080.0, 1800.0)
 OVERLAY_BOX = (780.0, 1500.0, 1050.0, 1780.0)
 INK = "#1E1E1E"
-LOW_WORDS = {"low", "lower", "cheap", "cheaper", "around", "only", "down", "fell", "dropped", "drop", "under", "below",
+LOW_WORDS = {"low", "lower", "cheap", "cheaper", "only", "down", "fell", "dropped", "drop", "under", "below",
              "kam", "sasta", "sirf", "neeche", "gir"}
 SKIP_ICONS = {"people_group"}  # crowds read poorly as small doodles
 # Doodles only: diagrams and charts from the whiteboard planner read poorly as small pop-ins.
@@ -207,6 +208,9 @@ class ExplainerLayout:
                 continue
             j = i
             while j + 1 < len(tokens) and starts[j + 1] < q["span"][1]:
+                j += 1
+            # "one trillion dollars" -> "$1 trillion": the spoken currency word is already in the display
+            if q.get("kind") == "currency" and j + 1 < len(tokens) and tokens[j + 1].rstrip(".,!?;:").lower() in CURRENCY_WORDS:
                 j += 1
             tail = tokens[j][len(tokens[j].rstrip(".,!?;:")):]
             out.append(q["display"] + tail)

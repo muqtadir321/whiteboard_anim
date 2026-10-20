@@ -356,3 +356,13 @@ def test_wide_amount_is_shrunk_to_fit_the_board(ex_cfg):
     big = next(w for w in words if "crore" in w.text)
     assert big.text == "Rs 4,057.7 crore"
     assert all(SAFE_MARGIN <= w.bbox[0] and w.bbox[2] <= DESIGN_W - SAFE_MARGIN for w in words)
+
+
+def test_spoken_currency_word_is_not_repeated(ex_cfg):
+    from engine.numbers import extract_quantities
+
+    for text, lang, want in [("Spending will hit one trillion dollars.", "en", "$1 trillion."),
+                             ("Log 4,057.7 crore rupay gawa chuke.", "roman_urdu", "Rs 4,057.7 crore")]:
+        scene = {"narration_text": text, "quantities": [q.to_dict() for q in extract_quantities(text, lang)]}
+        tokens, flags, _ = ExplainerLayout.board_tokens(scene, [(0.0, 0.3)] * len(text.split()))
+        assert want in tokens and not any(t.lower().startswith(("dollar", "rupay")) for t in tokens), tokens
