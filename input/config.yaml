@@ -24,7 +24,7 @@ voice:
     # Piper/MMS converted to your voice with OpenVoice (fast). Urdu also uses OmniVoice here
     # so the narration copies your speaking style. Use [en, ur, ps] for
     # OmniVoice everywhere (much slower).
-    omnivoice_languages: [ur, ps]
+    omnivoice_languages: [en, ur, ps]
     # Optional: the exact words spoken in the first ~12 s of the reference recording.
     # Skips the automatic transcription download and makes cloning faster/better.
     reference_text: ""

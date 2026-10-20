@@ -51,6 +51,16 @@ LEXICON = {
     "fund": "فنڈ", "seedha": "سیدھا", "hafte": "ہفتے", "hafta": "ہفتہ", "badal": "بدل", "lein": "لیں", "len": "لیں", "tar": "تر",
     "aage": "آگے", "nikal": "نکل", "jayenge": "جائیں گے", "jaenge": "جائیں گے", "batayein": "بتائیں", "batain": "بتائیں",
     "kitni": "کتنی", "kitna": "کتنا", "comment": "کمنٹ", "likhein": "لکھیں", "likhen": "لکھیں", "kahan": "کہاں", "jaati": "جاتی",
+    "psychology": "سائیکالوجی", "of": "آف", "money": "منی", "morgan": "مورگن", "housel": "ہاؤزل", "warren": "وارن",
+    "buffett": "بفٹ", "minute": "منٹ", "minat": "منٹ", "iska": "اس کا", "uska": "اس کا", "pehla": "پہلا", "pehli": "پہلی",
+    "hairaan": "حیران", "hairan": "حیران", "dega": "دے گا", "degi": "دے گی", "khel": "کھیل", "padhe": "پڑھے", "parhe": "پڑھے",
+    "likhe": "لکھے", "aam": "عام", "taaqat": "طاقت", "taqat": "طاقت", "unki": "ان کی", "unka": "ان کا", "unke": "ان کے",
+    "painsath": "پینسٹھ", "umar": "عمر", "umr": "عمر", "baad": "بعد", "unhone": "انہوں نے", "unhon": "انہوں", "shuru": "شروع",
+    "asal": "اصل", "asli": "اصلی", "nazar": "نظر", "mehngi": "مہنگی", "mehnga": "مہنگا", "gaadi": "گاڑی", "hua": "ہوا",
+    "hui": "ہوئی", "samjhein": "سمجھیں", "samjhen": "سمجھیں", "kehta": "کہتا", "kehte": "کہتے", "aksar": "اکثر", "kho": "کھو",
+    "bada": "بڑا", "badi": "بڑی", "bade": "بڑے", "rehna": "رہنا", "sambhaalna": "سنبھالنا", "sambhalna": "سنبھالنا",
+    "usool": "اصول", "usul": "اصول", "kamaana": "کمانا", "hunar": "ہنر", "kitaab": "کتاب", "mashhoor": "مشہور", "sabaq": "سبق",
+    "daulat": "دولت", "ameer": "امیر", "kangaal": "کنگال", "jaate": "جاتے", "jaldi": "جلدی", "ruke": "رکے", "raaz": "راز",
     "us": "اس", "is": "اس", "un": "ان", "in": "ان", "ki": "کی", "jaata": "جاتا", "jata": "جاتا", "jati": "جاتی",
 }
 REVERSE_LEXICON = {}
