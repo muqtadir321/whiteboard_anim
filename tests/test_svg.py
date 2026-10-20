@@ -107,3 +107,16 @@ def test_spoken_number_is_written_on_its_word(cfg):
     first = min(e.t0 for e in tl.ops if e.item_index == idx)
     spoken = words[5]["start"]  # "fifty"
     assert abs(first - (spoken - 0.12)) < 0.15, (first, spoken)
+
+
+def test_held_object_stays_on_board(cfg):
+    """A group of people at the board edge holding coins: the coins stay inside the safe area."""
+    from engine.illustration_composer import DESIGN_W, SAFE_MARGIN
+
+    scene = {"scene_id": "s", "scene_type": "person_object", "narration_text": "x", "visual_actions": [
+        {"id": "a1", "action": "draw", "object": "people_group", "position": "right", "anchor_char": 0,
+         "params": {"pose": "hold"}, "draw_order": 1},
+        {"id": "a2", "action": "draw", "object": "coin_stack", "position": "in_hand:a1", "anchor_char": 0, "scale": 0.45, "draw_order": 2}]}
+    cs = Composer(cfg, "roman_urdu").compose(scene)
+    held = next(it for it in cs.items if it.id == "a2")
+    assert held.bbox[2] <= DESIGN_W - SAFE_MARGIN + 1 and held.bbox[0] >= SAFE_MARGIN - 1

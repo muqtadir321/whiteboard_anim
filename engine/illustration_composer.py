@@ -371,8 +371,10 @@ class Composer:
             s = target / max(el.width, el.height)
             ox = hand[0] - el.width * s / 2
             oy = hand[1] - el.height * s * 0.65
+            # a holder near the edge must not push the held object off the board
+            bbox = self._clamp((ox, oy, ox + el.width * s, oy + el.height * s))
+            ox, oy = bbox[0], bbox[1]
             strokes, texts, anchors = self._transform_element(el, s, ox, oy)
-            bbox = (ox, oy, ox + el.width * s, oy + el.height * s)
             return Item(a["id"], "draw", a["object"], strokes, texts, bbox, a.get("anchor_char", 0), a.get("emphasis", False), anchors, held=True)
         mirror = False
         if size_class == "person":
