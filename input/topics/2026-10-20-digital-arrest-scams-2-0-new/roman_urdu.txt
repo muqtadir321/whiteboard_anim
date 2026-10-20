@@ -1,11 +1,9 @@
-[news] According to recent reports, frauddastar 2026 mein new taktik ka istemal karte hain digital arrest scams mein, older ya retired insan ko target karna.
+[news] Video call aati hai: "Main police officer hoon, aap digital arrest mein hain." Yeh digital arrest scam hai, aur yeh khaas taur par buzurgon aur retired logon ko nishana bana raha hai.
 
-[article 1]
+[article 1 "Indians have lost ₹4,057.7 crore in about 297,727 complaints"] India mein 2022 se May 2026 tak log 4,057.7 crore rupay gawa chuke hain.
 
-Iska matalab, scammers khud ko khud ko trick karate hain victims ko believe karna ki wo arrest hain aur money transfer karna chahiye. 2022 se May 2026 tak, Indians 4,057.7 {VERIFY: crore} lost kardiye 297,727 complaints mein.
+[article 1 "he would face at least 10 years in prison"] Mumbai mein ek retired tax officer ko kaha gaya ke usay kam se kam 10 saal jail hogi. [article 1 "lost ₹51 lakh after fraudsters posing as police officers"] Darr ke maare usne 51 lakh rupay fraudsters ke account mein bhej diye.
 
-[chart PSAVERT "Personal Saving Rate" DATE 2026-08-01]
+[article 2 "cheated the 82-year-old retired businessman from the Deccan area of Rs 10.73 crore"] Pune mein ek 82 saal ke buzurg se 10.73 crore rupay loot liye gaye. [article 2 "used to provide mule bank accounts to the fraudsters"] Aur paisa ghumane ke liye ek social media influencer mule bank accounts deta tha.
 
-Iska show karna hai, personal saving rate mein madad se madad karta hai people ko such scams se zyada vulnervable karna. Scammers fear of legal action use karte hain money extort karna, often targeting those with lower savings.
-
-Remember, agar aapko call ya message mile ki aap under arrest hain, official channels se information verify karna aur koi bhi money transfer na karna.
+[icon lock] Yaad rakhein: asli police video call par arrest nahi karti. Call kaatein, khud verify karein, aur kabhi paisa transfer na karein.

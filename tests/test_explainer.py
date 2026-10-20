@@ -326,3 +326,19 @@ def test_relevance_needs_most_topic_words():
     assert [n.title for n in relevant(topic, items)] == [items[0].title]
     ai = [item("AI stock bubble fears grow"), item("Will the AI bubble pop?"), item("Stocks are in a late-stage bubble"), item("AI chips sell out")]
     assert [n.title for n in relevant("Is the AI Stock Bubble About to Pop?", ai)] == [n.title for n in ai[:3]]
+
+
+def test_large_amounts_keep_their_scale_word():
+    from engine.numbers import extract_quantities
+
+    def shown(text, lang="en"):
+        return [q.display for q in extract_quantities(text, lang)]
+
+    assert shown("spending will hit one trillion dollars") == ["$1 trillion"]
+    assert shown("valuations of $2 trillion") == ["$2 trillion"]
+    assert shown("1.33 million sales") == ["1.33 million"]
+    assert shown("log 4,057.7 crore rupay gawa chuke", "roman_urdu") == ["Rs 4,057.7 crore"]
+    assert shown("51 lakh rupay bhej diye", "roman_urdu") == ["Rs 51 lakh"]
+    assert shown("fifty thousand dollars") == ["$50,000"]
+    q = extract_quantities("Rs 10.73 crore", "en")[0]
+    assert q.value == 107_300_000 and q.kind == "currency"

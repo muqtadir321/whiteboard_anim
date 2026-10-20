@@ -17,7 +17,8 @@ EN_UNITS = {
     "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
 }
 EN_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
-EN_SCALES = {"hundred": 100, "thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000, "lakh": 100_000, "crore": 10_000_000}
+EN_SCALES = {"hundred": 100, "thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000, "trillion": 1_000_000_000_000,
+             "lakh": 100_000, "crore": 10_000_000}
 
 # Roman Urdu number words (common spellings).
 RU_WORDS = {
@@ -27,6 +28,7 @@ RU_WORDS = {
     "chalees": 40, "chaalees": 40, "pachas": 50, "pachaas": 50, "saath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "nawway": 90,
     "chhabbees": 26, "pachpan": 55, "painsath": 65, "pachattar": 75, "pachhattar": 75, "atthattar": 78,
     "sau": 100, "so": None, "hazar": 1000, "hazaar": 1000, "lakh": 100_000, "laakh": 100_000, "crore": 10_000_000, "karor": 10_000_000,
+    "arab": 1_000_000_000, "kharab": 100_000_000_000,
 }
 UR_WORDS = {
     "ایک": 1, "دو": 2, "تین": 3, "چار": 4, "پانچ": 5, "چھ": 6, "سات": 7, "آٹھ": 8, "نو": 9, "دس": 10,
@@ -40,12 +42,13 @@ PS_WORDS = {
     "يو": 1, "درې": 3, "اووه": 7, "شپږ": 6,
 }
 SCALE_WORDS = {"sau": 100, "hazar": 1000, "hazaar": 1000, "lakh": 100_000, "laakh": 100_000, "crore": 10_000_000, "karor": 10_000_000,
+               "arab": 1_000_000_000, "kharab": 100_000_000_000,
                "سو": 100, "ہزار": 1000, "لاکھ": 100_000, "کروڑ": 10_000_000, "سل": 100, "زر": 1000, "لک": 100_000,
                "سوه": 100, "زره": 1000, "زرو": 1000, "لکه": 100_000}
 
 PERCENT_WORDS = ("percent", "per cent", "percentage", "fisad", "feesad", "fees ad", "فیصد", "سلنه", "%", "٪")
 CURRENCY_WORDS = {
-    "$": "$", "dollar": "$", "dollars": "$", "usd": "$", "ڈالر": "$", "ډالر": "$",
+    "$": "$", "₹": "Rs", "dollar": "$", "dollars": "$", "usd": "$", "ڈالر": "$", "ډالر": "$",
     "rupee": "Rs", "rupees": "Rs", "rs": "Rs", "rs.": "Rs", "pkr": "Rs", "rupay": "Rs", "rupaye": "Rs", "rupe": "Rs", "روپے": "Rs", "روپیہ": "Rs", "روپۍ": "Rs", "روپۍ": "Rs",
     "dirham": "AED", "dirhams": "AED", "aed": "AED", "درهم": "AED", "درهمه": "AED", "درہم": "AED",
     "afghani": "AFN", "afghanis": "AFN", "افغانۍ": "AFN", "£": "£", "pound": "£", "pounds": "£", "€": "€", "euro": "€", "euros": "€",
@@ -55,6 +58,10 @@ MULTIPLIER_WORDS = {
     "quadruple": 4, "dugna": 2, "dogna": 2, "doguna": 2, "teen guna": 3, "tigna": 3, "دگنا": 2, "دوگنا": 2, "تگنا": 3, "دوه چنده": 2, "دوه برابره": 2, "half": 0.5, "halved": 0.5, "aadha": 0.5, "آدھا": 0.5, "نیم": 0.5,
 }
 YEAR_RE = re.compile(r"\b(1[89]\d\d|20\d\d)\b")
+# Scales shown by name on screen (smaller ones are written out in full, e.g. 50,000).
+LARGE_SCALES = {"lakh": 100_000, "laakh": 100_000, "million": 1_000_000, "crore": 10_000_000, "karor": 10_000_000,
+                "billion": 1_000_000_000, "arab": 1_000_000_000, "kharab": 100_000_000_000, "trillion": 1_000_000_000_000}
+_SCALE_AFTER = re.compile(r"\s+(" + "|".join(sorted(set(EN_SCALES) | set(SCALE_WORDS) - {"sau", "hundred"}, key=len, reverse=True)) + r")\b", re.I)
 
 
 @dataclass
@@ -64,11 +71,14 @@ class Quantity:
     unit: str
     span: tuple[int, int]
     source: str
+    scale_word: str = ""  # "lakh", "million", ... when the source names a large scale
 
     @property
     def display(self) -> str:
         v = self.value
         num = _fmt(v)
+        if self.scale_word:  # written the way it is said: $1 trillion, Rs 51 lakh, 1.33 million
+            num = f"{_fmt(v / LARGE_SCALES[self.scale_word])} {self.scale_word}"
         if self.kind == "percent":
             return f"{num}%"
         if self.kind == "currency":
@@ -89,7 +99,7 @@ def _fmt(v: float) -> str:
         if abs(iv) >= 10_000:
             return f"{iv:,}"
         return str(iv)
-    return f"{v:.2f}".rstrip("0").rstrip(".")
+    return (f"{v:,.2f}" if abs(v) >= 1000 else f"{v:.2f}").rstrip("0").rstrip(".")
 
 
 def normalize_digits(text: str) -> str:
@@ -189,8 +199,14 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
             value *= 1000
         elif suffix == "m":
             value *= 1_000_000
-        found.append(Quantity(value, "plain", "", (m.start(), m.end()), text[m.start():m.end()]))
-        taken.append((m.start(), m.end()))
+        end, scale_word = m.end(), ""
+        sm = _SCALE_AFTER.match(lower, end) if not suffix else None
+        if sm:  # "51 lakh", "1.33 million", "4,057.7 crore"
+            w = sm.group(1).lower()
+            value *= {**EN_SCALES, **SCALE_WORDS}[w]
+            end, scale_word = sm.end(), (w if w in LARGE_SCALES else "")
+        found.append(Quantity(value, "plain", "", (m.start(), end), text[m.start():end], scale_word))
+        taken.append((m.start(), end))
 
     # 2. Number words
     tokens = list(_word_tokens(norm))
@@ -213,7 +229,8 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
             single = j - i == 1
             ambiguous = single and tokens[i][0].lower() in ("do", "so", "no", "sat", "che", "tin", "ik", "ek", "یو", "سو", "نو", "دو", "ایک", "one", "aik", "a")
             if not overlaps(*span) and (not ambiguous or _unit_follows(lower, span[1])):
-                found.append(Quantity(float(value), "plain", "", span, text[span[0]:span[1]]))
+                last = tokens[j - 1][0].lower()
+                found.append(Quantity(float(value), "plain", "", span, text[span[0]:span[1]], last if last in LARGE_SCALES and j - i > 1 else ""))
                 taken.append(span)
             i = j
         else:
