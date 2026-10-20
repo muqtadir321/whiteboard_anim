@@ -28,6 +28,7 @@ from .evidence import Evidence
 from .sources import NewsItem, search_news
 
 STOP = {"the", "and", "for", "with", "why", "how", "what", "that", "this", "from", "are", "was", "got", "get", "its", "your", "you"}
+GENERIC = {"about", "using", "used", "tactics", "ways", "things", "really", "going", "will", "could", "should", "news", "latest", "today"}
 
 
 def slugify(text: str, n: int = 6) -> str:
@@ -35,14 +36,29 @@ def slugify(text: str, n: int = 6) -> str:
     return "-".join(words[:n]) or "topic"
 
 
+def topic_keys(topic: str) -> set[str]:
+    """4-letter stems of the topic's content words, plus acronyms such as AI or IMF."""
+    stems = {w[:4] for w in re.findall(r"[a-z]{4,}", topic.lower()) if w not in STOP and w not in GENERIC}
+    return stems | set(re.findall(r"\b[A-Z]{2,5}\b", topic))
+
+
 def relevance(topic: str, title: str) -> int:
-    keys = {w for w in re.findall(r"[a-z]{4,}", topic.lower()) if w not in STOP}
+    """Distinct topic keywords found in a headline."""
     low = title.lower()
-    return sum(1 for k in keys if k[:5] in low)
+    return sum(1 for k in topic_keys(topic) if (re.search(rf"\b{k}\b", title) if k.isupper() else k in low))
+
+
+def relevant(topic: str, items: list[NewsItem]) -> list[NewsItem]:
+    """Headlines that match most of the topic: one shared word ("fraud") is not enough."""
+    keys = topic_keys(topic)
+    scores = {id(n): relevance(topic, n.title) for n in items}
+    best = max(scores.values(), default=0)
+    need = max(1, min(len(keys), round(best * 0.67)))
+    return [n for n in items if scores[id(n)] >= need]
 
 
 def candidates(topic: str, items: list[NewsItem], per_domain: int = 1) -> list[NewsItem]:
-    scored = sorted(items, key=lambda n: (n.rank(), -relevance(topic, n.title)))
+    scored = sorted(relevant(topic, items), key=lambda n: (n.rank(), -relevance(topic, n.title)))
     out, seen = [], {}
     for n in scored:
         if n.rank() >= 3 or seen.get(n.domain, 0) >= per_domain:
@@ -90,8 +106,8 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
             if cap:
                 articles.append({"id": str(k), "image": f"article_{k}.png", "url": cap.final_url, "title": n.title, "publisher": n.publisher,
                                  "words": cap.words, "paragraphs": cap.paragraphs, "news_url": n.url})
-        relevant = [n for n in items if relevance(topic, n.title)] or items
-        recent = sorted(relevant, key=lambda n: -(n.published or now - dt.timedelta(days=999)).timestamp())[:4]
+        on_topic = relevant(topic, items) or items
+        recent = sorted(on_topic, key=lambda n: -(n.published or now - dt.timedelta(days=999)).timestamp())[:4]
         snippets = {a["news_url"]: snippet_from(a["paragraphs"]) for a in articles}
         card_items = [{"title": n.title, "publisher": n.publisher, "url": n.url, "age": n.age_text(now), "snippet": snippets.get(n.url, ""),
                        "published": n.published.isoformat() if n.published else None} for n in recent]

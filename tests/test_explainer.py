@@ -311,3 +311,18 @@ def test_capture_article_word_boxes(tmp_path):
     img = cairo.ImageSurface.create_from_png(str(tmp_path / "a.png"))
     assert all(0 <= r[0] < r[2] <= img.get_width() and 0 <= r[1] < r[3] <= img.get_height() for r in rects)
     assert cards[0]["box"][2] > cards[0]["box"][0]
+
+
+def test_relevance_needs_most_topic_words():
+    from engine.explainer.prepare import relevant
+    from engine.explainer.sources import NewsItem
+
+    def item(title):
+        return NewsItem(title, "https://news.google.com/x", "Pub", "https://pub.example", None)
+
+    topic = "Digital Arrest Scams 2.0: New Tactics Fraudsters Are Using in 2026"
+    items = [item("Rs 51 lakh gone in digital arrest scam: how fraudsters targeted a retiree"),
+             item("Miami man arrested on fraud charges"), item("DoJ charges 28 over alleged voter fraud")]
+    assert [n.title for n in relevant(topic, items)] == [items[0].title]
+    ai = [item("AI stock bubble fears grow"), item("Will the AI bubble pop?"), item("Stocks are in a late-stage bubble"), item("AI chips sell out")]
+    assert [n.title for n in relevant("Is the AI Stock Bubble About to Pop?", ai)] == [n.title for n in ai[:3]]
