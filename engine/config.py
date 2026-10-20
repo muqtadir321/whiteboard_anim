@@ -181,7 +181,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "pop_seconds": 0.28,
             "max_zoom": 1.9,
             "source_label": True,
-            "max_icons": 2,
+            "max_icons": 3,
+            # how long a screenshot/chart stays: the sentence that names it, or its whole paragraph
+            "evidence_hold": "sentence",
             # write the narration on the board word by word (off: only key amounts pop up, no subtitles)
             "write_narration": False,
         },

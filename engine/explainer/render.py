@@ -43,6 +43,8 @@ class Word:
     dur: float
     bbox: tuple[float, float, float, float]
     text: str = ""
+    pop: bool = False  # key amounts bounce in instead of being written
+    underline: bool = False  # hand-drawn swoosh under the word once it is there
 
 
 @dataclass
@@ -50,9 +52,14 @@ class Sprite:
     surf: cairo.ImageSurface  # rendered at output scale
     box: tuple[float, float, float, float]  # design coords
     t: float
-    anim: str = "pop"  # pop | fade | none
+    anim: str = "pop"  # pop | fade | draw | none
     end: float | None = None
     name: str = ""
+    # anim "draw": outlines drawn line by line, then filled (surf pixel coords: points, rgb, width, fill rgba)
+    strokes: list = field(default_factory=list)
+    draw: float = 0.0  # seconds the drawing takes
+    float_amp: float = 0.0  # gentle up-and-down drift (design units) so the board never freezes
+    phase: float = 0.0
 
 
 @dataclass
@@ -88,6 +95,7 @@ class Stage:
     sprites: list[Sprite] = field(default_factory=list)  # logos
     id: str = ""
     source_url: str = ""
+    exit: bool = True  # animate out (False when it stays to the end of the video)
 
     def base_scale(self) -> float:
         x0, y0, x1, y1 = self.region
@@ -149,32 +157,38 @@ class ExplainerRenderer:
     def paint_stage(self, ctx: cairo.Context, st: Stage, t: float) -> None:
         s = self.scale
         x0, y0, x1, y1 = st.region
-        appear = ease((t - st.t_in) / 0.35)
+        a_in = ease((t - st.t_in) / 0.32)
+        a_out = ease((st.t_out - t) / 0.28) if st.exit else 1.0
+        alpha = min(a_in, a_out)
+        k = 1.0 + 0.07 * (1 - a_in) - 0.04 * (1 - a_out)  # punch in, shrink away
+        cx, cy = (x0 + x1) / 2 * s, (y0 + y1) / 2 * s
         ctx.save()
+        ctx.push_group()
+        ctx.translate(cx, cy)
+        ctx.scale(k, k)
+        ctx.translate(-cx, -cy)
         ctx.rectangle(x0 * s, y0 * s, (x1 - x0) * s, (y1 - y0) * s)
         ctx.clip()
-        if appear < 1:
-            ctx.translate(0, (1 - appear) * 60 * s)
         if st.painter is not None:
             st.painter.paint(ctx, st.region, t, s)
         elif st.image is not None:
-            cx, cy, z = st.camera(t)
-            k = st.base_scale() * z * s  # image px -> output px
-            ox = (x0 + x1) / 2 * s - cx * k
-            oy = (y0 + y1) / 2 * s - cy * k
+            cam_x, cam_y, z = st.camera(t)
+            f = st.base_scale() * z * s  # image px -> output px
             ctx.save()
-            ctx.translate(ox, oy)
-            ctx.scale(k, k)
+            ctx.translate(cx - cam_x * f, cy - cam_y * f)
+            ctx.scale(f, f)
             ctx.set_source_surface(st.image, 0, 0)
             ctx.get_source().set_filter(cairo.FILTER_GOOD)
-            ctx.paint_with_alpha(appear)
+            ctx.paint()
             for h in st.highlights:
                 self.paint_highlight(ctx, h, t)
             ctx.restore()
         for sp in st.sprites:
             self.paint_sprite(ctx, sp, t)
+        ctx.pop_group_to_source()
+        ctx.paint_with_alpha(alpha)
         ctx.restore()
-        if st.label and appear > 0.5:
+        if st.label and alpha > 0.5:
             self.paint_label(ctx, st.label, st.region)
 
     def paint_highlight(self, ctx: cairo.Context, h: Highlight, t: float) -> None:
@@ -212,17 +226,8 @@ class ExplainerRenderer:
         ctx.show_text(text)
         ctx.restore()
 
-    def paint_word(self, ctx: cairo.Context, w: Word, t: float) -> None:
-        if t < w.t:
-            return
+    def _glyphs(self, ctx: cairo.Context, w: Word) -> None:
         s = self.scale
-        p = (t - w.t) / max(1e-6, w.dur)
-        ctx.save()
-        if p < 1:  # written left to right
-            x0, y0, x1, y1 = w.bbox
-            ctx.rectangle((x0 - 4) * s, (y0 - 30) * s, (x1 - x0 + 8) * p * s, (y1 - y0 + 60) * s)
-            ctx.clip()
-        ctx.set_source_rgb(*rgb(w.color))
         for c in w.contours:
             if len(c) < 2:
                 continue
@@ -232,23 +237,112 @@ class ExplainerRenderer:
             ctx.close_path()
         ctx.set_fill_rule(cairo.FILL_RULE_WINDING)
         ctx.fill()
+
+    def paint_word(self, ctx: cairo.Context, w: Word, t: float) -> None:
+        if t < w.t:
+            return
+        s = self.scale
+        age = t - w.t
+        x0, y0, x1, y1 = w.bbox
+        ctx.save()
+        ctx.set_source_rgb(*rgb(w.color))
+        if w.pop:
+            p = age / 0.32
+            k = 0.5 + 0.5 * back_out(p) if p < 1 else 1.0
+            cx, cy = (x0 + x1) / 2 * s, (y0 + y1) / 2 * s
+            ctx.translate(cx, cy)
+            ctx.scale(k, k)
+            ctx.rotate(math.radians(-4) * max(0.0, 1 - p))
+            ctx.translate(-cx, -cy)
+        else:
+            p = age / max(1e-6, w.dur)
+            if p < 1:  # written left to right
+                ctx.rectangle((x0 - 4) * s, (y0 - 30) * s, (x1 - x0 + 8) * p * s, (y1 - y0 + 60) * s)
+                ctx.clip()
+        self._glyphs(ctx, w)
         ctx.restore()
+        if w.underline and age > 0.3:
+            q = ease((age - 0.3) / 0.35)
+            ctx.save()
+            ctx.set_source_rgb(*rgb(w.color))
+            ctx.set_line_width(7 * s)
+            ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+            y = y1 + 16
+            n = 24
+            for i in range(int(n * q) + 1):
+                u = i / n
+                px = x0 + (x1 - x0) * u
+                py = y + math.sin(u * math.pi) * 10 - u * 6
+                (ctx.move_to if i == 0 else ctx.line_to)(px * s, py * s)
+            ctx.stroke()
+            ctx.restore()
+
+    def _draw_strokes(self, ctx: cairo.Context, sp: Sprite, p: float) -> None:
+        """Doodle being drawn: strokes appear one after another, each filled once closed."""
+        if not hasattr(sp, "_lens"):
+            sp._lens = [sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) for pts, *_ in sp.strokes]
+        target = sum(sp._lens) * p
+        done = 0.0
+        ctx.set_line_cap(cairo.LINE_CAP_ROUND)
+        ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+        for (pts, color, width, fill), ln in zip(sp.strokes, sp._lens):
+            if done >= target:
+                break
+            part = min(1.0, (target - done) / ln) if ln else 1.0
+            done += ln
+            ctx.move_to(*pts[0])
+            if part >= 1.0:
+                for pt in pts[1:]:
+                    ctx.line_to(*pt)
+                if fill:
+                    ctx.close_path()
+                    ctx.set_source_rgba(*fill)
+                    ctx.fill_preserve()
+            else:
+                left = ln * part
+                for a, b in zip(pts, pts[1:]):
+                    d = math.dist(a, b)
+                    if d >= left:
+                        f = left / d if d else 0
+                        ctx.line_to(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+                        break
+                    ctx.line_to(*b)
+                    left -= d
+            ctx.set_source_rgb(*color)
+            ctx.set_line_width(width)
+            ctx.stroke()
 
     def paint_sprite(self, ctx: cairo.Context, sp: Sprite, t: float) -> None:
         if t < sp.t or (sp.end is not None and t >= sp.end):
             return
         s = self.scale
         x0, y0, x1, y1 = sp.box
-        p = (t - sp.t) / self.pop
+        age = t - sp.t
+        out = ease((sp.end - t) / 0.22) if sp.end is not None else 1.0
+        bob = sp.float_amp * math.sin(age * 2.3 + sp.phase) if sp.float_amp else 0.0
+        cx, cy = (x0 + x1) / 2 * s, ((y0 + y1) / 2 + bob) * s
+        sw, sh = sp.surf.get_width(), sp.surf.get_height()
+        f = (x1 - x0) * s / sw
+        if sp.anim == "draw" and sp.strokes and age < sp.draw:
+            p = age / sp.draw
+            ctx.save()
+            ctx.translate(cx - sw / 2 * f, cy - sh / 2 * f)
+            ctx.scale(f, f)
+            self._draw_strokes(ctx, sp, min(1.0, p / 0.85))
+            if p > 0.85:  # labels and final colours settle in
+                ctx.set_source_surface(sp.surf, 0, 0)
+                ctx.paint_with_alpha((p - 0.85) / 0.15)
+            ctx.restore()
+            return
+        p = age / self.pop
         k, alpha = 1.0, 1.0
         if sp.anim == "pop" and p < 1:
             k = 0.55 + 0.45 * back_out(p)
             alpha = min(1.0, p * 2.5)
         elif sp.anim == "fade" and p < 1:
             alpha = ease(p)
-        cx, cy = (x0 + x1) / 2 * s, (y0 + y1) / 2 * s
-        sw, sh = sp.surf.get_width(), sp.surf.get_height()
-        f = (x1 - x0) * s / sw
+        k *= 0.8 + 0.2 * out
+        alpha *= out
         ctx.save()
         ctx.translate(cx, cy)
         ctx.scale(k * f, k * f)

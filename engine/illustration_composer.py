@@ -142,10 +142,12 @@ def _area(b) -> float:
 def build_visual(name: str, rng: random.Random, params: dict | None, detail: float = 1.0) -> tuple[Element, str]:
     """Return (element, size_class)."""
     params = dict(params or {})
-    if name in ("person", "worker", "boss", "student", "teacher"):
+    if name in ("person", "worker", "boss", "student", "teacher", "police"):
         pose = params.get("pose", "stand")
         expr = params.get("expression", "happy")
-        if name == "worker":
+        if name == "police":
+            el = make_character(rng, pose=params.get("pose", "point"), expression="neutral", hair="cap", accessory="badge")
+        elif name == "worker":
             el = make_character(rng, pose=pose, expression=expr, hair="cap", accessory="bag")
         elif name == "boss":
             el = make_character(rng, pose=pose, expression=expr, hair=rng.choice(["short", "bun"]), accessory="tie")

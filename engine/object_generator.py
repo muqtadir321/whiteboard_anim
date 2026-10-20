@@ -361,6 +361,68 @@ def rate_badge(rng, **_) -> Element:
     return el
 
 
+def jail(rng, **_) -> Element:
+    p = _pen(rng)
+    el = Element("jail", 90, 100)
+    el.add(p.rect(4, 4, 86, 96, r=3, fill="#9AA0A6", fill_opacity=0.9))
+    for x in (20, 36, 54, 70):
+        el.add(p.line((x, 6), (x, 94), width=1.4))
+    el.add(p.line((6, 50), (84, 50), width=1.2))
+    return el
+
+
+def handcuffs(rng, **_) -> Element:
+    p = _pen(rng)
+    el = Element("handcuffs", 110, 60)
+    el.add(p.circle(24, 34, 20, width=1.4, fill="#C8CCD2", fill_opacity=0.9), p.circle(24, 34, 11, width=1.0, fill="paper"))
+    el.add(p.circle(86, 34, 20, width=1.4, fill="#C8CCD2", fill_opacity=0.9), p.circle(86, 34, 11, width=1.0, fill="paper"))
+    el.add(p.polyline([(44, 30), (52, 26), (58, 30), (66, 26)], width=1.2))
+    return el
+
+
+def phone_call(rng, **_) -> Element:
+    """Smartphone on a video call: a face on screen and ringing waves."""
+    p = _pen(rng)
+    el = Element("phone_call", 110, 100)
+    el.add(p.rect(18, 4, 62, 96, r=7, fill="#3D4A5C", fill_opacity=0.95))
+    el.add(p.rect(23, 12, 57, 82, r=2, fill="#BFE3FF", fill_opacity=0.95))
+    el.add(p.circle(40, 38, 9, width=1.0, fill="skin"), p.arc(40, 62, 14, 200, 340, width=1.0))
+    el.add(p.arc(66, 40, 12, -50, 50, width=1.2, color="negative"), p.arc(66, 40, 22, -45, 45, width=1.2, color="negative"))
+    return el
+
+
+def fraud_mask(rng, **_) -> Element:
+    """Robber's eye mask: scams and fraudsters."""
+    p = _pen(rng)
+    el = Element("fraud_mask", 120, 60)
+    el.add(p.polyline([(4, 24), (30, 10), (60, 18), (90, 10), (116, 24), (104, 46), (78, 50), (60, 38), (42, 50), (16, 46)],
+                      closed=True, fill="#2B2B2B", fill_opacity=0.95))
+    el.add(p.ellipse(34, 30, 11, 7, width=1.0, fill="paper"), p.ellipse(86, 30, 11, 7, width=1.0, fill="paper"))
+    return el
+
+
+def ai_chip(rng, **_) -> Element:
+    p = _pen(rng)
+    el = Element("ai_chip", 100, 100)
+    for i in range(5):
+        v = 22 + i * 14
+        el.add(p.line((v, 4), (v, 18), width=1.0), p.line((v, 82), (v, 96), width=1.0),
+               p.line((4, v), (18, v), width=1.0), p.line((82, v), (96, v), width=1.0))
+    el.add(p.rect(18, 18, 82, 82, r=6, fill="#6C5CE7", fill_opacity=0.92))
+    el.texts.append(TextSpec("AI", (28, 30, 72, 70), color="paper", bold=True, size_hint=0.85, lang="en"))
+    return el
+
+
+def bubble(rng, **_) -> Element:
+    """A price bubble about to pop."""
+    p = _pen(rng)
+    el = Element("bubble", 100, 100)
+    el.add(p.circle(48, 52, 40, width=1.3, fill="#AEE1F9", fill_opacity=0.75))
+    el.add(p.arc(48, 52, 30, 200, 250, width=1.4, color="paper"))
+    el.add(p.circle(88, 16, 8, width=1.0, fill="#AEE1F9", fill_opacity=0.75), p.circle(12, 14, 5, width=0.9))
+    return el
+
+
 def key(rng, **_) -> Element:
     p = _pen(rng)
     el = Element("key", 90, 40)
@@ -607,7 +669,8 @@ OBJECTS: dict[str, Callable[..., Element]] = {
     "phone": phone, "laptop": laptop, "computer": computer, "book": book, "document": document, "car": car,
     "truck": truck, "bicycle": bicycle, "clock": clock, "calendar": calendar, "lightbulb": lightbulb, "gear": gear,
     "cart": cart, "tree": tree, "plant": plant, "heart": heart, "warning": warning, "target": target, "lock": lock,
-    "rate_badge": rate_badge, "key": key, "globe": globe, "graduation_cap": graduation_cap, "school": school, "hospital": hospital,
+    "rate_badge": rate_badge, "jail": jail, "handcuffs": handcuffs, "phone_call": phone_call, "fraud_mask": fraud_mask,
+    "ai_chip": ai_chip, "bubble": bubble, "key": key, "globe": globe, "graduation_cap": graduation_cap, "school": school, "hospital": hospital,
     "food": food, "water_drop": water_drop, "scale": scale_balance, "trophy": trophy, "question": question_mark,
     "check": check_mark, "cross": cross_mark, "star": star, "cloud": cloud, "sun": sun, "rocket": rocket,
     "magnifier": magnifier, "briefcase": briefcase, "envelope": envelope, "map_pin": map_pin, "pill": pill,

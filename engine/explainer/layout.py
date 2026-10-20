@@ -5,9 +5,10 @@ Board layout (design units, 1080 x 1920):
   STAGE_ZONE  evidence (headline cards, article page, chart, logos) or large icons
   overlay     small icon/figure over the evidence (bottom corner), like the reference style
 
-An evidence stage starts at its cue word and stays until the end of the paragraph or
-until the next evidence cue, so one screenshot can carry several sentences while the
-words above it change.
+An evidence stage starts at its cue word and stays for that sentence (animation.explainer.
+evidence_hold: sentence, or paragraph), then leaves; in between, doodles matching the
+narration are drawn line by line. Doodles that would overlap a screenshot wait until it
+has gone, or sit small in the corner while it is up.
 """
 
 from __future__ import annotations
@@ -34,12 +35,15 @@ LOW_WORDS = {"low", "lower", "cheap", "cheaper", "only", "down", "fell", "droppe
              "kam", "sasta", "sirf", "neeche", "gir"}
 SKIP_ICONS = {"people_group"}  # crowds read poorly as small doodles
 # Doodles only: diagrams and charts from the whiteboard planner read poorly as small pop-ins.
-ICON_EXTRA = {"person", "worker", "boss", "student", "teacher", "money_growth", "debt", "loss", "price_tag", "trend_arrow"}
+ICON_EXTRA = {"person", "worker", "boss", "student", "teacher", "police", "money_growth", "debt", "loss", "price_tag", "trend_arrow"}
+SPECIFIC = {"phone_call", "handcuffs", "jail", "fraud_mask", "ai_chip", "bubble", "police", "rate_badge", "house", "bank", "lock",
+            "money_bag", "piggy_bank", "price_tag", "trend_arrow", "money_growth", "loss", "debt"}
 ICON_SWAP = {"pie_chart": "rate_badge", "percent_badge": "rate_badge", "percent": "rate_badge", "%": "rate_badge", "rate": "rate_badge"}
 ICON_TINT = {  # main fill for icons that come without one
     "house": "#C98B5B", "bank": "#B9BEC5", "document": "#F3E7C9", "money_bag": "#8DB27A", "coin": "#E9B949",
     "coin_stack": "#E9B949", "banknote": "#9CCB86", "lock": "#4A4A4A", "building": "#9AA3AD", "shop": "#E7A86B",
     "car": "#6FA8DC", "calendar": "#F4F4F4", "briefcase": "#A47148", "piggy_bank": "#F2A7B8", "wallet": "#A47148",
+    "phone": "#3D4A5C", "laptop": "#6FA8DC", "envelope": "#F3E7C9", "warning": "#F5C542", "clock": "#F4F4F4",
 }
 VIVID_FILL = 0.92
 
@@ -53,6 +57,7 @@ class TimedCue:
     cue: Cue
     t: float
     paragraph_end: float
+    sentence_end: float = 0.0
 
 
 @dataclass
@@ -98,13 +103,14 @@ def time_cues(cues: list[Cue], sentences, paragraphs: list[int] | None, offset: 
             break
         start, si = flat[min(c.word, len(flat) - 1)]
         p = paragraphs[si] if paragraphs and si < len(paragraphs) else si
-        out.append(TimedCue(c, start + offset, para_end[p] + offset))
+        out.append(TimedCue(c, start + offset, para_end[p] + offset, sentences[si].end + offset))
     return sorted(out, key=lambda tc: tc.t)
 
 
 # -- drawing helpers ------------------------------------------------------------------
-def element_surface(el, size_px: float, style: Style, lang: str, tint: str | None = None) -> cairo.ImageSurface:
-    """Rasterise a vector Element as a colourful doodle: bold fills, dark outlines."""
+def element_surface(el, size_px: float, style: Style, lang: str, tint: str | None = None) -> tuple[cairo.ImageSurface, list]:
+    """Rasterise a vector Element as a colourful doodle: bold fills, dark outlines.
+    Also returns the strokes (surface pixels) so the renderer can draw it line by line."""
     w, h = max(1.0, el.width), max(1.0, el.height)
     k = size_px / max(w, h)
     pad = 12
@@ -115,6 +121,7 @@ def element_surface(el, size_px: float, style: Style, lang: str, tint: str | Non
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     has_fill = any(st.fill for st in el.strokes)
     tinted = False
+    strokes = []
     for st in el.strokes:
         if len(st.points) < 2:
             continue
@@ -124,15 +131,19 @@ def element_surface(el, size_px: float, style: Style, lang: str, tint: str | Non
         fill = st.fill
         if not fill and not has_fill and tint and st.closed and not tinted:
             fill, tinted = tint, True
+        fill_rgba = None
         if fill:
             ctx.close_path()
             r, g, b = _rgb(style.color(fill))
-            ctx.set_source_rgba(r, g, b, VIVID_FILL)
+            fill_rgba = (r, g, b, VIVID_FILL)
+            ctx.set_source_rgba(*fill_rgba)
             ctx.fill_preserve()
-        r, g, b = _rgb(style.color(st.color))
-        ctx.set_source_rgb(r, g, b)
-        ctx.set_line_width(max(2.5, st.width * size_px / 42))
+        color = _rgb(style.color(st.color))
+        width = max(2.5, st.width * size_px / 42)
+        ctx.set_source_rgb(*color)
+        ctx.set_line_width(width)
         ctx.stroke()
+        strokes.append(([(x * k + pad, y * k + pad) for x, y in st.points], color, width, fill_rgba))
     for ts in el.texts:
         x0, y0, x1, y1 = (v * k for v in ts.box)
         size = (y1 - y0) * ts.size_hint
@@ -149,7 +160,7 @@ def element_surface(el, size_px: float, style: Style, lang: str, tint: str | Non
                     ctx.close_path()
         ctx.fill()
     surf.flush()
-    return surf
+    return surf, strokes
 
 
 def _rgb(c: str):
@@ -231,6 +242,7 @@ class ExplainerLayout:
         if not self.ex["write_narration"]:  # no subtitles: only the key amounts pop up on the board
             keep = [i for i, n in enumerate(is_num) if n]
             tokens, is_num, times, colors = ([seq[i] for i in keep] for seq in (tokens, is_num, times, colors))
+            tokens = [t.rstrip(".,!?;:،۔؟") for t in tokens]  # an amount on its own needs no punctuation
             if not tokens:
                 return [], TEXT_ZONE[1]
         x0, y0, x1, y1 = TEXT_ZONE
@@ -271,10 +283,13 @@ class ExplainerLayout:
                 sl = shaped[i]
                 contours = [[(x + px, base + py) for px, py in c] for g in sl.glyphs for c in g.contours()]
                 t0, t1 = times[i] if i < len(times) else times[-1]
+                big = is_num[i] and not self.ex["write_narration"]
                 words.append(Word(contours, colors[i], t0, max(0.08, min(0.3, (t1 - t0) * 0.8)),
-                                  (x, base - sl.ascent, x + sl.width, base + sl.descent), tokens[i]))
+                                  (x, base - sl.ascent, x + sl.width, base + sl.descent), tokens[i], pop=big, underline=big))
                 x += sl.width + (gaps[j] if j < len(gaps) else 0)
             y += lh
+        if words and not self.ex["write_narration"]:
+            y += 40  # room for the underline swoosh above any screenshot
         return words, y
 
     # icons ----------------------------------------------------------------------
@@ -288,10 +303,39 @@ class ExplainerLayout:
             self.warnings.append(f"unknown icon {name!r}")
             return None
         size = max(box[2] - box[0], box[3] - box[1]) * self.scale
-        surf = element_surface(el, size, self.style, self.lang, ICON_TINT.get(name))
-        return Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), t, "pop", name=name)
+        surf, strokes = element_surface(el, size, self.style, self.lang, ICON_TINT.get(name))
+        draw = min(1.1, 0.45 + 0.03 * len(strokes))
+        rng = random.Random(seed)
+        return Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), t, "draw", name=name, strokes=strokes, draw=draw,
+                      float_amp=6.0, phase=rng.uniform(0, 6.28))
 
-    def scene_icons(self, scene: dict, times, start: float, forced: list[tuple[float, str]], overlay: bool, text_bottom: float) -> list[Sprite]:
+    def arrow_sprite(self, a: Sprite, b: Sprite, t: float) -> Sprite:
+        """Hand-drawn arrow from one doodle to the next (cause -> effect)."""
+        from ..geometry import Element, Pen
+
+        def centre(sp):
+            return (sp.box[0] + sp.box[2]) / 2, (sp.box[1] + sp.box[3]) / 2
+
+        (ax, ay), (bx, by) = centre(a), centre(b)
+        # start/end a little outside each doodle
+        def edge(cx, cy, box, tx, ty):
+            hw, hh = (box[2] - box[0]) / 2 * 0.8, (box[3] - box[1]) / 2 * 0.8
+            dx, dy = tx - cx, ty - cy
+            f = min(hw / abs(dx) if dx else 1e9, hh / abs(dy) if dy else 1e9)
+            return cx + dx * f, cy + dy * f
+
+        p0, p1 = edge(ax, ay, a.box, bx, by), edge(bx, by, b.box, ax, ay)
+        x0, y0 = min(p0[0], p1[0]) - 30, min(p0[1], p1[1]) - 30
+        w, h = abs(p1[0] - p0[0]) + 60, abs(p1[1] - p0[1]) + 60
+        el = Element("arrow", w, h)
+        line_w = 336 / max(w, h)  # about 8 px on screen whatever the arrow's length
+        el.add(*Pen(random.Random(int(ax + by)), wobble=0.6).arrow((p0[0] - x0, p0[1] - y0), (p1[0] - x0, p1[1] - y0), head=26, curve=0.15, width=line_w))
+        surf, strokes = element_surface(el, max(w, h) * self.scale, self.style, self.lang)
+        return Sprite(surf, fit_box(surf.get_width(), surf.get_height(), (x0, y0, x0 + w, y0 + h)), t, "draw", name="arrow",
+                      strokes=strokes, draw=0.45)
+
+    def scene_icons(self, scene: dict, times, s0: float, s1: float, forced: list[tuple[float, str]], text_bottom: float,
+                    stages: list[Stage]) -> list[Sprite]:
         text = scene["narration_text"]
         tokens = text.split()
         char_word, pos = [], 0
@@ -305,33 +349,63 @@ class ExplainerLayout:
             for c, i in char_word:
                 if c <= ch:
                     idx = i
-            return times[idx][0] if times else start
+            return times[idx][0] if times else s0
 
         picks: list[tuple[str, dict, float]] = [(ICON_SWAP.get(n, n), {}, t) for t, n in forced]
         for a in sorted(scene["visual_actions"], key=lambda a: a["draw_order"]):
             name = ICON_SWAP.get(a.get("object", ""), a.get("object", ""))
             if a["action"] == "draw" and is_doodle(name) and all(name != p[0] for p in picks):
                 picks.append((name, a.get("params") or {}, t_at(a.get("anchor_char", 0))))
-        limit = 1 if overlay else int(self.ex["max_icons"])
-        picks = picks[:limit]
-        if not picks:
-            return []
-        top = max(STAGE_ZONE[1] - 200, text_bottom + 60)
-        avail = 1760 - top
+        # the doodles that say the most about this topic go first (a bubble beats a generic laptop)
+        picks.sort(key=lambda p: p[0] not in SPECIFIC)
+        picks = picks[: int(self.ex["max_icons"])]
+
+        def stage_at(t):
+            return next((st for st in stages if st.t_in <= t < st.t_out), None)
+
+        free, overlay = [], None
+        for name, params, t in picks:
+            t = max(s0, t)
+            st = stage_at(t)
+            if st is not None and st.t_out < s1 - 0.6:
+                t = st.t_out + 0.05  # wait until the screenshot has gone
+                st = stage_at(t)
+            if st is None:
+                free.append((name, params, t))
+            elif overlay is None:
+                overlay = (name, params, t)
+        out: list[Sprite] = []
         if overlay:
-            boxes = [OVERLAY_BOX]
-        elif len(picks) == 1:
-            sz = min(600.0, avail)
-            boxes = [(540 - sz / 2, top + (avail - sz) / 2, 540 + sz / 2, top + (avail + sz) / 2)]
-        else:
-            sz = min(450.0, avail * 0.7)
-            boxes = [(70.0, top, 70 + sz, top + sz), (1010 - sz, 1760 - sz, 1010.0, 1760.0)]
-        out = []
-        for (name, params, t), box in zip(picks, boxes):
-            sp = self.icon_sprite(name, params, box, max(start, t), f"{scene['scene_id']}:{name}")
+            sp = self.icon_sprite(overlay[0], overlay[1], OVERLAY_BOX, overlay[2], f"{scene['scene_id']}:{overlay[0]}")
             if sp:
                 out.append(sp)
-        return out
+        top = max(300.0, text_bottom + 60)
+        bottom = 1760.0
+        avail = bottom - top
+        if len(free) == 1:
+            sz = min(640.0, avail)
+            boxes = [(540 - sz / 2, top + (avail - sz) / 2, 540 + sz / 2, top + (avail + sz) / 2)]
+        elif len(free) == 2:
+            sz = min(470.0, avail * 0.62)
+            boxes = [(60.0, top + 20, 60 + sz, top + 20 + sz), (1020 - sz, bottom - sz, 1020.0, bottom)]
+        else:
+            big, small = min(470.0, avail * 0.5), min(380.0, avail * 0.4)
+            boxes = [(540 - big / 2, top, 540 + big / 2, top + big), (50.0, bottom - small, 50 + small, bottom),
+                     (1030 - small, bottom - small, 1030.0, bottom)]
+        drawn: list[Sprite] = []
+        for (name, params, t), box in zip(free, boxes):
+            sp = self.icon_sprite(name, params, box, t, f"{scene['scene_id']}:{name}")
+            if sp:
+                # leave before a screenshot arrives
+                sp.end = next((st.t_in for st in sorted(stages, key=lambda x: x.t_in) if t < st.t_in < s1), None)
+                drawn.append(sp)
+        for a, b in zip(drawn, drawn[1:]):
+            arrow = self.arrow_sprite(a, b, max(a.t, b.t) + 0.15)
+            ends = [e for e in (a.end, b.end) if e is not None]
+            arrow.end = min(ends) if ends else None
+            if arrow.end is None or arrow.end > arrow.t + 0.3:
+                drawn.append(arrow)
+        return out + drawn
 
     # stages ---------------------------------------------------------------------
     def build_stages(self, timed: list[TimedCue], end_time: float, warnings: list[str], layout: Layout) -> list[Stage]:
@@ -348,7 +422,8 @@ class ExplainerLayout:
             return st
 
         for tc in timed:
-            c, t, t_out = tc.cue, tc.t, max(tc.paragraph_end, tc.t + 1.5)
+            hold = tc.paragraph_end if self.ex["evidence_hold"] == "paragraph" else tc.sentence_end
+            c, t, t_out = tc.cue, tc.t, max(hold + 0.35, tc.t + 2.2)
             if c.kind == "icon":
                 continue
             if c.kind == "news":
@@ -365,7 +440,7 @@ class ExplainerLayout:
                 if not art:
                     warnings.append(f"[article {c.ref}] cue but article {c.ref} was not captured")
                     continue
-                if cur is None or cur.id != f"article:{c.ref}" or t >= cur.t_out:
+                if cur is None or cur.id != f"article:{c.ref}" or t >= cur.t_out + 1.2:
                     img = png_surface(art.image)
                     st = start(Stage("article", self.region_for(t, t_out), t, t_out, image=img, id=f"article:{c.ref}",
                                      label=f"Source: {art.publisher}" if self.ex["source_label"] and art.publisher else "",
@@ -391,7 +466,7 @@ class ExplainerLayout:
                 if not chart:
                     warnings.append(f"[chart {c.ref}] cue but the series was not downloaded")
                     continue
-                if cur is None or cur.id != f"chart:{c.ref}" or t >= cur.t_out:
+                if cur is None or cur.id != f"chart:{c.ref}" or t >= cur.t_out + 1.2:
                     start(Stage("chart", self.region_for(t, t_out), t, t_out, painter=ChartPainter(chart, t), id=f"chart:{c.ref}",
                                 source_url=chart.url))
                     layout.used_evidence.add(f"chart:{c.ref}")
@@ -403,15 +478,18 @@ class ExplainerLayout:
                 if not lg:
                     warnings.append(f"[logo {c.ref}] cue but no logo was found")
                     continue
-                if cur is None or cur.kind != "logos" or t >= cur.t_out:
+                if cur is None or cur.kind != "logos" or t >= cur.t_out + 1.2:
                     start(Stage("logos", self.region_for(t, t_out), t, t_out, id="logos"))
                 cur.t_out = max(cur.t_out, t_out)
                 cur.sprites.append(Sprite(png_surface(lg["path"]), (0, 0, 1, 1), t, "pop", name=lg["name"]))
                 layout.used_evidence.add(f"logo:{lg['name']}")
-        last_para = max((tc.paragraph_end for tc in timed), default=0.0)
+        narration_end = max((max(tc.sentence_end, tc.paragraph_end) for tc in timed), default=0.0)
         for st in stages:
-            # the final paragraph's evidence stays through the outro
-            st.t_out = end_time if st.t_out >= last_para - 1e-3 else min(st.t_out, end_time)
+            # evidence still up when the narration ends stays through the outro
+            if st.t_out >= narration_end - 1e-3:
+                st.t_out, st.exit = end_time, False
+            else:
+                st.t_out = min(st.t_out, end_time)
             if st.kind == "logos":
                 self.arrange_logos(st)
         return stages
@@ -465,10 +543,8 @@ class ExplainerLayout:
         layout.stages = self.build_stages(timed, total, layout.warnings, layout)
         icon_cues = [(tc.t, tc.cue.ref) for tc in timed if tc.cue.kind == "icon"]
         for scene, s0, s1, times, words, bottom in texts:
-            mid = (s0 + s1) / 2
-            overlay = any(st.t_in <= mid < st.t_out for st in layout.stages)
             forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]
-            sprites = self.scene_icons(scene, times, s0, forced, overlay, bottom)
+            sprites = self.scene_icons(scene, times, s0, s1, forced, bottom, layout.stages)
             layout.scenes.append(ExScene(scene["scene_id"], s0, s1, words, sprites, bottom))
         layout.missing_glyphs = self.missing_glyphs
         return layout

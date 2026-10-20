@@ -572,6 +572,12 @@
             },
             "write_narration": {
               "type": "boolean"
+            },
+            "evidence_hold": {
+              "enum": [
+                "sentence",
+                "paragraph"
+              ]
             }
           }
         }

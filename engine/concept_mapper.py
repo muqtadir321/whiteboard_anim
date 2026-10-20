@@ -188,6 +188,30 @@ CONCEPTS: dict[str, dict] = {
     "security": {"kind": "entity", "visual": "lock", "kw": {
         "en": ["safe", "safety", "secure", "security", "protect", "protection", "insurance", "privacy"], "roman_urdu": ["mehfooz", "hifazat", "tahaffuz", "insurance"],
         "ur": ["محفوظ", "حفاظت", "تحفظ", "انشورنس"], "ps": ["خوندي", "ساتنه", "امنیت", "بیمه"]}},
+    "police": {"kind": "actor", "visual": "police", "kw": {
+        "en": ["police", "policeman", "officer", "officers", "cop", "cops", "cbi", "fia", "agency", "investigator", "inspector"],
+        "roman_urdu": ["police", "officer", "thana", "fia", "agency", "inspector"],
+        "ur": ["پولیس", "آفیسر", "افسر", "تھانہ", "ایجنسی", "انسپکٹر"], "ps": ["پولیس", "افسر", "ادارې"]}},
+    "jail": {"kind": "entity", "visual": "jail", "kw": {
+        "en": ["jail", "prison", "custody", "lockup", "sentence", "sentenced"], "roman_urdu": ["jail", "qaid", "hawalat", "saza"],
+        "ur": ["جیل", "قید", "حوالات", "سزا"], "ps": ["زندان", "بندي", "سزا"]}},
+    "arrest": {"kind": "action", "visual": "handcuffs", "kw": {
+        "en": ["arrest", "arrested", "arrests", "detained", "handcuffs", "caught"], "roman_urdu": ["arrest", "giraftar", "giraftari", "pakra"],
+        "ur": ["گرفتار", "گرفتاری", "اریسٹ", "پکڑا"], "ps": ["نیول", "ونیول", "توقیف"]}},
+    "call": {"kind": "entity", "visual": "phone_call", "kw": {
+        "en": ["call", "calls", "called", "caller", "video call", "whatsapp", "dial", "ring"], "roman_urdu": ["call", "calls", "phone", "whatsapp"],
+        "ur": ["کال", "کالز", "فون", "واٹس ایپ"], "ps": ["زنګ", "کال", "تلیفون"]}},
+    "scam": {"kind": "entity", "visual": "fraud_mask", "kw": {
+        "en": ["scam", "scams", "scammer", "scammers", "fraud", "frauds", "fraudster", "fraudsters", "cheat", "cheated", "con", "fake", "thief"],
+        "roman_urdu": ["scam", "fraud", "fraudsters", "dhoka", "dhokay", "dhokebaaz", "chor", "fake", "nakli", "farebi"],
+        "ur": ["اسکیم", "فراڈ", "فراڈیوں", "فراڈیے", "دھوکہ", "دھوکے", "دھوکے باز", "چور", "جعلی", "نقلی", "فریب"],
+        "ps": ["درغلي", "فریب", "غل", "جعلي"]}},
+    "ai": {"kind": "entity", "visual": "ai_chip", "kw": {
+        "en": ["ai", "artificial", "intelligence", "chip", "chips", "semiconductor", "nvidia", "openai", "chatgpt", "robot", "algorithm"],
+        "roman_urdu": ["ai", "chip", "chips", "robot"], "ur": ["اے آئی", "مصنوعی ذہانت", "چپ", "روبوٹ"], "ps": ["مصنوعي ځيرکتيا", "چپ"]}},
+    "bubble": {"kind": "entity", "visual": "bubble", "kw": {
+        "en": ["bubble", "bubbles", "burst", "pop", "hype", "overvalued", "crash"], "roman_urdu": ["bubble", "phatna", "phat", "crash"],
+        "ur": ["ببل", "بلبلہ", "پھٹنا", "پھٹ", "کریش"], "ps": ["پوکڼی", "چاودنه"]}},
     "growth_rocket": {"kind": "entity", "visual": "rocket", "kw": {
         "en": ["launch", "boost", "fast", "quickly", "rapid", "explode", "skyrocket"], "roman_urdu": ["tezi", "tez", "jaldi"], "ur": ["تیزی", "تیز", "جلدی"], "ps": ["چټک", "ژر", "ګړندی"]}},
     "research": {"kind": "entity", "visual": "magnifier", "kw": {

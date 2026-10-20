@@ -162,7 +162,7 @@ def test_layout_stages_follow_cues(tmp_path, ex_cfg):
     assert lay.highlights == {"requested": 1, "matched": 1}
     assert not lay.warnings
     first = [w.text for w in lay.scenes[0].words]
-    assert "7%." in first and "seven" not in first  # spoken amount written as its figure
+    assert first == ["7%"]  # no subtitles: only the spoken amount, written as its figure
     assert all(is_doodle(sp.name) for sc in lay.scenes for sp in sc.sprites)
 
 
