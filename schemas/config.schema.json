@@ -453,7 +453,8 @@
       "properties": {
         "style": {
           "enum": [
-            "whiteboard"
+            "whiteboard",
+            "explainer"
           ]
         },
         "background": {
@@ -513,6 +514,56 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 2
+        },
+        "explainer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "number_color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "low_number_color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "highlight_color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "highlight_alt_color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "text_size": {
+              "type": "number",
+              "minimum": 40,
+              "maximum": 160
+            },
+            "number_size": {
+              "type": "number",
+              "minimum": 60,
+              "maximum": 260
+            },
+            "pop_seconds": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1.5
+            },
+            "max_zoom": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "source_label": {
+              "type": "boolean"
+            },
+            "max_icons": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            }
+          }
         }
       }
     },

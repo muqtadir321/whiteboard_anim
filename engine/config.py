@@ -167,6 +167,20 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # 0 = only the core picture, 1 = + one extra icon and number circles, 2 = rich (default)
         "drawing_density": 2,
         "seed": 7,
+        # style "explainer": words written as they are spoken, pop-in colour icons and real
+        # screenshots/charts from a topic folder (input/topics/<name>/evidence)
+        "explainer": {
+            "number_color": "#D7262E",
+            "low_number_color": "#3BA33B",
+            "highlight_color": "#FFE14D",
+            "highlight_alt_color": "#FFAA4D",
+            "text_size": 104,
+            "number_size": 170,
+            "pop_seconds": 0.28,
+            "max_zoom": 1.9,
+            "source_label": True,
+            "max_icons": 2,
+        },
     },
     "planner": {
         "max_scene_seconds": 6.0,

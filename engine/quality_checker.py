@@ -202,5 +202,22 @@ def check_semantics(report: QualityReport, plan: dict, cfg: dict) -> None:
     report.add("scenes_cover_narration", not gaps, True, gaps[:5])
 
 
+def check_explainer(report: QualityReport, layout, cfg: dict) -> None:
+    """Explainer style: the narration is written on the board and evidence is real and sourced."""
+    q = cfg["quality"]
+    empty = [sc.scene_id for sc in layout.scenes if not sc.words]
+    report.add("every_scene_has_visuals", not empty, True, empty)
+    outside = [f"{sc.scene_id}:{w.text}" for sc in layout.scenes for w in sc.words
+               if w.bbox[0] < SAFE_MARGIN - 1 or w.bbox[2] > DESIGN_W - SAFE_MARGIN + 1 or w.bbox[1] < SAFE_MARGIN - 1]
+    report.add("drawings_inside_safe_area", not outside, True, outside[:10])
+    report.add("glyph_coverage", len(layout.missing_glyphs) <= q["maximum_unsupported_characters"], True, sorted(layout.missing_glyphs),
+               f"<= {q['maximum_unsupported_characters']}")
+    unsourced = [st.id for st in layout.stages if st.kind in ("article", "chart") and not st.source_url]
+    report.add("evidence_has_source", not unsourced, True, unsourced)
+    report.add("evidence_cues_resolved", not layout.warnings, False, layout.warnings[:10], 0)
+    h = layout.highlights
+    report.add("highlights_found_on_page", h["matched"] == h["requested"], False, f"{h['matched']}/{h['requested']}", "all")
+
+
 def scene_signature(scene: dict) -> str:
     return re.sub(r"\s+", " ", scene["scene_type"])

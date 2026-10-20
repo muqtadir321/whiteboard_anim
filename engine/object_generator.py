@@ -352,6 +352,15 @@ def lock(rng, **_) -> Element:
     return el
 
 
+def rate_badge(rng, **_) -> Element:
+    p = _pen(rng)
+    el = Element("rate_badge", 80, 80)
+    el.add(p.circle(40, 40, 36, fill="#F08A3C", fill_opacity=0.9))
+    el.add(p.line((26, 56), (54, 24), width=1.6, color="paper"))
+    el.add(p.circle(28, 28, 6, width=1.3, color="paper"), p.circle(52, 52, 6, width=1.3, color="paper"))
+    return el
+
+
 def key(rng, **_) -> Element:
     p = _pen(rng)
     el = Element("key", 90, 40)
@@ -598,7 +607,7 @@ OBJECTS: dict[str, Callable[..., Element]] = {
     "phone": phone, "laptop": laptop, "computer": computer, "book": book, "document": document, "car": car,
     "truck": truck, "bicycle": bicycle, "clock": clock, "calendar": calendar, "lightbulb": lightbulb, "gear": gear,
     "cart": cart, "tree": tree, "plant": plant, "heart": heart, "warning": warning, "target": target, "lock": lock,
-    "key": key, "globe": globe, "graduation_cap": graduation_cap, "school": school, "hospital": hospital,
+    "rate_badge": rate_badge, "key": key, "globe": globe, "graduation_cap": graduation_cap, "school": school, "hospital": hospital,
     "food": food, "water_drop": water_drop, "scale": scale_balance, "trophy": trophy, "question": question_mark,
     "check": check_mark, "cross": cross_mark, "star": star, "cloud": cloud, "sun": sun, "rocket": rocket,
     "magnifier": magnifier, "briefcase": briefcase, "envelope": envelope, "map_pin": map_pin, "pill": pill,

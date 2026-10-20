@@ -11,6 +11,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
+from .explainer.cues import Cue, extract_cues
 from .numbers import Quantity, extract_quantities
 
 SENTENCE_END = ".!?۔؟"
@@ -45,6 +46,11 @@ class Sentence:
 
 
 def normalize_script(raw: str | bytes) -> str:
+    return normalize_script_with_cues(raw)[0]
+
+
+def normalize_script_with_cues(raw: str | bytes) -> tuple[str, list[Cue]]:
+    """Normalised script plus its visual cue tags (word indices into the result's split())."""
     if isinstance(raw, bytes):
         try:
             raw = raw.decode("utf-8-sig")
@@ -53,8 +59,10 @@ def normalize_script(raw: str | bytes) -> str:
     if "\x00" in raw:
         raise ScriptError("Script contains NUL bytes; it looks like a binary or corrupted file")
     text = unicodedata.normalize("NFC", raw.replace("\r\n", "\n").replace("\r", "\n"))
-    # Voice-direction tags such as [curious], [pause], [soft] (ElevenLabs style) are
-    # instructions for the narrator, not words: they never reach captions or planning.
+    # Voice-direction tags such as [curious], [pause], [soft] (ElevenLabs style) and visual
+    # cue tags such as [news] or [article 1 "..."] are instructions, not words: they never
+    # reach captions, narration or planning.
+    text, cues = extract_cues(text)
     text = STAGE_TAG.sub(" ", text)
     # Drop zero-width BOMs and control characters but keep ZWNJ/ZWJ (used in Urdu/Persian).
     text = "".join(c for c in text if c in "\n\t‌‍" or unicodedata.category(c)[0] != "C")
@@ -79,7 +87,7 @@ def normalize_script(raw: str | bytes) -> str:
     printable_ratio = sum(1 for c in text if c.isprintable() or c == "\n") / len(text)
     if printable_ratio < 0.95:
         raise ScriptError("Script contains too many non-printable characters (corrupted?)")
-    return text
+    return text, cues
 
 
 def split_sentences(text: str) -> list[tuple[str, int, int]]:

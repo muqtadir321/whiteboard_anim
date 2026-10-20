@@ -11,3 +11,6 @@ transformers==4.46.3
 edge-tts==7.3.1
 # Voice cloning (installed only when input/voice/reference.* exists):
 omnivoice==0.2.1
+# Explainer topics (Prepare Topic workflow): headless Chromium for article screenshots. After installing run:
+#   python -m playwright install --with-deps chromium
+playwright==1.48.0

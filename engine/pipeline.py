@@ -17,14 +17,15 @@ from .audio_sync import build_timeline, order_by_mention
 from .audio_timing import Timing, align_words, estimate_timing
 from .caption_renderer import write_srt, write_vtt
 from .config import QUALITY_PROFILES
+from .explainer.sources_file import write_sources
 from .illustration_composer import CAPTION_REGION, Composer, to_svg
 from .input_discovery import LanguageInputs
 from .language_detector import detect_language
-from .quality_checker import QualityReport, check_file, check_frames, check_semantics, check_visuals
+from .quality_checker import QualityReport, check_explainer, check_file, check_frames, check_semantics, check_visuals
 from .results import StageError, StageResult, Status
 from .scene_planner import Segment, plan_scenes
 from .scene_schema import validate_plan
-from .script_analyzer import ScriptError, analyze_script, normalize_script, split_long_sentence
+from .script_analyzer import ScriptError, analyze_script, normalize_script_with_cues, split_long_sentence
 from .svg_draw_order import load_program
 from .transcription_manager import Transcript, get_transcriber
 from .video_assembler import assemble
@@ -60,7 +61,8 @@ def file_hash(path: Path | None) -> str:
 
 class LanguageJob:
     def __init__(self, inputs: LanguageInputs, cfg: dict, out_root: Path, tmp_root: Path, log=print, transcriber=None, tts_chain=None,
-                 script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None, aligner="auto"):
+                 script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None, aligner="auto",
+                 evidence_dir: Path | None = None):
         self.inp = inputs
         self.cfg = copy.deepcopy(cfg)
         self.key = inputs.key
@@ -75,6 +77,12 @@ class LanguageJob:
         self.reference_voice = reference_voice
         self.cloner = cloner
         self._aligner = aligner
+        self.evidence_dir = evidence_dir
+        self.explainer = self.cfg["animation"]["style"] == "explainer"
+        if self.explainer:
+            # short phrases on the board, like the reference style; the narration is written, not captioned
+            self.cfg["planner"]["max_scene_seconds"] = min(self.cfg["planner"]["max_scene_seconds"], 4.5)
+            self.cfg["video"]["captions_enabled"] = False
 
     def _get_aligner(self):
         if self._aligner == "auto":
@@ -82,6 +90,22 @@ class LanguageJob:
 
             self._aligner = get_aligner(self.cfg)
         return self._aligner
+
+    def _explainer_scenes(self, cfg, plan, timing, visual_cues, paragraphs, intro, total, st):
+        from .explainer.evidence import Evidence
+        from .explainer.layout import ExplainerLayout, time_cues
+        from .explainer.render import ExplainerRenderer
+
+        renderer = ExplainerRenderer(cfg, cfg["video"]["width"], cfg["video"]["height"], self.lang)
+        self._evidence = Evidence.load(self.evidence_dir) if self.evidence_dir else Evidence(root=None)
+        if visual_cues and not self.evidence_dir:
+            st.warnings.append("visual cue tags found but no topic folder (evidence) was given")
+        timed = time_cues(visual_cues, timing.sentences, paragraphs or None, intro)
+        self._layout = ExplainerLayout(cfg, self.lang, self._evidence, renderer.scale).build(plan, timed, intro, total)
+        st.warnings.extend(self._layout.warnings)
+        st.data["evidence_stages"] = [f"{s.id}@{s.t_in:.1f}-{s.t_out:.1f}s" for s in self._layout.stages]
+        st.data["highlights"] = self._layout.highlights
+        return renderer, (self._layout.scenes, self._layout.stages)
 
     # -- stage helper ------------------------------------------------------
     def stage(self, name: str, fn):
@@ -131,19 +155,20 @@ class LanguageJob:
         script_text = None
         sentences: list[str] = []
         paragraphs: list[int] = []
+        visual_cues: list = []
         transcript: Transcript | None = None
         meta = self.result.metadata
         meta.update({"language": self.key, "code": self.lang, "engine_version": __version__, "inputs": self.inp.to_dict()})
 
         # 1. Script
         def do_script(st):
-            nonlocal script_text, sentences, paragraphs
+            nonlocal script_text, sentences, paragraphs, visual_cues
             raw = self.script_text_override if self.script_text_override is not None else (self.inp.script_path.read_bytes() if self.inp.script_path else None)
             if raw is None:
                 st.status, st.message = Status.SKIPPED, "no script supplied"
                 return
             try:
-                script_text = normalize_script(raw)
+                script_text, visual_cues = normalize_script_with_cues(raw)
             except ScriptError as exc:
                 script_text = None
                 if self.inp.audio_path and cfg["voice"]["transcribe_missing_scripts"]:
@@ -151,6 +176,15 @@ class LanguageJob:
                     st.warnings.append(str(exc))
                     return
                 raise StageError(f"Invalid script: {exc}")
+            from .explainer.cues import has_unresolved
+
+            unresolved = has_unresolved(script_text)
+            if unresolved:
+                raise StageError(f"Script still contains {len(unresolved)} {{VERIFY: ...}} placeholder(s), e.g. {unresolved[0]}. "
+                                 "Replace them with checked facts before rendering.", Status.PERMANENT_FAILURE)
+            st.data["visual_cues"] = len(visual_cues)
+            if visual_cues and not self.explainer:
+                st.warnings.append(f"{len(visual_cues)} visual cue tag(s) ignored: animation.style is 'whiteboard'")
             det = detect_language(script_text, self.lang)
             st.data["detected_language"] = det.to_dict()
             if det.code != self.lang and det.confidence >= 0.8:
@@ -427,10 +461,14 @@ class LanguageJob:
                     cfg["render"] = {"detail": prof["detail"], "x264_preset": prof["x264_preset"], "crf": prof["crf"]}
                     st.warnings.append(f"rendering fell back to the '{q}' profile ({prof['width']}x{prof['height']} @ {prof['fps']} fps) after: {last_exc}")
                     st.status = Status.PARTIAL_SUCCESS
-                renderer = WhiteboardRenderer(cfg, cfg["video"]["width"], cfg["video"]["height"], self.lang)
                 t0 = time.time()
+                if self.explainer:
+                    renderer, scenes_in = self._explainer_scenes(cfg, plan, timing, visual_cues, paragraphs, intro, total, st)
+                else:
+                    renderer = WhiteboardRenderer(cfg, cfg["video"]["width"], cfg["video"]["height"], self.lang)
+                    scenes_in = [RenderScene(tl, items) for tl, items in zip(timelines, programs)]
                 try:
-                    render_stats = assemble(renderer, [RenderScene(tl, items) for tl, items in zip(timelines, programs)], str(final_audio), video_path, total, cfg)
+                    render_stats = assemble(renderer, scenes_in, str(final_audio), video_path, total, cfg)
                 except StageError as exc:
                     last_exc = exc
                     continue
@@ -454,6 +492,14 @@ class LanguageJob:
                 shutil.copy(self.tmp / "tts_text.txt", self.out / "tts_input_text.txt")
             (self.out / "scene_plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
             # Thumbnail: the most detailed fully drawn scene.
+            if self.explainer:
+                lay = self._layout
+                # Thumbnail: a scene shown over real evidence, else the one with the most on the board.
+                best = max(range(len(lay.scenes)), key=lambda i: (any(s.t_in <= lay.scenes[i].end - 0.05 < s.t_out for s in lay.stages),
+                                                                   len(lay.scenes[i].sprites), len(lay.scenes[i].words)))
+                renderer.render_still((lay.scenes, lay.stages), best, str(self.out / "thumbnail.png"))
+                write_sources(self.out / "sources.txt", self._evidence, lay.used_evidence)
+                return
             best = max(range(len(programs)), key=lambda i: sum(len(it.ops) for it in programs[i])) if programs else 0
             renderer.render_still(RenderScene(timelines[best], programs[best]), str(self.out / "thumbnail.png"))
 
@@ -465,7 +511,10 @@ class LanguageJob:
         def do_qa(st):
             check_file(report, str(video_path), cfg, total)
             samples = check_frames(report, str(video_path), cfg, plan, timelines)
-            check_visuals(report, composed, plan, render_stats, cfg, renderer.captions.missing_chars if renderer.captions else set())
+            if self.explainer:
+                check_explainer(report, self._layout, cfg)
+            else:
+                check_visuals(report, composed, plan, render_stats, cfg, renderer.captions.missing_chars if renderer.captions else set())
             check_semantics(report, plan, cfg)
             st.data["frame_samples"] = samples
             st.data["failures"] = [c.name for c in report.failures()]

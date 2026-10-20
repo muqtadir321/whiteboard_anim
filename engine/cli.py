@@ -38,7 +38,21 @@ def build_overrides(args) -> dict:
         b = parse_bool(flag)
         if b is not None:
             o[section][key] = b
+    topic = getattr(args, "topic_dir", "")
+    if topic:
+        # A topic folder holds everything for one video: <lang>.txt, audio/<lang>.*, evidence/
+        o["languages"] = {key: {"script_path": f"{topic}/{key}.txt", "audio_path": f"{topic}/audio/{key}.mp3"} for key in LANGUAGE_KEYS}
+        o["animation"] = {"style": "explainer"}
     return {k: v for k, v in o.items() if v}
+
+
+def topic_dir(args, repo: Path) -> Path | None:
+    if not getattr(args, "topic_dir", ""):
+        return None
+    path = (repo / args.topic_dir).resolve()
+    if not path.is_dir() or repo.resolve() not in path.parents:
+        raise ConfigError(f"Topic folder not found inside the repository: {args.topic_dir}")
+    return path
 
 
 def explicit_paths(args) -> dict:
@@ -55,6 +69,7 @@ def add_common(p):
         p.add_argument(f"--{key.replace('_', '-')}-script", dest=f"{key}_script", default="")
         p.add_argument(f"--{key.replace('_', '-')}-audio", dest=f"{key}_audio", default="")
     p.add_argument("--config", default="")
+    p.add_argument("--topic-dir", default="", help="topic folder from 'Prepare Topic' (explainer style with evidence)")
     p.add_argument("--target-languages", default="auto")
     p.add_argument("--output-format", default="")
     p.add_argument("--quality", default="", choices=["", "fast", "standard", "high"])
@@ -80,13 +95,16 @@ def cmd_run(args) -> int:
     try:
         cfg = load_config(args.config or None, build_overrides(args), repo)
         targets = parse_target_languages(args.target_languages)
+        topic = topic_dir(args, repo)
     except ConfigError as exc:
         print(f"::error::{exc}")
         return 2
     out_root = Path(args.output or (repo / cfg["project"]["output_directory"])).resolve()
     tmp_root = (repo / cfg["project"]["temporary_directory"]).resolve()
     out_root.mkdir(parents=True, exist_ok=True)
-    inputs = discover_inputs(cfg, explicit_paths(args), repo)
+    inputs = discover_inputs(cfg, explicit_paths(args), repo, aliases=topic is None)
+    if topic:
+        _log(f"topic folder: {topic.relative_to(repo)} (explainer style)")
     _log("input discovery: " + json.dumps({k: {"script": v.script_source, "audio": v.audio_source, "errors": v.errors} for k, v in inputs.items()}))
     results = []
     topic_script = None
@@ -119,7 +137,8 @@ def cmd_run(args) -> int:
             r = LanguageResult(key, li.code, Status.PERMANENT_FAILURE, "requested, but no script or voice-over was found")
             results.append(r)
             continue
-        job = LanguageJob(li, cfg, out_root, tmp_root, _log, script_text_override=override, reference_voice=reference, cloner=cloner)
+        job = LanguageJob(li, cfg, out_root, tmp_root, _log, script_text_override=override, reference_voice=reference, cloner=cloner,
+                          evidence_dir=topic / "evidence" if topic else None)
         r = job.run()
         results.append(r)
         _log(f"{key}: {r.status.value} - {r.message}")
@@ -147,7 +166,7 @@ def cmd_deps(args) -> int:
     to install heavy packages only when necessary)."""
     repo = Path(args.repo_root).resolve()
     cfg = load_config(args.config or None, build_overrides(args), repo)
-    inputs = discover_inputs(cfg, explicit_paths(args), repo)
+    inputs = discover_inputs(cfg, explicit_paths(args), repo, aliases=not getattr(args, "topic_dir", ""))
     targets = parse_target_languages(args.target_languages)
     need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False, "alignment": False}
     from .voice_clone import resolve_reference

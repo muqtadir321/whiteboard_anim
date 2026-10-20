@@ -7,3 +7,4 @@ tmp/
 .model-cache/
 engine_args.txt
 *.mp4
+.DS_Store

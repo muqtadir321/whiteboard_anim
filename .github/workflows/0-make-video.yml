@@ -6,6 +6,10 @@ name: Generate Whiteboard Video
 on:
   workflow_dispatch:
     inputs:
+      topic_dir:
+        description: "Topic folder from 'Prepare Topic' (e.g. input/topics/2026-10-20-house-prices). Blank = classic whiteboard from input/"
+        required: false
+        default: ""
       english_script:
         description: "English script path (blank = input/scripts/english.txt)"
         required: false
@@ -90,6 +94,7 @@ on:
         default: "true"
   workflow_call:
     inputs:
+      topic_dir: {type: string, required: false, default: ""}
       english_script: {type: string, required: false, default: ""}
       english_audio: {type: string, required: false, default: ""}
       urdu_script: {type: string, required: false, default: ""}
@@ -121,6 +126,7 @@ jobs:
     timeout-minutes: 150
     env:
       # Inputs are passed through the environment (never interpolated into shell code).
+      INPUT_TOPIC_DIR: ${{ inputs.topic_dir }}
       INPUT_ENGLISH_SCRIPT: ${{ inputs.english_script }}
       INPUT_ENGLISH_AUDIO: ${{ inputs.english_audio }}
       INPUT_URDU_SCRIPT: ${{ inputs.urdu_script }}
@@ -171,6 +177,7 @@ jobs:
           python - <<'PY'
           import os, shlex
           pairs = [
+              ("--topic-dir", "INPUT_TOPIC_DIR"),
               ("--english-script", "INPUT_ENGLISH_SCRIPT"), ("--english-audio", "INPUT_ENGLISH_AUDIO"),
               ("--urdu-script", "INPUT_URDU_SCRIPT"), ("--urdu-audio", "INPUT_URDU_AUDIO"),
               ("--roman-urdu-script", "INPUT_ROMAN_URDU_SCRIPT"), ("--roman-urdu-audio", "INPUT_ROMAN_URDU_AUDIO"),

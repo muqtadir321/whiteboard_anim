@@ -78,6 +78,57 @@ preserved in the visuals.
 
 ---
 
+## Explainer videos with real screenshots (topic → video)
+
+A second style for Shorts and Facebook Reels. The narration is written on the board word by
+word as it is spoken, with amounts big in red (or green for low/falling values). It is backed
+by real proof: headline cards, the actual article page with the spoken sentence highlighted,
+a data chart with a marker on the date mentioned, organisation logos, and colourful doodle
+icons that pop in. It works in two steps, both free on GitHub Actions:
+
+1. **Actions → Prepare Topic (explainer video) → Run workflow.** Type a topic idea (for
+   example `why buying a house got harder`). The workflow:
+   - searches Google News (RSS) and takes headless-Chromium screenshots of the best
+     articles it can open (official and non-paywalled sites first)
+   - downloads matching FRED data (mortgage rates, home prices, inflation and so on)
+   - drafts an English and a Roman Urdu script with a free local AI model (Qwen 2.5
+     via Ollama, which runs on the GitHub runner, so nothing is installed on your computer)
+
+   Everything is committed to `input/topics/<date>-<topic>/`.
+2. **Review** that folder:
+   - Edit `english.txt` / `roman_urdu.txt`.
+   - Replace every `{VERIFY: ...}`. These mark numbers that were not found in the evidence,
+     and rendering refuses to start while one is left.
+   - Look at the screenshots in `evidence/`.
+   - Read `notes.md`. It lists every quotable sentence and chart value.
+   - Optionally add your own voice-over as `audio/english.mp3` / `audio/roman_urdu.mp3`.
+     Without one, the narration is generated in your cloned voice from `input/voice/reference.*`.
+3. **Actions → Generate Whiteboard Video** with `topic_dir` set to that folder. Each language
+   folder in the artifact also contains `sources.txt`, ready to paste into the video description.
+
+Visuals are chosen with tags in the script, placed right before the words they belong to:
+
+```
+[news] Mortgage rates just crossed seven percent again.
+[chart MORTGAGE30US 2021] Back in 2021, buyers locked in rates around three percent.
+[logo "Fannie Mae"] The agency that regulates Fannie Mae measured it.
+[article 1 "the probability of sale is decreased by 18.1%"] For every point rates rise, the chance of selling drops by 18.1%.
+[icon house] Fewer sellers means fewer homes.
+```
+
+A screenshot stays up until its paragraph ends or the next tag replaces it. The quoted words
+of an `[article N "..."]` tag must be copied from the article (see `notes.md`). Otherwise the
+page is still shown, just without the highlight, and the run reports it. Sentences without a
+tag get doodle icons picked from what is said. The same `video.mp4` (1080×1920) works for
+YouTube Shorts and Facebook Reels.
+
+Screenshots and logos belong to their owners. They are shown as evidence for commentary, a
+small "Source: …" label is drawn on article screenshots, and `sources.txt` lists every source.
+Check each source before you publish. Some news sites block automated browsers; those are
+skipped and the next article is tried.
+
+---
+
 ## Find viral finance topics (research workflow)
 
 **Actions → Research Viral Finance Topics → Run workflow.** In a few minutes it collects what is
@@ -256,6 +307,11 @@ sudo apt-get install ffmpeg espeak-ng libcairo2-dev pkg-config
 pip install -r requirements-lock.txt
 python -m pytest            # unit, integration and end-to-end tests
 python -m engine.cli run    # same as the workflow
+
+# explainer topics
+pip install playwright==1.48.0 && python -m playwright install chromium
+python -m engine.explainer.prepare --topic "why buying a house got harder"   # uses Ollama if running
+python -m engine.cli run --topic-dir input/topics/<date>-<topic>
 ```
 
 ## Known limitations

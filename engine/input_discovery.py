@@ -97,7 +97,7 @@ def _find(stems: list[str], exts: tuple[str, ...], repo_root: Path, max_bytes: i
     return None
 
 
-def _resolve(kind: str, key: str, explicit: str | None, configured: str | None, repo_root: Path, li: LanguageInputs):
+def _resolve(kind: str, key: str, explicit: str | None, configured: str | None, repo_root: Path, li: LanguageInputs, aliases: bool = True):
     exts = SCRIPT_EXTENSIONS if kind == "script" else AUDIO_EXTENSIONS
     limit = MAX_SCRIPT_BYTES if kind == "script" else MAX_AUDIO_BYTES
     if explicit and explicit.strip():
@@ -122,14 +122,18 @@ def _resolve(kind: str, key: str, explicit: str | None, configured: str | None, 
         found = _find([stem], exts, repo_root, limit)
         if found:
             return found, "config-extension-variant"
-    aliases = SCRIPT_ALIASES[key] if kind == "script" else AUDIO_ALIASES[key]
-    found = _find(aliases, exts, repo_root, limit)
+    if not aliases:
+        return None, "none"
+    stems = SCRIPT_ALIASES[key] if kind == "script" else AUDIO_ALIASES[key]
+    found = _find(stems, exts, repo_root, limit)
     if found:
         return found, "alias"
     return None, "none"
 
 
-def discover_inputs(cfg: dict, explicit: dict[str, dict[str, str]] | None, repo_root: Path) -> dict[str, LanguageInputs]:
+def discover_inputs(cfg: dict, explicit: dict[str, dict[str, str]] | None, repo_root: Path, aliases: bool = True) -> dict[str, LanguageInputs]:
+    """`aliases=False` (topic folders): only the configured paths count, so files of an
+    unrelated video in the default locations are never picked up."""
     explicit = explicit or {}
     result = {}
     for key in LANGUAGE_KEYS:
@@ -140,7 +144,7 @@ def discover_inputs(cfg: dict, explicit: dict[str, dict[str, str]] | None, repo_
             result[key] = li
             continue
         ex = explicit.get(key, {})
-        li.script_path, li.script_source = _resolve("script", key, ex.get("script"), lc["script_path"], repo_root, li)
-        li.audio_path, li.audio_source = _resolve("audio", key, ex.get("audio"), lc["audio_path"], repo_root, li)
+        li.script_path, li.script_source = _resolve("script", key, ex.get("script"), lc["script_path"], repo_root, li, aliases)
+        li.audio_path, li.audio_source = _resolve("audio", key, ex.get("audio"), lc["audio_path"], repo_root, li, aliases)
         result[key] = li
     return result
