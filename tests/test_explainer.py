@@ -166,6 +166,16 @@ def test_layout_stages_follow_cues(tmp_path, ex_cfg):
     assert all(is_doodle(sp.name) for sc in lay.scenes for sp in sc.sprites)
 
 
+def test_last_evidence_ends_with_its_sentence(tmp_path, ex_cfg):
+    topic = make_topic(tmp_path)
+    with open(topic / "english.txt", "a") as f:
+        f.write("\nThat is why so many owners stay put. Nobody wants to give up a cheap loan.\n")
+    _, lay = build_layout(topic, ex_cfg)
+    last = lay.stages[-1]
+    assert last.kind == "article" and last.exit  # untagged sentences after it get doodles, not the page
+    assert last.t_out < lay.scenes[-1].end - 2.0
+
+
 def test_highlight_and_number_colours_are_painted(tmp_path, ex_cfg):
     r, lay = build_layout(make_topic(tmp_path), ex_cfg)
     frame = cairo.ImageSurface(cairo.FORMAT_RGB24, r.width, r.height)
