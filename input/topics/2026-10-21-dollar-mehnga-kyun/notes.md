@@ -14,42 +14,29 @@
 - `[article N "exact words"]` article screenshot with those words highlighted
 - `[chart ID 2021]` data chart with a marker on a date
 - `[logo "Name"]` organisation logo
-- `[icon house]` force a doodle (house, bank, document, money_bag, rate_badge, lock, car, …)
+- `[icon oil-drum]` a drawing on the next word: any Fluent Emoji name (oil-drum, fuel-pump, mobile-phone, pill, house, …, see icon-sets.iconify.design/fluent-emoji-flat) or a doodle (house, bank, document, money_bag, rate_badge, lock, …)
 
 ## Check these
 
+- urdu: meaning match 0.00 (chosen by qwen2.5:7b): [article 2 "✍️ Anshul Majumdar looks at the factors driving 
+- urdu: meaning match 0.05 (chosen by qwen2.5:7b): [article 1 "The move comes as the rupee remains under pressu
+- urdu: meaning match 0.02 (chosen by qwen2.5:7b): [chart DCOILBRENTEU 2026-10-14]
+- urdu: meaning match 0.21 (chosen by qwen2.5:7b): [article 1 "The currency’s weakness has kept pressure on pol
 - urdu: [news] -> ڈالر مہنگا کیوں ہوتا ہے؟
 - urdu: [chart DEXINUS 2026-10-16] -> اس سال بھارتی روپیہ تاریخ کی سب سے نچلی سطح پر پہنچا، تقریبا
+- urdu: [article 2 "✍️ Anshul Majumdar looks at the factors driving the rupee"] -> لیکن آخر ڈالر مہنگا ہوتا کیوں ہے؟
+- urdu: [article 1 "The move comes as the rupee remains under pressure despite"] -> جب ڈالر کی مانگ زیادہ ہو اور ڈالر کم ہوں، تو ڈالر مہنگا ہو ج
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> اسی سال تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
+- urdu: [chart DCOILBRENTEU 2026-10-14] -> پیٹرول، موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگ
+- urdu: [article 1 "The currency’s weakness has kept pressure on policymakers as India"] -> ڈالر کی قیمت ہم کنٹرول نہیں کر سکتے۔
 
 Placeholders to fill: **0**
 
 ## Evidence
 
-### Article 1: India’s Forex Reserves Hit Record $729.3 Billion on Strong Dollar Inflows, RBI Gains Firepower to Support Rupee
-Gulf News — https://gulfnews.com/business/economy/indias-forex-reserves-hit-record-7293-billion-on-strong-dollar-inflows-1.500655519
-![article 1](evidence/article_1.png)
-
-Sentences you can quote:
-
-- According to data released by the RBI on Friday, the country’s forex reserves increased by $12.4 billion during the week, surpassing the previous record of $728.5 billion registered in February.
-- The measures have attracted around $72.8 billion in inflows through August 21, helping strengthen India’s external position and reducing the risk of a third consecutive year of a deficit in the country’s broadest measure of capital flows.
-- The Indian currency has recovered around 1.7 per cent from its record low reached in May, but remains under pressure, particularly because of higher crude oil prices and the country’s heavy dependence on imported fuel.
-- The cost of raising these funds has become particularly high as US interest rates remain significantly above the levels seen in 2013, when the RBI last turned to overseas residents to shore up foreign exchange reserves.
-- The annual cost of this arrangement could be around $5.7 billion, according to estimates cited in the analysis.
-- Diaspora deposit push swells reserves, giving RBI more room to shield the rupee
-- How much is the annual cost of RBI’s diaspora deposit program?
-- Why did RBI advance the closure of the diaspora deposit program?
-- The sharp rise in reserves has been supported by strong foreign currency inflows following measures introduced by the central bank in June to attract overseas capital.
-- These included a special deposit programme aimed at overseas Indians and other non-resident customers.
-- The increase in reserves also gives the RBI greater room to intervene in the foreign exchange market and support the rupee if necessary.
-- However, the strategy of attracting overseas deposits comes at a significant cost for the central bank.
-- Under the special diaspora deposit programme, the RBI is bearing the hedging costs incurred by banks, allowing lenders to offer more attractive interest rates to overseas customers.
-- Analysts have pointed out that the RBI generally invests the dollars raised through such programmes in relatively low-yielding assets.
-
-### Article 2: India Moves to Support Rupee as Currency Nears Record Low Against US Dollar
+### Article 1: India Moves to Support Rupee as Currency Nears Record Low Against US Dollar
 Sada Elbalad English — https://see.news/india-moves-to-support-rupee-as-currency-nears-record-low-against-us-dollar
-![article 2](evidence/article_2.png)
+![article 1](evidence/article_1.png)
 
 Sentences you can quote:
 
@@ -67,6 +54,27 @@ Sentences you can quote:
 - The currency’s weakness has kept pressure on policymakers as India seeks to limit volatility in the foreign-exchange market.
 - The RBI’s latest intervention focuses on oil marketing companies, whose dollar requirements are linked to payments for imported crude and other energy supplies.
 - Meeting part of their daily dollar demand directly through the central bank could reduce their immediate need to purchase foreign currency in the spot market.
+
+### Article 2: Rupee edges higher to 95.57 against dollar as crude prices ease - CNBC TV18
+LinkedIn — https://www.linkedin.com/posts/cnbc-tv18_rupee-edges-higher-to-9557-against-dollar-activity-7508412042802888704-3d3e
+![article 2](evidence/article_2.png)
+
+Sentences you can quote:
+
+- 💱 The rupee edges 2 paise higher to 95.57 against the US dollar as crude prices ease.
+- https://lnkd.in/daKZ7Dkn #Rupee #Forex #CrudeOil
+- 💱 Rupee opens higher at 95.81 against the dollar, tracking easing crude prices and foreign portfolio flows.
+- 🛢️ Brent crude fell 2% to $101.70 a barrel, while RBI measures are supporting capital inflows.
+- https://lnkd.in/dwDmf6Ts #Rupee #Dollar #Markets
+- 💱 #Rupee slips to ₹94.87 against the #dollar as rising crude prices and #WestAsia tensions weigh on the #currency.
+- 💱 The #IndianRupee weakened 15 paise to 95.25 against the US dollar, weighed down by elevated crude oil prices and global risk aversion.
+- 📈 #Nifty holds above 24,000 as rupee hits a 2-month high.
+- #RupeeCheck | The #rupee opened lower at 95.54 against dollar.
+- #USDINR #ForexMarket #IndianRupee https://lnkd.in/eC8asN4b
+- 📉 Indian equities end lower as the Nifty snaps a four-session winning run, falling 85 points to 23,329.
+- 💱 Indian rupee gains 22 paise to open at ₹95.71 against the US dollar.
+- 📉 Retreating crude oil prices and expected foreign inflows from the $2.3-billion NSE IPO supported the currency.
+- The #rupee traded in a tight range around 90.35 per dollar, supported by RBI intervention, even as global risk aversion and India–US trade uncertainty capped gains in early trade.
 
 ### Chart DEXINUS: Indian Rupees to One U.S. Dollar (exchange rate)
 Board of Governors of the Federal Reserve System via FRED — https://fred.stlouisfed.org/series/DEXINUS

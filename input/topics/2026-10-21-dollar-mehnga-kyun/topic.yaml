@@ -1,6 +1,6 @@
 topic: rupee record low against dollar oil prices
 region: PK
-created: '2026-10-21T07:04:17+00:00'
+created: '2026-10-21T11:13:38+00:00'
 model: none (your own script)
 languages:
 - urdu
@@ -23,14 +23,13 @@ sources:
   publisher: Newstrack English
   url: https://news.google.com/rss/articles/CBMingFBVV95cUxOWXpPemVJOGNRbktWbUhkWDI2dEdmZEpvRkVOd0p4cWt4Ul9iLVpBc3RKeUV1aTBfSFo1NUt6WVY1dXJFTGdsWE1HVTdSOW5OcUNpazljSWVZWFlaYjY4Tk5TcGNlbEYxQjFLY01fcWhac1RUcjdLdHB5ZnI5ZWdSSFFtem1QSVhGa1hjNElYdnZYeUZvUWZZZG43QlNwQdIBowFBVV95cUxQMXlKNnJjbmtzN2VUbUljRGlybV9adnlMeWdPWlJ1aGN4bEJESXVCM19Vek9GYzJoNk5jWWZoZFdGRmpJdzVPTGtXRkZoNnpTWHhxQzJPczZnS3NRRl9wZDBIZjJSbUpqZjQ2eTR4WU9XM2ZVYjZlVWU0VXNvODJPTzd6ZFpTbUwxOEtEQ1l5cDA1UXN5MER6QlBPVEUtdU9oQ3dN?oc=5
 - kind: article
-  title: India’s Forex Reserves Hit Record $729.3 Billion on Strong Dollar Inflows,
-    RBI Gains Firepower to Support Rupee
-  publisher: Gulf News
-  url: https://gulfnews.com/business/economy/indias-forex-reserves-hit-record-7293-billion-on-strong-dollar-inflows-1.500655519
-- kind: article
   title: India Moves to Support Rupee as Currency Nears Record Low Against US Dollar
   publisher: Sada Elbalad English
   url: https://see.news/india-moves-to-support-rupee-as-currency-nears-record-low-against-us-dollar
+- kind: article
+  title: Rupee edges higher to 95.57 against dollar as crude prices ease - CNBC TV18
+  publisher: LinkedIn
+  url: https://www.linkedin.com/posts/cnbc-tv18_rupee-edges-higher-to-9557-against-dollar-activity-7508412042802888704-3d3e
 - kind: chart
   title: Indian Rupees to One U.S. Dollar (exchange rate)
   publisher: Board of Governors of the Federal Reserve System via FRED
