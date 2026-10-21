@@ -1,25 +1,25 @@
-[curious] [news] [icon money-bag] [icon money-mouth-face] ڈالر مہنگا کیوں ہوتا ہے؟ آپ نے کچھ نہیں کیا، پھر بھی آپ [icon money-mouth-face] کا [icon money-bag] پیسہ ہر سال چھوٹا ہوتا جا رہا ہے۔
+[curious] ڈالر مہنگا کیوں ہوتا ہے؟ آپ نے کچھ نہیں کیا، پھر بھی آپ کا پیسہ ہر سال چھوٹا ہوتا جا رہا ہے۔
 
-[measured] [chart DEXINUS 2026-10-16] اس سال بھارتی روپیہ تاریخ کی سب سے نچلی سطح پر پہنچا، تقریباً پچانوے [icon money-mouth-face] روپے کا ایک [icon dollar-banknote] ڈالر۔ اور پاکستان میں ایک ڈالر تقریباً [icon hundred-points] دو سو ستتر [icon money-mouth-face] روپے کا ہے۔
+[measured] اس سال بھارتی روپیہ تاریخ کی سب سے نچلی سطح پر پہنچا، تقریباً پچانوے روپے کا ایک ڈالر۔ اور پاکستان میں ایک ڈالر تقریباً دو سو ستتر روپے کا ہے۔
 
-[pause] [curious] لیکن آخر [icon money-bag] [icon money-mouth-face] ڈالر مہنگا ہوتا کیوں ہے؟ [icon om] اس کی تین [icon mammoth] بڑی وجوہات ہیں۔
+[pause] [curious] لیکن آخر ڈالر مہنگا ہوتا کیوں ہے؟ اس کی تین بڑی وجوہات ہیں۔
 
-[confident] [icon om] پہلی وجہ۔ ہم باہر سے [icon plus] زیادہ [icon shopping-cart] خریدتے ہیں، اور باہر کم بیچتے ہیں۔ [article 1 "The RBI’s latest intervention focuses on oil marketing companies, whose"] تیل، [icon slot-machine] [icon mobile-phone] موبائل، مشینیں، سب ڈالر میں آتی ہیں۔ [icon currency-exchange] جب ڈالر کی [icon crescent-moon] مانگ زیادہ ہو اور ڈالر کم ہوں، تو ڈالر مہنگا ہو جاتا ہے۔
+[confident] پہلی وجہ۔ ہم باہر سے زیادہ خریدتے ہیں، اور باہر کم بیچتے ہیں۔ تیل، موبائل، مشینیں، سب ڈالر میں آتی ہیں۔ جب ڈالر کی مانگ زیادہ ہو اور ڈالر کم ہوں، تو ڈالر مہنگا ہو جاتا ہے۔
 
-[confident] دوسری وجہ۔ [icon oil-drum] تیل۔ جب دنیا میں تیل مہنگا ہوتا ہے، تو ہمیں [icon oil-drum] وہی تیل خریدنے کے لیے [icon plus] زیادہ ڈالر چاہیے ہوتے ہیں۔ [chart DCOILBRENTEU 2026-10-14] [icon hundred-points] اسی سال [icon oil-drum] تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
+[confident] دوسری وجہ۔ تیل۔ جب دنیا میں تیل مہنگا ہوتا ہے، تو ہمیں وہی تیل خریدنے کے لیے زیادہ ڈالر چاہیے ہوتے ہیں۔ اسی سال تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
 
-[confident] تیسری وجہ۔ [icon globe-showing-americas] امریکہ میں شرحِ سود [icon megaphone] اونچی ہے۔ اس لیے بڑے سرمایہ کار اپنا [icon money-bag] پیسہ [icon globe-showing-americas] ہمارے ملکوں سے نکال کر امریکہ لے جاتے ہیں، جہاں انہیں زیادہ منافع ملتا ہے۔
+[confident] تیسری وجہ۔ امریکہ میں شرحِ سود اونچی ہے۔ اس لیے بڑے سرمایہ کار اپنا پیسہ ہمارے ملکوں سے نکال کر امریکہ لے جاتے ہیں، جہاں انہیں زیادہ منافع ملتا ہے۔
 
-[pause] [serious] اور اس کا اثر سیدھا آپ [icon purse] [icon clutch-bag] کی جیب پر پڑتا ہے۔ [chart DCOILBRENTEU 2026-10-14] [icon fuel-pump] پیٹرول، [icon mobile-phone] موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگا ہو جاتا ہے۔
+[pause] [serious] اور اس کا اثر سیدھا آپ کی جیب پر پڑتا ہے۔ پیٹرول، موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگا ہو جاتا ہے۔
 
-[pause] [measured] تو آپ کیا کر سکتے [icon om] ہیں؟
+[pause] [measured] تو آپ کیا کر سکتے ہیں؟
 
-[calm] پہلا۔ ساری بچت صرف [icon money-mouth-face] [icon money-bag] نقد میں نہ رکھیں۔ کچھ حصہ ایسی چیزوں میں رکھیں جن کی قیمت [icon mantelpiece-clock] [icon timer-clock] وقت کے ساتھ بڑھتی ہے۔
+[calm] پہلا۔ ساری بچت صرف نقد میں نہ رکھیں۔ کچھ حصہ ایسی چیزوں میں رکھیں جن کی قیمت وقت کے ساتھ بڑھتی ہے۔
 
-[calm] [icon plus] دوسرا۔ کوئی ایسا ہنر سیکھیں جس سے آپ [icon dollar-banknote] ڈالر میں کما سکیں، جیسے فری لانسنگ۔ [icon dollar-banknote] جب ڈالر مہنگا ہو، تو آپ کی کمائی بھی [icon plus] بڑھ جاتی ہے۔
+[calm] دوسرا۔ کوئی ایسا ہنر سیکھیں جس سے آپ ڈالر میں کما سکیں، جیسے فری لانسنگ۔ جب ڈالر مہنگا ہو، تو آپ کی کمائی بھی بڑھ جاتی ہے۔
 
-[calm] تیسرا۔ [icon minus] غیر ضروری امپورٹڈ چیزوں پر خرچ کم کریں۔
+[calm] تیسرا۔ غیر ضروری امپورٹڈ چیزوں پر خرچ کم کریں۔
 
-[pause] [thoughtful] [icon currency-exchange] [icon dollar-banknote] ڈالر کی قیمت ہم کنٹرول نہیں کر سکتے۔ [article 1 "The RBI also directed market participants to maintain a foreign-exchange"] لیکن اپنے [icon money-bag] [icon money-mouth-face] پیسے کی حفاظت ضرور کر سکتے ہیں۔
+[pause] [thoughtful] ڈالر کی قیمت ہم کنٹرول نہیں کر سکتے۔ لیکن اپنے پیسے کی حفاظت ضرور کر سکتے ہیں۔
 
-[soft] یہ مالی مشورہ [icon minus] نہیں۔ [icon currency-exchange] ڈالر کا ریٹ روز بدلتا ہے، اس لیے تازہ ریٹ ضرور [icon check-mark] چیک کریں۔
+[soft] یہ مالی مشورہ نہیں۔ ڈالر کا ریٹ روز بدلتا ہے، اس لیے تازہ ریٹ ضرور چیک کریں۔
