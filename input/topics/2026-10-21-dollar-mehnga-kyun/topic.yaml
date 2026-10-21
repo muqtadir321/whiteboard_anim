@@ -1,27 +1,28 @@
 topic: rupee record low against dollar oil prices
 region: PK
-created: '2026-10-21T11:13:38+00:00'
+created: '2026-10-21T11:26:54+00:00'
 model: none (your own script)
 languages:
 - urdu
 sources:
 - kind: news
+  title: Rupee jumps to 94.50 against US dollar, hits six-week high
+  publisher: The Times of India
+  url: https://news.google.com/rss/articles/CBMi-AFBVV95cUxOcUpfQ2Z4TW94V0p2ZGlFVFhBTVNiMl9YcjdtbmZXYjcxWTdDaWVFYS1UbzFvbTJQMTBPZ0ZvN2JhZURXNlFRTmhfZWx3ZExoTlFQNmhlbUx1MjNTOWVpcExrS2U4Tzk4MFh3NF85YS1jSENhd3pVOGlkZXRsRWhHS3Y2LWxMdXVreGVXNkUxUDgwSWtqSHZEcy15ek5XUUk1UUtheXhOTEM2VnQycUlFcXhlVER2RDJOX3ZOUVl6TmR6VGc3Zk9KWkVaQk1Ydmg2eEJBZ1VoR1FoTkt0ZzZkY3MxYlVIYlQxTk1Pa2RxQUh5bV94V3djWNIB_gFBVV95cUxNMkIzaDNBVEZTZkcwZUdsM3B5emk2dFExTTRHTDh1UGVNUjFCb1cxSGhobGJwcVlFVWJfMHFiaHg3UDlEX3lFQS11VU1GeHhUUUJTSVBaaFA5bmVaRHd4dXZma25QTjZmQXJneTlhdXlpc2E0U1lybkFTTzhma1Nnd2dUZTRpREtDX1g4Si03OTNLMkxYQVFjZTVOVGpfUEF5QkU4eDRFM0dreHdObVcyTkd0VElYNzlBZ1pabElZRVIxNmxuU1Y4a1Y1cjlwY0V3c3EyZVFqQWEwSUh6SU9FMUFHSUxjMWg5bVdNUFRHOU9OOFFCUU1iZ1FiQ3pLQQ?oc=5
+- kind: news
+  title: Rupee records gain against US dollar
+  publisher: Business Recorder
+  url: https://news.google.com/rss/articles/CBMiUEFVX3lxTE5ZUWN2dF9mVkpCOTJPNnljdFB4N3g1TXg4TW9LbHRmaVFTcHVIbFV4WndjTFNqcks2dWVRSWswQmNmaUNyb1JJbzZrVFlMeEty0gFWQVVfeXFMTUNFcTNqUVhQSktSdzQxV1BLLW5WcGhfUHJUTGc4a09jWFkwRThpT3hlQ0lJX0owZlc5Q2hUd3N5bTkzTGJiWDBFNEIwbE1KdXAtWnFLbGc?oc=5
+- kind: news
+  title: 'Rupee at 94.88 against dollar: What is driving the currency and what to
+    watch next'
+  publisher: CNBC TV18
+  url: https://news.google.com/rss/articles/CBMiwwFBVV95cUxPMjl6Z1l4TVFuTkNNYU4tRC0ydlR4SEhRdWc1QlF3aVZnTy1OdGRaOWJtVWFNVVo2Y052UjMtQWZOVTEwenh5OEY1cjZybll0bWV1dzFHQmNOQmJ0bS0yWm5yQUFzZy1VUWNjWFg0Z1hGLXdjdGZmTXdxMVFJYjN1N0Z6enE4S25JdEZ2eWRpWGlNQVdGcFVoc3dkaEtqN1VRY3AxdldMQ21ueGIwR1FUNDlsWlljdzJMWVhZMFpiR1lMWDjSAcgBQVVfeXFMTnd1a2J2TFBKaktoTkVOUXlQT3g5RENQTl96REpiOVhWTndabTlicllsb2NZcXQ1amt1LTYyVjFWVWEwdFJQSGV4b1RDaUZLWFEycmZxNmpWVF83MEhIaXQzQmNWMmhsSEllZnNWYzhnWWNaY1VUa1RyTUFIZzRULWNQOWRLYzdHUWFLeThSZmdhWnd5bjJOM3pybEZsVGNHTUc0NENzeDFjaURFWmtodXh3RXFUQVJkODhzTV8wTEJwa3p6ek5iTVA?oc=5
+- kind: news
   title: 'Rupee in Freefall: Slips Past 94 vs Dollar; Indian Currency Falls to Record
     Low, What''s Behind Crash?'
   publisher: Goodreturns
   url: https://news.google.com/rss/articles/CBMi2AFBVV95cUxNYnd3bmRDVnpvblBxS2R0VEFFdHNld29yMnlRR3VELWtFbWhYaDVrWDY5M0lWV1ZlWkNFejhiRm5zNDVtazJwYjVXVkprMnhmV2tnbXJSb0d6SG4tNlhnRG9UcWg4c3otQ2oyY3J6N09OX1RfZVIxUFRncnNCTzVKVXhYUnB5alJUNEF0azNmTzNpdmphVE0ybWpnakFmU2ttOE1VZXU2c19IZmpWNmFVUkJMaHJtbnhpcER4OE14SUZMYnNXV2NhWVJrQThrTXFfbDJfcmNVU2U?oc=5
-- kind: news
-  title: Rupee Appreciates by 49 Paise to 95.28 Against Dollar on RBI Measures
-  publisher: Deccan Chronicle
-  url: https://news.google.com/rss/articles/CBMiuAFBVV95cUxOMVUxaUMzdVBOREhVcGVld1YxbmhjV2g4c1RyVDhZSm9YcFBkM0dOZXRwd1g5SFh3VmxzMW5OU0xQQV9jNGQ4V2s1MTdrNWR5MnUtNnM1QzNfSzdIbUFtVnFwbEQ1M1R2Z1pSMXQ3Z1padXpjaFJRVUFxbnkwbzBmVXlCRkpGMUxybGFOazBicG1TMzJ5YlNnX0NaM1ZMNjE4QkMzNjQ0M2pCQ21pbW52LVFPZ0phNTNy0gG-AUFVX3lxTE1Kc29mdjlxa3QweWlNX0ZQdzRUSFlrVGtqUnRsWDF4WE5YdkdxWnpsODZabDVudWFjOHFHdXhBQzh6bHhOcU1uekZoYUliWVppbHBOMkZ5dHg3ckxORnlTVGVtdVhmMW1lN2Fsb2J0enBsSmczczR2amg0RWtEY3h5bmIzT2hQYWd1NEJlV0tGZUhKNEJGbWtNSVFlLTgwd2pFSnN1YTNCejJtdzFmTU5pZVpYenRnNDl4YTkwUlE?oc=5
-- kind: news
-  title: India’s rupee recovery faces test from oil prices, capital outflows
-  publisher: The Business Times
-  url: https://news.google.com/rss/articles/CBMitAFBVV95cUxNVkkteXpMRFFTWVpKZFlzUl9tRXdzZUhMRndkMkZ4REFObGxLT1h6aDhuc2U3VW04aU5LTnh3a3hTalRKMlMyMDcxa2hFU1JlcUU3Yjkzd1d0cEJFc0hBYzMxaGxiQ2d6cklqY25scEp5aTVyTTBVNVRmYWFxdUFJSzFLb0c1cVJUTzJKOF9TVmVaSExhUm5SaG1HSW9kNXNBNTBURFRkeE9yR2NQVHE4ck5LQ1I?oc=5
-- kind: news
-  title: Rupee Surges 1% Against Dollar as RBI Steps In to Ease Currency Pressure
-  publisher: Newstrack English
-  url: https://news.google.com/rss/articles/CBMingFBVV95cUxOWXpPemVJOGNRbktWbUhkWDI2dEdmZEpvRkVOd0p4cWt4Ul9iLVpBc3RKeUV1aTBfSFo1NUt6WVY1dXJFTGdsWE1HVTdSOW5OcUNpazljSWVZWFlaYjY4Tk5TcGNlbEYxQjFLY01fcWhac1RUcjdLdHB5ZnI5ZWdSSFFtem1QSVhGa1hjNElYdnZYeUZvUWZZZG43QlNwQdIBowFBVV95cUxQMXlKNnJjbmtzN2VUbUljRGlybV9adnlMeWdPWlJ1aGN4bEJESXVCM19Vek9GYzJoNk5jWWZoZFdGRmpJdzVPTGtXRkZoNnpTWHhxQzJPczZnS3NRRl9wZDBIZjJSbUpqZjQ2eTR4WU9XM2ZVYjZlVWU0VXNvODJPTzd6ZFpTbUwxOEtEQ1l5cDA1UXN5MER6QlBPVEUtdU9oQ3dN?oc=5
 - kind: article
   title: India Moves to Support Rupee as Currency Nears Record Low Against US Dollar
   publisher: Sada Elbalad English

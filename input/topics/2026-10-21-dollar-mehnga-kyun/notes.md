@@ -18,17 +18,15 @@
 
 ## Check these
 
-- urdu: meaning match 0.00 (chosen by qwen2.5:7b): [article 2 "✍️ Anshul Majumdar looks at the factors driving 
-- urdu: meaning match 0.05 (chosen by qwen2.5:7b): [article 1 "The move comes as the rupee remains under pressu
-- urdu: meaning match 0.02 (chosen by qwen2.5:7b): [chart DCOILBRENTEU 2026-10-14]
-- urdu: meaning match 0.21 (chosen by qwen2.5:7b): [article 1 "The currency’s weakness has kept pressure on pol
+- urdu: meaning match 0.20 (chosen by qwen2.5:7b): [article 1 "The RBI’s latest intervention focuses on oil mar
+- urdu: meaning match 0.05 (chosen by qwen2.5:7b): [chart DCOILBRENTEU 2026-10-14]
+- urdu: meaning match 0.19 (chosen by qwen2.5:7b): [article 1 "The RBI also directed market participants to mai
 - urdu: [news] -> ڈالر مہنگا کیوں ہوتا ہے؟
 - urdu: [chart DEXINUS 2026-10-16] -> اس سال بھارتی روپیہ تاریخ کی سب سے نچلی سطح پر پہنچا، تقریبا
-- urdu: [article 2 "✍️ Anshul Majumdar looks at the factors driving the rupee"] -> لیکن آخر ڈالر مہنگا ہوتا کیوں ہے؟
-- urdu: [article 1 "The move comes as the rupee remains under pressure despite"] -> جب ڈالر کی مانگ زیادہ ہو اور ڈالر کم ہوں، تو ڈالر مہنگا ہو ج
+- urdu: [article 1 "The RBI’s latest intervention focuses on oil marketing companies, whose"] -> تیل، موبائل، مشینیں، سب ڈالر میں آتی ہیں۔
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> اسی سال تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> پیٹرول، موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگ
-- urdu: [article 1 "The currency’s weakness has kept pressure on policymakers as India"] -> ڈالر کی قیمت ہم کنٹرول نہیں کر سکتے۔
+- urdu: [article 1 "The RBI also directed market participants to maintain a foreign-exchange"] -> لیکن اپنے پیسے کی حفاظت ضرور کر سکتے ہیں۔
 
 Placeholders to fill: **0**
 
@@ -61,20 +59,16 @@ LinkedIn — https://www.linkedin.com/posts/cnbc-tv18_rupee-edges-higher-to-9557
 
 Sentences you can quote:
 
-- 💱 The rupee edges 2 paise higher to 95.57 against the US dollar as crude prices ease.
 - https://lnkd.in/daKZ7Dkn #Rupee #Forex #CrudeOil
-- 💱 Rupee opens higher at 95.81 against the dollar, tracking easing crude prices and foreign portfolio flows.
-- 🛢️ Brent crude fell 2% to $101.70 a barrel, while RBI measures are supporting capital inflows.
 - https://lnkd.in/dwDmf6Ts #Rupee #Dollar #Markets
-- 💱 #Rupee slips to ₹94.87 against the #dollar as rising crude prices and #WestAsia tensions weigh on the #currency.
-- 💱 The #IndianRupee weakened 15 paise to 95.25 against the US dollar, weighed down by elevated crude oil prices and global risk aversion.
-- 📈 #Nifty holds above 24,000 as rupee hits a 2-month high.
-- #RupeeCheck | The #rupee opened lower at 95.54 against dollar.
-- #USDINR #ForexMarket #IndianRupee https://lnkd.in/eC8asN4b
-- 📉 Indian equities end lower as the Nifty snaps a four-session winning run, falling 85 points to 23,329.
-- 💱 Indian rupee gains 22 paise to open at ₹95.71 against the US dollar.
-- 📉 Retreating crude oil prices and expected foreign inflows from the $2.3-billion NSE IPO supported the currency.
 - The #rupee traded in a tight range around 90.35 per dollar, supported by RBI intervention, even as global risk aversion and India–US trade uncertainty capped gains in early trade.
+- Manisha Gupta explains | #Silver #SilverPrice #SilverPrice https://lnkd.in/gk3_6JVi
+- The currency weakened to 94.90 against the #USDollar as dollar index climbed to a one-year high, overshadowing support from lower crude oil prices.
+- Anshul Majumdar explains what's driving the move and what traders are watching next: https://lnkd.in/dshND4bb
+- Foreign equity outflows, rising #crude oil prices, and a cautious global risk environment kept pressure on the Indian currency.
+- https://lnkd.in/dVYtAQfk #Nifty #StockMarket #Sensex #ITStocks
+- Anshul Majumdar | #RupeeFall #RupeeAtRecordLow #RupeeVsDollar https://lnkd.in/gtmWuSHr
+- Heavy profit-taking and steep margin hikes have triggered volatility, even as long-term fundamentals remain intact.
 
 ### Chart DEXINUS: Indian Rupees to One U.S. Dollar (exchange rate)
 Board of Governors of the Federal Reserve System via FRED — https://fred.stlouisfed.org/series/DEXINUS
