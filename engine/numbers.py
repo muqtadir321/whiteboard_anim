@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .transliteration import UR_ONES  # Urdu words for 0-99
+
 DIGIT_MAP = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹٫٬", "01234567890123456789.,")
 
 EN_UNITS = {
@@ -41,6 +43,7 @@ PS_WORDS = {
     "سل": 100, "زر": 1000, "لک": 100_000, "ويشت": 20, "دېرش": 30, "اويا": 70, "سوه": 100, "زره": 1000, "زرو": 1000, "لکه": 100_000,
     "يو": 1, "درې": 3, "اووه": 7, "شپږ": 6,
 }
+UR_WORDS.update({w: i for i, w in enumerate(UR_ONES) if i and w not in ("نو",)})  # every Urdu number word up to 99
 SCALE_WORDS = {"sau": 100, "hazar": 1000, "hazaar": 1000, "lakh": 100_000, "laakh": 100_000, "crore": 10_000_000, "karor": 10_000_000,
                "arab": 1_000_000_000, "kharab": 100_000_000_000, "ارب": 1_000_000_000, "کھرب": 100_000_000_000,
                "سو": 100, "ہزار": 1000, "لاکھ": 100_000, "کروڑ": 10_000_000, "سل": 100, "زر": 1000, "لک": 100_000,
@@ -74,9 +77,12 @@ class Quantity:
     span: tuple[int, int]
     source: str
     scale_word: str = ""  # "lakh", "million", ... when the source names a large scale
+    label: str = ""  # shown as is (e.g. "4 out of 10")
 
     @property
     def display(self) -> str:
+        if self.label:
+            return self.label
         v = self.value
         num = _fmt(v)
         if self.scale_word:  # written the way it is said: $1 trillion, Rs 51 lakh, 1.33 million
@@ -211,6 +217,17 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
         found.append(Quantity(value, "plain", "", (m.start(), end), text[m.start():end], scale_word))
         taken.append((m.start(), end))
 
+    # 1b. "one and a half million" / "2 and a half lakh"
+    for m in re.finditer(r"\b([a-z]+|\d+)\s+and\s+a\s+half\s+(" + "|".join(LARGE_SCALES) + r")\b", lower):
+        base = EN_UNITS.get(m.group(1)) if not m.group(1).isdigit() else int(m.group(1))
+        if base is None or overlaps(m.start(), m.end()):
+            continue
+        found[:] = [q for q in found if not (m.start() <= q.span[0] < m.end())]
+        taken[:] = [t for t in taken if not (m.start() <= t[0] < m.end())]
+        w = SCALE_NAMES.get(m.group(2), m.group(2))
+        found.append(Quantity((base + 0.5) * LARGE_SCALES[w], "plain", "", (m.start(), m.end()), text[m.start():m.end()], w))
+        taken.append((m.start(), m.end()))
+
     # 2. Number words
     tokens = list(_word_tokens(norm))
     i = 0
@@ -280,7 +297,16 @@ def extract_quantities(text: str, lang: str) -> list[Quantity]:
                 found.append(Quantity(float(value), kind, "", (m.start(), m.end()), text[m.start():m.end()]))
                 taken.append((m.start(), m.end()))
     found.sort(key=lambda q: q.span[0])
-    return found
+    # "four out of ten" is one figure on screen
+    merged: list[Quantity] = []
+    for q in found:
+        if merged and q.kind != "year" and re.fullmatch(r"\s+out\s+of\s+", lower[merged[-1].span[1]:q.span[0]]) and merged[-1].kind != "year":
+            a = merged.pop()
+            merged.append(Quantity(round(a.value / q.value * 100, 2) if q.value else a.value, "ratio", "", (a.span[0], q.span[1]),
+                                   text[a.span[0]:q.span[1]], label=f"{_fmt(a.value)} out of {_fmt(q.value)}"))
+        else:
+            merged.append(q)
+    return merged
 
 
 def _unit_follows(lower: str, pos: int) -> bool:

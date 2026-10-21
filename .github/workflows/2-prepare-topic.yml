@@ -10,8 +10,12 @@ on:
   workflow_dispatch:
     inputs:
       topic:
-        description: "Topic idea, e.g. why buying a house got harder"
+        description: "Topic idea, e.g. why buying a house got harder (also the news search words)"
         required: true
+      script_dir:
+        description: "Your own scripts: folder with english.txt / urdu.txt (e.g. input/topics/my-video). Blank = AI drafts them"
+        required: false
+        default: ""
       region:
         description: "News region: US, GB, PK, AE or IN"
         required: false
@@ -58,6 +62,7 @@ jobs:
       IN_MODEL: ${{ inputs.model }}
       IN_MAX: ${{ inputs.max_articles }}
       IN_RENDER: ${{ inputs.render }}
+      IN_SCRIPT_DIR: ${{ inputs.script_dir }}
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - name: Check out repository
@@ -105,6 +110,7 @@ jobs:
         run: |
           max="$IN_MAX"; [[ "$max" =~ ^[0-9]+$ ]] || max=2
           auto=(); [ "$IN_RENDER" != "false" ] && auto=(--auto)  # no review step: drop unverified sentences
+          [ -n "$IN_SCRIPT_DIR" ] && auto+=(--script-dir "$IN_SCRIPT_DIR")  # your own words, tags placed automatically
           python -m engine.explainer.prepare --topic "$IN_TOPIC" --region "${IN_REGION:-US}" \
             --languages "${IN_LANGS:-english,urdu}" --model "$IN_MODEL" --max-articles "$max" "${auto[@]}"
 
@@ -143,4 +149,4 @@ jobs:
     with:
       ref: ${{ needs.prepare.outputs.sha }}
       topic_dir: ${{ needs.prepare.outputs.topic_dir }}
-      target_languages: ${{ inputs.languages }}
+      target_languages: ${{ inputs.script_dir != '' && 'auto' || inputs.languages }}

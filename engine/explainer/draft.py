@@ -164,3 +164,84 @@ def drop_unverified(script: str) -> tuple[str, int]:
         if keep:
             paras.append(" ".join(keep))
     return "\n\n".join(paras) + "\n", removed
+
+
+SENT_SPLIT = re.compile(r"(?<=[.!?۔؟])\s+")
+LEAD_TAGS = re.compile(r"^(\s*\[[^\]]*\]\s*)*")
+WORD = re.compile(r"[a-z]{4,}")
+EN_STOP = {"that", "this", "with", "from", "have", "they", "their", "there", "about", "which", "would", "into", "than", "more", "most",
+           "only", "were", "been", "when", "what", "said", "also", "some", "just", "like", "over", "even", "will", "your"}
+
+
+def _numbers(text: str, lang: str) -> set[float]:
+    out = set()
+    for q in extract_quantities(text, lang):
+        out.add(round(q.value, 2))
+        if q.kind == "currency" and q.scale_word:
+            out.add(round(q.value / {"lakh": 1e5, "crore": 1e7, "million": 1e6, "billion": 1e9, "trillion": 1e12}.get(q.scale_word, 1), 2))
+    return out
+
+
+def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[str]], charts: list[dict], news: bool) -> tuple[str, list[str]]:
+    """Your own script, no tags: insert [news] / [article N "quote"] / [chart ID date] before the
+    sentences the evidence backs. Shared numbers count most, then shared concepts (language
+    independent, so an Urdu sentence can point at an English article). Words are never changed."""
+    from ..concept_mapper import match_concepts
+
+    if extract_cues(script)[1]:
+        return script, ["script already has visual tags; left as it is"]
+    notes: list[str] = []
+    cands = []  # (article id, sentence, numbers, concepts, words)
+    for aid, art in articles.items():
+        for sent in key_sentences(paragraphs.get(aid, []), limit=40):
+            if art.find_quote(" ".join(sent.split()[:10])):
+                low = sent.lower()
+                cands.append((aid, sent, _numbers(sent, "en"), {m.concept for m in match_concepts(sent, "en")},
+                              {w for w in WORD.findall(low) if w not in EN_STOP}))
+    used: set[str] = set()
+    chart_done: set[str] = set()
+    out_paras = []
+    first = True
+    for para in script.strip().split("\n\n"):
+        out_sents = []
+        for sent in SENT_SPLIT.split(para.strip()):
+            lead = LEAD_TAGS.match(sent).group(0)
+            body = sent[len(lead):]
+            cue = ""
+            if first and news:
+                cue, first = "[news] ", False
+            else:
+                nums = _numbers(body, lang)
+                cons = {m.concept for m in match_concepts(body, lang)}
+                words = {w for w in WORD.findall(body.lower()) if w not in EN_STOP} if lang == "en" else set()
+                best, best_score = None, 0.0
+                for c in cands:
+                    if c[1] in used:
+                        continue
+                    shared = {n for n in nums & c[2] if n not in (0, 1)}
+                    score = 3 * len(shared) + len(cons & c[3]) + 0.5 * len(words & c[4])
+                    if score > best_score:
+                        best, best_score = c, score
+                if best and best_score >= 4:
+                    used.add(best[1])
+                    toks = best[1].split()
+                    hit = next((i for i, t in enumerate(toks) if _numbers(t, "en") & nums), 0)
+                    a = max(0, min(hit - 4, len(toks) - 10))
+                    quote = " ".join(toks[a:a + 10]).replace('"', "'").strip(" ,;:")
+                    if articles[best[0]].find_quote(quote):
+                        cue = f'[article {best[0]} "{quote}"] '
+                if not cue:
+                    for ch in charts:
+                        if ch["id"] in chart_done:
+                            continue
+                        vals = [v for _, v in ch["points"]]
+                        near = [n for n in nums if any(abs(n - v) <= max(0.5, abs(v) * 0.03) for v in vals[-60:])]
+                        if near:
+                            chart_done.add(ch["id"])
+                            cue = f"[chart {ch['id']} {ch['points'][-1][0]}] "
+                            break
+            if cue:
+                notes.append(f"{cue.strip()} -> {body[:60]}")
+            out_sents.append(lead + cue + body)
+        out_paras.append(" ".join(out_sents))
+    return "\n\n".join(out_paras) + "\n", notes

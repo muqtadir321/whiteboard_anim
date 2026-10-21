@@ -78,12 +78,19 @@ def model_available(host: str, model: str) -> bool:
 
 
 def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("english", "urdu"), out_root: Path | None = None,
-            model: str = "qwen2.5:7b", host: str = "http://127.0.0.1:11434", max_articles: int = 2, log=print, auto: bool = False) -> Path:
-    """`auto`: one-click mode, no human review: sentences with unverified numbers are dropped."""
+            model: str = "qwen2.5:7b", host: str = "http://127.0.0.1:11434", max_articles: int = 2, log=print, auto: bool = False,
+            script_dir: Path | None = None) -> Path:
+    """`auto`: one-click mode, no human review: sentences with unverified numbers are dropped.
+    `script_dir`: a folder that already holds your own english.txt / urdu.txt / roman_urdu.txt:
+    no drafting; evidence is collected for `topic` and the visual tags are placed automatically."""
     from .capture import Browser, snippet_from
 
     out_root = out_root or REPO_ROOT / "input" / "topics"
-    folder = out_root / f"{dt.date.today():%Y-%m-%d}-{slugify(topic)}"
+    folder = script_dir or out_root / f"{dt.date.today():%Y-%m-%d}-{slugify(topic)}"
+    own = {lang: (folder / f"{lang}.txt").read_text(encoding="utf-8") for lang in ("english", "urdu", "roman_urdu")
+           if script_dir and (folder / f"{lang}.txt").is_file()}
+    if script_dir and not own:
+        raise SystemExit(f"{folder} has no english.txt, urdu.txt or roman_urdu.txt")
     ev = folder / "evidence"
     ev.mkdir(parents=True, exist_ok=True)
     now = dt.datetime.now(dt.timezone.utc)
@@ -116,9 +123,12 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
     if not articles:
         notes.append("No article could be captured (blocked or paywalled). Add [news] and [chart] tags only, or try another topic wording.")
 
-    text_pool = " ".join([topic] + [n.title for n in items[:20]] + [" ".join(a["paragraphs"][:20]) for a in articles])
+    text_pool = " ".join([topic, own.get("english", "")] + [n.title for n in items[:20]] + [" ".join(a["paragraphs"][:20]) for a in articles])
     charts = [c for c in (fred.download(sid) for sid in fred.pick_series(text_pool)) if c]
     log(f"charts: {[c['id'] for c in charts] or 'none'}")
+
+    if own:
+        return tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log)
 
     # -- drafts ----------------------------------------------------------------
     brief = draft.evidence_brief(topic, card_items, articles, charts, {c["id"]: fred.summary(c) for c in charts})
@@ -191,6 +201,35 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
     return folder
 
 
+def tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log) -> Path:
+    """Your own scripts: keep every word, add [news] / [article] / [chart] tags where the evidence backs a sentence."""
+    manifest = {"news": {"image": "news_cards.png", "cards": cards},
+                "articles": [{k: v for k, v in a.items() if k not in ("paragraphs", "news_url")} for a in articles],
+                "charts": charts, "logos": []}
+    (ev / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    for a in articles:
+        (ev / f"article_{a['id']}.txt").write_text("\n\n".join(a["paragraphs"]) + "\n", encoding="utf-8")
+    evidence = Evidence.load(ev)
+    paragraphs = {a["id"]: a["paragraphs"] for a in articles}
+    notes = []
+    codes = {"english": "en", "urdu": "ur", "roman_urdu": "roman_urdu"}
+    for lang, text in own.items():
+        tagged, tag_notes = draft.auto_tag(text, codes[lang], evidence.articles, paragraphs, charts, bool(cards))
+        (folder / f"{lang}.txt").write_text(tagged, encoding="utf-8")
+        notes += [f"{lang}: {n}" for n in tag_notes]
+        log(f"{lang}: {len(tag_notes)} visual tag(s) placed")
+        for n in tag_notes:
+            log(f"    {n}")
+    (folder / "audio").mkdir(exist_ok=True)
+    meta = {"topic": topic, "region": region, "created": now.isoformat(timespec="seconds"), "model": "none (your own script)",
+            "languages": list(own), "sources": evidence.sources(),
+            "notice": "Screenshots and logos belong to their owners; they are shown as evidence for commentary. Check each source before publishing."}
+    (folder / "topic.yaml").write_text(yaml.safe_dump(meta, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    (folder / "notes.md").write_text(review_notes(topic, folder, "", articles, charts, [], notes, own), encoding="utf-8")
+    log(f"topic folder ready: {folder}")
+    return folder
+
+
 def review_notes(topic, folder, brief, articles, charts, logo_rows, notes, scripts) -> str:
     lines = [f"# {topic}", "", "## Before you render", "",
              "1. Read `english.txt` (and `urdu.txt` / `roman_urdu.txt`). Rewrite anything that sounds off; keep it 45–60 seconds.",
@@ -226,6 +265,7 @@ def main(argv=None) -> int:
     p.add_argument("--host", default="http://127.0.0.1:11434")
     p.add_argument("--max-articles", type=int, default=2)
     p.add_argument("--out", default="")
+    p.add_argument("--script-dir", default="", help="folder with your own english.txt / urdu.txt: tag them instead of drafting")
     p.add_argument("--auto", action="store_true", help="one-click: drop unverified sentences instead of leaving {VERIFY} for review")
     a = p.parse_args(argv)
     langs = tuple(x.strip() for x in a.languages.split(",") if x.strip())
@@ -234,7 +274,7 @@ def main(argv=None) -> int:
         print(f"::error::explainer topics support english, urdu and roman_urdu, not {', '.join(bad)}")
         return 2
     folder = prepare(a.topic.strip(), a.region.strip().upper() or "US", langs, Path(a.out).resolve() if a.out else None, a.model, a.host, a.max_articles,
-                     log=lambda m: print(m, flush=True), auto=a.auto)
+                     log=lambda m: print(m, flush=True), auto=a.auto, script_dir=(REPO_ROOT / a.script_dir).resolve() if a.script_dir else None)
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
         with open(gh_out, "a") as fh:

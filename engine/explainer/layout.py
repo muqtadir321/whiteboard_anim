@@ -201,7 +201,9 @@ class ExplainerLayout:
         text = scene["narration_text"]
         tokens = text.split()
         big = [q for q in scene.get("quantities", [])
-               if q.get("kind") in ("percent", "currency", "multiplier") or (q.get("kind") == "count" and any(ch.isdigit() for ch in q.get("source", "")))]
+               if (q.get("kind") in ("percent", "currency", "multiplier", "ratio")
+                   or (q.get("kind") == "count" and (any(ch.isdigit() for ch in q.get("source", "")) or q.get("value", 0) >= 1000)))
+               and not (q.get("kind") == "currency" and q.get("value") == 1)]  # "one dollar" is not a figure worth showing
         starts, pos = [], 0
         for tok in tokens:
             pos = text.find(tok, pos)

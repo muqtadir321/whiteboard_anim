@@ -24,6 +24,12 @@ SERIES = {
               ("treasury", "bond", "yield"), ""),
     "GASREGW": ("US Regular All Formulations Gas Price", "$", "U.S. Energy Information Administration via FRED", ("gas price", "gasoline", "fuel"), ""),
     "PSAVERT": ("Personal Saving Rate", "%", "U.S. Bureau of Economic Analysis via FRED", ("saving", "savings"), ""),
+    "DEXINUS": ("Indian Rupees to One U.S. Dollar (exchange rate)", "", "Board of Governors of the Federal Reserve System via FRED",
+                ("rupee", "rupiya", "exchange rate", "dollar rate", "currency", "inr"), ""),
+    "DCOILBRENTEU": ("Crude Oil Prices: Brent, dollars per barrel", "$", "U.S. Energy Information Administration via FRED",
+                     ("oil price", "crude", "brent", "petrol", "fuel price"), ""),
+    "ACTLISCOUUS": ("Housing Inventory: Active Listing Count in the United States", "", "Realtor.com via FRED",
+                    ("listing", "listings", "inventory", "sellers", "homes for sale", "buyer's market"), ""),
     "REVOLSL": ("Revolving Consumer Credit Owned and Securitized (billions of dollars)", "$", "Board of Governors of the Federal Reserve System via FRED",
                 ("credit card", "consumer debt", "revolving"), ""),
 }

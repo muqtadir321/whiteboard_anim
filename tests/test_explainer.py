@@ -398,3 +398,25 @@ def test_one_click_drops_unverified_sentences():
     out, removed = draft.drop_unverified(script)
     assert removed == 3 and "VERIFY" not in out
     assert out == "[news] Rates hit 7%.\n\nPrices stay high. Done.\n"
+
+
+def test_amounts_people_say():
+    from engine.numbers import extract_quantities
+
+    def shown(text, lang="en"):
+        return [q.display for q in extract_quantities(text, lang)]
+
+    assert shown("about one and a half million home sellers") == ["1.5 million"]
+    assert shown("Almost four out of ten homeowners") == ["4 out of 10"]
+    assert shown("تقریباً پچانوے روپے کا", "ur") == ["Rs 95"]
+    assert shown("ایک ڈالر تقریباً دو سو ستتر روپے کا ہے", "ur")[-1] == "Rs 277"
+
+
+def test_auto_tag_keeps_words_and_matches_numbers(tmp_path):
+    ev = Evidence.load(make_topic(tmp_path) / "evidence")
+    script = "[curious] Rates hit seven percent.\n\n[measured] For every point, sales drop by 18.1%. Prices stay high.\n"
+    out, notes = draft.auto_tag(script, "en", ev.articles, {"1": [PAGE_TEXT]}, [], news=True)
+    assert out.startswith("[curious] [news] Rates hit seven percent.")
+    assert '[article 1 "' in out and "18.1%" in out.split("[article 1")[1]
+    assert extract_cues(out)[0].split() == extract_cues(script)[0].split()  # narration unchanged
+    assert draft.auto_tag(out, "en", ev.articles, {}, [], True)[0] == out  # already tagged: left alone
