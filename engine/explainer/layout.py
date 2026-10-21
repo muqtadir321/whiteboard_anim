@@ -14,7 +14,7 @@ has gone, or sit small in the corner while it is up.
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import cairo
 
@@ -24,6 +24,7 @@ from ..object_generator import OBJECTS
 from ..text_shaper import shape_line
 from .charts import ChartPainter
 from .cues import Cue
+from .emoji import EmojiLibrary
 from .evidence import Evidence
 from .render import CameraKey, ExScene, Highlight, Sprite, Stage, Word
 
@@ -46,6 +47,13 @@ ICON_TINT = {  # main fill for icons that come without one
     "phone": "#3D4A5C", "laptop": "#6FA8DC", "envelope": "#F3E7C9", "warning": "#F5C542", "clock": "#F4F4F4",
 }
 VIVID_FILL = 0.92
+_EMOJI: list = []  # loaded once: [EmojiLibrary | None]
+
+
+def emoji_library() -> EmojiLibrary | None:
+    if not _EMOJI:
+        _EMOJI.append(EmojiLibrary.load())
+    return _EMOJI[0]
 
 
 def is_doodle(name: str) -> bool:
@@ -297,6 +305,13 @@ class ExplainerLayout:
     # icons ----------------------------------------------------------------------
     def icon_sprite(self, name: str, params: dict, box, t: float, seed: str) -> Sprite | None:
         name = ICON_SWAP.get(name, name)
+        lib = emoji_library() if name not in OBJECTS and name not in ICON_EXTRA else None
+        if lib is not None and name in lib.icons:
+            size = max(box[2] - box[0], box[3] - box[1]) * self.scale
+            surf, strokes = lib.render(name, size)
+            draw = min(1.2, 0.5 + 0.025 * len(strokes))
+            return Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), t, "draw", name=name, strokes=strokes, draw=draw,
+                          float_amp=6.0, phase=random.Random(seed).uniform(0, 6.28))
         if name == "rate_badge":
             params = {}
         try:
@@ -360,9 +375,12 @@ class ExplainerLayout:
                 picks.append((name, a.get("params") or {}, t_at(a.get("anchor_char", 0))))
         if not picks:  # never a blank board: someone thinking it over
             picks.append(("person", {"pose": "think"}, times[0][0] if times else s0))
-        # the doodles that say the most about this topic go first (a bubble beats a generic laptop)
-        picks.sort(key=lambda p: p[0] not in SPECIFIC)
-        picks = picks[: int(self.ex["max_icons"])]
+        # drawings tagged on a spoken word first, then the doodles that say the most about this topic
+        # (a bubble beats a generic laptop); shown in the order they are said
+        n_forced = len(forced)
+        order = {id(p): (0 if k < n_forced else 1 if p[0] in SPECIFIC else 2) for k, p in enumerate(picks)}
+        picks = sorted(picks, key=lambda p: order[id(p)])[: int(self.ex["max_icons"])]
+        picks.sort(key=lambda p: p[2])
 
         def stage_at(t):
             return next((st for st in stages if st.t_in <= t < st.t_out), None)
@@ -372,8 +390,9 @@ class ExplainerLayout:
             t = max(s0, t)
             st = stage_at(t)
             if st is not None and st.t_out < s1 - 0.6:
-                t = st.t_out + 0.05  # wait until the screenshot has gone
-                st = stage_at(t)
+                gone = st.t_out
+                t = gone - 0.25  # start drawing while the screenshot shrinks away
+                st = stage_at(gone + 0.01)
             if st is None:
                 free.append((name, params, t))
             elif overlay is None:
@@ -500,6 +519,36 @@ class ExplainerLayout:
                 self.arrange_logos(st)
         return stages
 
+    def keep_board_busy(self, layout: Layout) -> None:
+        """Never a blank board between sentences: a scene's drawings stay until the next scene's first
+        drawing starts (then cross-fade). After a screenshot leaves, the next drawing starts at once and
+        is drawn more slowly, so it is finished on the word that names it."""
+        stages = layout.stages
+
+        def stage_at(t):
+            return next((st for st in stages if st.t_in <= t < st.t_out), None)
+
+        def next_stage_in(t0, t1):
+            return min((st.t_in for st in stages if t0 < st.t_in < t1), default=None)
+
+        carry: list[Sprite] = []
+        for sc in layout.scenes:
+            drawn = sorted((sp for sp in sc.sprites if sp.anim == "draw"), key=lambda sp: sp.t)
+            first = min((sp.t for sp in sc.sprites), default=None)
+            st0 = stage_at(sc.start)
+            if carry and st0 is None and first is not None and first > sc.start + 0.05:
+                until = min(first + 0.3, next_stage_in(sc.start, sc.end) or sc.end)
+                sc.sprites = [replace(sp, t=sc.start - 5.0, end=until) for sp in carry] + sc.sprites
+            elif drawn:
+                free_from = st0.t_out - 0.25 if st0 is not None else sc.start  # overlaps the screenshot's exit
+                lead = drawn[0]
+                if lead.t > free_from + 0.2 and stage_at(free_from + 0.3) is None:
+                    finish = lead.t + lead.draw
+                    lead.t = free_from
+                    lead.draw = min(max(lead.draw, finish - free_from), 2.5)
+            carry = [replace(sp, end=None) for sp in sc.sprites
+                     if sp.t < sc.end and (sp.end is None or sp.end >= sc.end - 0.01) and stage_at(sc.end - 0.01) is None]
+
     def region_for(self, t0: float, t1: float) -> tuple[float, float, float, float]:
         """Stage region below the tallest text block shown while the stage is visible."""
         bottoms = [b for s0, s1, b in self.text_spans if s0 < t1 and t0 < s1]
@@ -553,5 +602,6 @@ class ExplainerLayout:
             forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]
             sprites = self.scene_icons(scene, times, s0, s1, forced, bottom, layout.stages)
             layout.scenes.append(ExScene(scene["scene_id"], s0, s1, words, sprites, bottom))
+        self.keep_board_busy(layout)
         layout.missing_glyphs = self.missing_glyphs
         return layout

@@ -128,7 +128,9 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
     log(f"charts: {[c['id'] for c in charts] or 'none'}")
 
     if own:
-        return tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log)
+        use_model = model != "none" and model_available(host, model)
+        return tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log,
+                               model if use_model else None, host)
 
     # -- drafts ----------------------------------------------------------------
     brief = draft.evidence_brief(topic, card_items, articles, charts, {c["id"]: fred.summary(c) for c in charts})
@@ -184,8 +186,12 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
                 notes.append(f"{lang}: one-click mode removed {removed} sentence(s) whose numbers were not in the evidence")
             if len(re.sub(r"\[[^\]]*\]", " ", scripts[lang]).split()) < 25 and lang in languages:
                 raise SystemExit(f"The {lang} draft is too short after removing unverified sentences; try another topic wording or review it by hand.")
+    codes = {"english": "en", "urdu": "ur", "roman_urdu": "roman_urdu"}
     for lang, text in scripts.items():
         if lang in languages:
+            if "{VERIFY" not in text:
+                text, draw_notes = add_drawings(text, codes[lang], model if use_model else None, host, log)
+                notes += [f"{lang}: {n}" for n in draw_notes]
             (folder / f"{lang}.txt").write_text(text, encoding="utf-8")
     (folder / "audio").mkdir(exist_ok=True)
     (folder / "audio" / "README.txt").write_text(
@@ -201,8 +207,25 @@ def prepare(topic: str, region: str = "US", languages: tuple[str, ...] = ("engli
     return folder
 
 
-def tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log) -> Path:
-    """Your own scripts: keep every word, add [news] / [article] / [chart] tags where the evidence backs a sentence."""
+def add_drawings(text: str, code: str, model: str | None, host: str, log) -> tuple[str, list[str]]:
+    """[icon ...] tags for the things each sentence names (see drawings.py); unchanged if unavailable."""
+    from .drawings import tag_drawings
+    from .layout import emoji_library
+    from .semantic import get_embedder
+
+    lib = emoji_library()
+    emb = get_embedder(log=log) if lib else None
+    if lib is None or emb is None:
+        return text, []
+    return tag_drawings(text, code, lib, emb, model=model, host=host, log=log)
+
+
+def tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles, charts, now, log,
+                    model: str | None = None, host: str = "http://127.0.0.1:11434") -> Path:
+    """Your own scripts: keep every word, add [news] / [article] / [chart] tags where the evidence backs a
+    sentence (by numbers, then by meaning), and [icon] tags for the things each sentence names."""
+    from .semantic import get_embedder
+
     manifest = {"news": {"image": "news_cards.png", "cards": cards},
                 "articles": [{k: v for k, v in a.items() if k not in ("paragraphs", "news_url")} for a in articles],
                 "charts": charts, "logos": []}
@@ -213,8 +236,12 @@ def tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles,
     paragraphs = {a["id"]: a["paragraphs"] for a in articles}
     notes = []
     codes = {"english": "en", "urdu": "ur", "roman_urdu": "roman_urdu"}
+    emb = get_embedder(log=log)
     for lang, text in own.items():
-        tagged, tag_notes = draft.auto_tag(text, codes[lang], evidence.articles, paragraphs, charts, bool(cards))
+        tagged, tag_notes = draft.auto_tag(text, codes[lang], evidence.articles, paragraphs, charts, bool(cards),
+                                           emb=emb, model=model, host=host)
+        tagged, draw_notes = add_drawings(tagged, codes[lang], model, host, log)
+        tag_notes += draw_notes
         (folder / f"{lang}.txt").write_text(tagged, encoding="utf-8")
         notes += [f"{lang}: {n}" for n in tag_notes]
         log(f"{lang}: {len(tag_notes)} visual tag(s) placed")
@@ -240,7 +267,8 @@ def review_notes(topic, folder, brief, articles, charts, logo_rows, notes, scrip
              "## Tags you can use", "",
              "- `[news]` headline cards", "- `[article N \"exact words\"]` article screenshot with those words highlighted",
              "- `[chart ID 2021]` data chart with a marker on a date", "- `[logo \"Name\"]` organisation logo",
-             "- `[icon house]` force a doodle (house, bank, document, money_bag, rate_badge, lock, car, …)", ""]
+             "- `[icon oil-drum]` a drawing on the next word: any Fluent Emoji name (oil-drum, fuel-pump, mobile-phone, pill, "
+             "house, …, see icon-sets.iconify.design/fluent-emoji-flat) or a doodle (house, bank, document, money_bag, rate_badge, lock, …)", ""]
     if notes:
         lines += ["## Check these", ""] + [f"- {n}" for n in notes] + [""]
     unresolved = sum(len(has_unresolved(s)) for s in scripts.values())

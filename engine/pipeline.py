@@ -167,6 +167,11 @@ class LanguageJob:
             if raw is None:
                 st.status, st.message = Status.SKIPPED, "no script supplied"
                 return
+            if self.explainer and cfg["animation"]["explainer"]["drawings"] == "emoji":
+                from .explainer.drawings import render_time_drawings
+
+                raw, notes = render_time_drawings(raw, self.lang, cfg, self.log)
+                st.data["drawings"] = notes
             try:
                 script_text, visual_cues = normalize_script_with_cues(raw)
             except ScriptError as exc:

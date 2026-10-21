@@ -573,6 +573,19 @@
             "write_narration": {
               "type": "boolean"
             },
+            "drawings": {
+              "enum": [
+                "emoji",
+                "doodles"
+              ]
+            },
+            "semantic": {
+              "type": "boolean"
+            },
+            "semantic_model": {
+              "type": "string",
+              "minLength": 1
+            },
             "evidence_hold": {
               "enum": [
                 "sentence",

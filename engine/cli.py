@@ -173,7 +173,11 @@ def cmd_deps(args) -> int:
     cfg = load_config(args.config or None, build_overrides(args), repo)
     inputs = discover_inputs(cfg, explicit_paths(args), repo, aliases=not getattr(args, "topic_dir", ""))
     targets = parse_target_languages(args.target_languages)
-    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False, "alignment": False}
+    need = {"transcription": False, "piper": False, "mms": False, "edge_tts": False, "voice_clone": False, "alignment": False,
+            "semantic": False}
+    ex = cfg["animation"]["explainer"]
+    if cfg["animation"]["style"] == "explainer" and ex["semantic"] and ex["drawings"] == "emoji":
+        need["semantic"] = True  # drawings chosen by meaning (fastembed + a small multilingual model)
     from .voice_clone import resolve_reference
 
     try:

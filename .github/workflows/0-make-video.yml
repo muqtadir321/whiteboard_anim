@@ -212,7 +212,7 @@ jobs:
           python -m engine.cli deps "${ARGS[@]}"
 
       - name: Restore model cache
-        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true' || steps.deps.outputs.alignment == 'true'
+        if: steps.deps.outputs.transcription == 'true' || steps.deps.outputs.piper == 'true' || steps.deps.outputs.mms == 'true' || steps.deps.outputs.voice_clone == 'true' || steps.deps.outputs.alignment == 'true' || steps.deps.outputs.semantic == 'true'
         uses: actions/cache@v4
         with:
           path: .model-cache
@@ -256,6 +256,10 @@ jobs:
             && pip install --no-deps "git+https://github.com/myshell-ai/OpenVoice.git" \
             && python -c "from openvoice.api import ToneColorConverter; print('OpenVoice ready')" \
             || echo "::warning::OpenVoice could not be installed"
+
+      - name: Install meaning matcher (drawings for the spoken words)
+        if: steps.deps.outputs.semantic == 'true'
+        run: pip install fastembed==0.9.0 || echo "::warning::fastembed could not be installed; hand-made doodles only"
 
       - name: Install edge-tts (opt-in online voices)
         if: steps.deps.outputs.edge_tts == 'true'

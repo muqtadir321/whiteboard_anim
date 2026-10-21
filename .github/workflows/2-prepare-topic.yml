@@ -63,6 +63,7 @@ jobs:
       IN_MAX: ${{ inputs.max_articles }}
       IN_RENDER: ${{ inputs.render }}
       IN_SCRIPT_DIR: ${{ inputs.script_dir }}
+      WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - name: Check out repository
@@ -84,8 +85,15 @@ jobs:
 
       - name: Install Python packages and headless Chromium
         run: |
-          pip install -r requirements-lock.txt playwright==1.48.0
+          pip install -r requirements-lock.txt playwright==1.48.0 fastembed==0.9.0
           python -m playwright install --with-deps chromium
+
+      - name: Restore meaning-matcher cache (model + drawings)
+        uses: actions/cache@v4
+        with:
+          path: .model-cache
+          key: explainer-semantic-v1-${{ hashFiles('requirements-optional.txt') }}
+          restore-keys: explainer-semantic-v1-
 
       - name: Restore AI model cache
         if: inputs.model != 'none'

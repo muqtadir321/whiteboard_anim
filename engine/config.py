@@ -186,6 +186,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "evidence_hold": "sentence",
             # write the narration on the board word by word (off: only key amounts pop up, no subtitles)
             "write_narration": False,
+            # drawings: "emoji" = Fluent Emoji drawings picked by meaning for the spoken words (falls back to
+            # the hand-made doodles), "doodles" = hand-made doodles only
+            "drawings": "emoji",
+            # match script sentences to evidence and words to drawings by meaning (free multilingual model)
+            "semantic": True,
+            "semantic_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
         },
     },
     "planner": {

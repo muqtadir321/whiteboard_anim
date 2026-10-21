@@ -14,3 +14,6 @@ omnivoice==0.2.1
 # Explainer topics (Prepare Topic workflow): headless Chromium for article screenshots. After installing run:
 #   python -m playwright install --with-deps chromium
 playwright==1.48.0
+# Explainer topics: match sentences to evidence and words to drawings by meaning, any language
+# (ONNX runtime, no PyTorch; downloads paraphrase-multilingual-MiniLM-L12-v2, Apache-2.0, ~0.2 GB):
+fastembed==0.9.0

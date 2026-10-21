@@ -83,8 +83,16 @@ preserved in the visuals.
 A second style for Shorts and Facebook Reels, in one click. There are no subtitles. Real
 proof appears while it is being talked about: headline cards, the actual article page with
 the spoken sentence highlighted, a data chart with a marker on the date mentioned, and
-organisation logos. In between, colourful doodles that match the narration are drawn line by
-line and joined by arrows. Key amounts pop up big in red (or green for low/falling values).
+organisation logos. In between, colourful drawings of the things you say (oil drum, fuel pump,
+phone, ...) are drawn line by line on the word that names them, so the board is never blank.
+Key amounts pop up big in red (or green for low/falling values).
+
+Matching works by meaning, in any language and any niche: a free multilingual model
+(paraphrase-multilingual-MiniLM-L12-v2 via fastembed, CPU only) links each sentence to the
+article sentence or chart that says the same thing, and each spoken word to one of ~1,250
+[Fluent Emoji](https://github.com/microsoft/fluentui-emoji) drawings (MIT). The local AI model
+then keeps only the choices that really fit ("hold your breath" is not lungs). Nothing is
+hard-coded per topic.
 
 **Actions → Prepare Topic (explainer video) → Run workflow.** Type a topic idea (for example
 `why buying a house got harder`) and click **Run**. Everything is free on GitHub Actions:
@@ -116,13 +124,15 @@ Visuals are chosen with tags in the script, placed right before the words they b
 [chart MORTGAGE30US 2021] Back in 2021, buyers locked in rates around three percent.
 [logo "Fannie Mae"] The agency that regulates Fannie Mae measured it.
 [article 1 "the probability of sale is decreased by 18.1%"] For every point rates rise, the chance of selling drops by 18.1%.
-[icon house] Fewer sellers means fewer homes.
+Fewer sellers means fewer [icon house] homes, and [icon oil-drum] oil got expensive.
 ```
 
 A screenshot stays up for the sentence that names it (set `animation.explainer.evidence_hold: paragraph` to keep it for the whole paragraph). The quoted words
 of an `[article N "..."]` tag must be copied from the article (see `notes.md`). Otherwise the
 page is still shown, just without the highlight, and the run reports it. Sentences without a
-tag get doodle icons picked from what is said. The same `video.mp4` (1080×1920) works for
+tag get drawings picked from what is said. `[icon name]` takes any
+[Fluent Emoji Flat](https://icon-sets.iconify.design/fluent-emoji-flat/) name or a hand-made doodle
+(house, bank, document, money_bag, ...); Prepare Topic writes these tags for you and you can edit them. The same `video.mp4` (1080×1920) works for
 YouTube Shorts and Facebook Reels.
 
 Screenshots and logos belong to their owners. They are shown as evidence for commentary, a

@@ -182,10 +182,13 @@ def _numbers(text: str, lang: str) -> set[float]:
     return out
 
 
-def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[str]], charts: list[dict], news: bool) -> tuple[str, list[str]]:
+def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[str]], charts: list[dict], news: bool,
+             emb=None, model: str | None = None, host: str = "http://127.0.0.1:11434") -> tuple[str, list[str]]:
     """Your own script, no tags: insert [news] / [article N "quote"] / [chart ID date] before the
     sentences the evidence backs. Shared numbers count most, then shared concepts (language
-    independent, so an Urdu sentence can point at an English article). Words are never changed."""
+    independent, so an Urdu sentence can point at an English article). With an embedder
+    (semantic.get_embedder), paragraphs still without evidence then get the article sentence or
+    chart closest in meaning, so screenshots keep coming through the video. Words are never changed."""
     from ..concept_mapper import match_concepts
 
     if extract_cues(script)[1]:
@@ -200,48 +203,155 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
                               {w for w in WORD.findall(low) if w not in EN_STOP}))
     used: set[str] = set()
     chart_done: set[str] = set()
-    out_paras = []
-    first = True
+
+    def article_cue(c, nums) -> str:
+        used.add(c[1])
+        toks = c[1].split()
+        hit = next((i for i, t in enumerate(toks) if _numbers(t, "en") & nums), 0)
+        a = max(0, min(hit - 4, len(toks) - 10))
+        quote = " ".join(toks[a:a + 10]).replace('"', "'").strip(" ,;:")
+        return f'[article {c[0]} "{quote}"] ' if articles[c[0]].find_quote(quote) else ""
+
+    paras = []  # per paragraph, per sentence: [lead tags, body, new cue]
     for para in script.strip().split("\n\n"):
-        out_sents = []
+        rows = []
         for sent in SENT_SPLIT.split(para.strip()):
             lead = LEAD_TAGS.match(sent).group(0)
-            body = sent[len(lead):]
-            cue = ""
-            if first and news:
-                cue, first = "[news] ", False
-            else:
-                nums = _numbers(body, lang)
-                cons = {m.concept for m in match_concepts(body, lang)}
-                words = {w for w in WORD.findall(body.lower()) if w not in EN_STOP} if lang == "en" else set()
-                best, best_score = None, 0.0
-                for c in cands:
-                    if c[1] in used:
+            rows.append([lead, sent[len(lead):], ""])
+        paras.append(rows)
+    first = news
+    for rows in paras:
+        for row in rows:
+            body = row[1]
+            if first:
+                row[2], first = "[news] ", False
+                continue
+            nums = _numbers(body, lang)
+            cons = {m.concept for m in match_concepts(body, lang)}
+            words = {w for w in WORD.findall(body.lower()) if w not in EN_STOP} if lang == "en" else set()
+            best, best_score = None, 0.0
+            for c in cands:
+                if c[1] in used:
+                    continue
+                shared = {n for n in nums & c[2] if n not in (0, 1)}
+                score = 3 * len(shared) + len(cons & c[3]) + 0.5 * len(words & c[4])
+                if score > best_score:
+                    best, best_score = c, score
+            if best and best_score >= 4:
+                row[2] = article_cue(best, nums)
+            if not row[2]:
+                for ch in charts:
+                    if ch["id"] in chart_done:
                         continue
-                    shared = {n for n in nums & c[2] if n not in (0, 1)}
-                    score = 3 * len(shared) + len(cons & c[3]) + 0.5 * len(words & c[4])
-                    if score > best_score:
-                        best, best_score = c, score
-                if best and best_score >= 4:
-                    used.add(best[1])
-                    toks = best[1].split()
-                    hit = next((i for i, t in enumerate(toks) if _numbers(t, "en") & nums), 0)
-                    a = max(0, min(hit - 4, len(toks) - 10))
-                    quote = " ".join(toks[a:a + 10]).replace('"', "'").strip(" ,;:")
-                    if articles[best[0]].find_quote(quote):
-                        cue = f'[article {best[0]} "{quote}"] '
-                if not cue:
-                    for ch in charts:
-                        if ch["id"] in chart_done:
-                            continue
-                        vals = [v for _, v in ch["points"]]
-                        near = [n for n in nums if any(abs(n - v) <= max(0.5, abs(v) * 0.03) for v in vals[-60:])]
-                        if near:
-                            chart_done.add(ch["id"])
-                            cue = f"[chart {ch['id']} {ch['points'][-1][0]}] "
-                            break
+                    vals = [v for _, v in ch["points"]]
+                    if any(abs(n - v) <= max(0.5, abs(v) * 0.03) for n in nums for v in vals[-60:]):
+                        chart_done.add(ch["id"])
+                        row[2] = f"[chart {ch['id']} {ch['points'][-1][0]}] "
+                        break
+    if emb is not None:
+        notes += semantic_gaps(paras, lang, cands, charts, used, emb, article_cue, model, host)
+    out_paras = []
+    for rows in paras:
+        for _, body, cue in rows:
             if cue:
                 notes.append(f"{cue.strip()} -> {body[:60]}")
-            out_sents.append(lead + cue + body)
-        out_paras.append(" ".join(out_sents))
+        out_paras.append(" ".join(lead + cue + body for lead, body, cue in rows))
     return "\n\n".join(out_paras) + "\n", notes
+
+
+SEMANTIC_MIN = 0.15  # evidence kept without the model: CSLS + cosine - 0.45 (unrelated text scores below 0)
+
+
+def semantic_gaps(paras, lang, cands, charts, used, emb, article_cue, model=None, host="http://127.0.0.1:11434") -> list[str]:
+    """Paragraphs without any visual get the closest article sentence or chart (by meaning, any language).
+    The best three per paragraph go to the local model, which picks the one that really illustrates the
+    paragraph (or none); without a model only clear matches are kept. A chart may come back once more,
+    but not in neighbouring paragraphs."""
+    from .semantic import csls
+
+    sents = [(pi, si, row[1]) for pi, rows in enumerate(paras) for si, row in enumerate(rows) if len(row[1].split()) >= 3]
+    items = [("article", c) for c in cands] + [("chart", ch) for ch in charts]
+    if not sents or not items:
+        return []
+    sim = emb.embed([s for _, _, s in sents]) @ emb.embed([c[1] for c in cands] + [ch["title"] for ch in charts]).T
+    score = csls(sim) + sim - 0.45  # CSLS stops bland sentences matching everything; cosine keeps strong matches
+    shown: dict[str, list[int]] = {}
+    for pi, rows in enumerate(paras):
+        for row in rows:
+            if row[2].startswith("[chart"):
+                shown.setdefault(row[2].split()[1], []).append(pi)
+    gaps = []  # (paragraph, [(score, sentence index, kind, item)])
+    for pi, rows in enumerate(paras):
+        if any(row[2] for row in rows):
+            continue
+        opts = []
+        for k, (spi, si, _) in enumerate(sents):
+            if spi != pi:
+                continue
+            for j, (kind, item) in enumerate(items):
+                if kind == "article" and item[1] in used:
+                    continue
+                if kind == "chart":
+                    seen = shown.get(item["id"], [])
+                    if len(seen) >= 2 or any(abs(p - pi) <= 1 for p in seen):
+                        continue
+                if score[k, j] > 0:
+                    opts.append((float(score[k, j]), si, kind, item))
+        best: dict[str, tuple] = {}
+        for o in sorted(opts, key=lambda o: -o[0]):
+            key = o[3][1] if o[2] == "article" else o[3]["id"]
+            best.setdefault(key, o)
+        if best:
+            gaps.append((pi, list(best.values())[:3]))
+    picks: dict[int, tuple] = {}
+    if model and gaps:
+        try:
+            picks = choose_evidence(paras, gaps, model, host)
+        except Exception:
+            picks = {}
+            model = None
+    if not model:
+        picks = {pi: opts[0] for pi, opts in gaps if opts[0][0] >= SEMANTIC_MIN}
+    notes = []
+    for pi, (sc, si, kind, item) in sorted(picks.items()):
+        if kind == "article":
+            if item[1] in used:
+                continue
+            cue = article_cue(item, _numbers(paras[pi][si][1], lang))
+        else:
+            seen = shown.get(item["id"], [])
+            if any(abs(p - pi) <= 1 for p in seen):
+                continue
+            cue = f"[chart {item['id']} {item['points'][-1][0]}] "
+            shown.setdefault(item["id"], []).append(pi)
+        if cue:
+            paras[pi][si][2] = cue
+            notes.append(f"meaning match {sc:.2f}{' (chosen by ' + model + ')' if model else ''}: {cue.strip()[:60]}")
+    return notes
+
+
+def choose_evidence(paras, gaps, model, host) -> dict[int, tuple]:
+    """One prompt for the whole script: for each paragraph, which option (if any) illustrates it."""
+    blocks = []
+    for n, (pi, opts) in enumerate(gaps, 1):
+        text = " ".join(row[1] for row in paras[pi])
+        lines = [f"P{n}: {text}"]
+        for k, (_, _, kind, item) in enumerate(opts, 1):
+            lines.append(f"  {k}) {'chart: ' + item['title'] if kind == 'chart' else 'article: ' + item[1][:220]}")
+        blocks.append("\n".join(lines))
+    prompt = ("A narrated explainer video shows a screenshot or chart while a paragraph is spoken. For each paragraph "
+              "below, choose the option that is clearly about the same thing the paragraph says (same fact, cause or "
+              "subject), or 0 if none is. Be strict: a vaguely related option is 0.\n"
+              "Answer with JSON only, for example {\"P1\": 2, \"P2\": 0}\n\n" + "\n\n".join(blocks))
+    raw = ollama(prompt, model, host, timeout=900, temperature=0.1)
+    m = re.search(r"\{.*\}", raw, re.S)
+    answer = json.loads(m.group(0)) if m else {}
+    out = {}
+    for n, (pi, opts) in enumerate(gaps, 1):
+        try:
+            k = int(answer.get(f"P{n}", 0))
+        except (TypeError, ValueError):
+            continue
+        if 1 <= k <= len(opts):
+            out[pi] = opts[k - 1]
+    return out

@@ -4,7 +4,7 @@
     [article 1 "decreased by 18.1%"] screenshot of article 1, highlight the quoted words
     [chart MORTGAGE30US 2021]       data chart, marker on the date (year, YYYY-MM or YYYY-MM-DD)
     [logo "Fannie Mae"]             organisation logo
-    [icon house]                    force a doodle icon (any name from object_generator.OBJECTS)
+    [icon oil-drum]                 a drawing on the next word (Fluent Emoji name, or a doodle from object_generator.OBJECTS)
 
 Tags are instructions, not words: they are removed from the narration, captions and TTS
 text and attached to the word that follows them (`word` = index into text.split()).
