@@ -110,6 +110,10 @@ def split_sentences(text: str) -> list[tuple[str, int, int]]:
                 if ch == "." and i > 0 and i + 1 < n and para[i - 1].isdigit() and para[i + 1].isdigit():
                     i += 1
                     continue
+                # Initials: U.S., U.K., J. Smith
+                if ch == "." and i > 0 and para[i - 1].isupper() and (i < 2 or not para[i - 2].isalpha()):
+                    i += 1
+                    continue
                 # Abbreviations: Mr. Dr. e.g.
                 if ch == ".":
                     m = re.search(r"([A-Za-z.]+)$", para[start:i])

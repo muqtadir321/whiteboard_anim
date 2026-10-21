@@ -33,12 +33,12 @@ OVERLAY_BOX = (780.0, 1500.0, 1050.0, 1780.0)
 INK = "#1E1E1E"
 LOW_WORDS = {"low", "lower", "cheap", "cheaper", "only", "down", "fell", "dropped", "drop", "under", "below",
              "kam", "sasta", "sirf", "neeche", "gir"}
-SKIP_ICONS = {"people_group"}  # crowds read poorly as small doodles
+SKIP_ICONS: set[str] = set()
 # Doodles only: diagrams and charts from the whiteboard planner read poorly as small pop-ins.
 ICON_EXTRA = {"person", "worker", "boss", "student", "teacher", "police", "money_growth", "debt", "loss", "price_tag", "trend_arrow"}
 SPECIFIC = {"phone_call", "handcuffs", "jail", "fraud_mask", "ai_chip", "bubble", "police", "rate_badge", "house", "bank", "lock",
             "money_bag", "piggy_bank", "price_tag", "trend_arrow", "money_growth", "loss", "debt"}
-ICON_SWAP = {"pie_chart": "rate_badge", "percent_badge": "rate_badge", "percent": "rate_badge", "%": "rate_badge", "rate": "rate_badge"}
+ICON_SWAP = {"people_group": "person", "pie_chart": "rate_badge", "percent_badge": "rate_badge", "percent": "rate_badge", "%": "rate_badge", "rate": "rate_badge"}
 ICON_TINT = {  # main fill for icons that come without one
     "house": "#C98B5B", "bank": "#B9BEC5", "document": "#F3E7C9", "money_bag": "#8DB27A", "coin": "#E9B949",
     "coin_stack": "#E9B949", "banknote": "#9CCB86", "lock": "#4A4A4A", "building": "#9AA3AD", "shop": "#E7A86B",
@@ -358,6 +358,8 @@ class ExplainerLayout:
             name = ICON_SWAP.get(a.get("object", ""), a.get("object", ""))
             if a["action"] == "draw" and is_doodle(name) and all(name != p[0] for p in picks):
                 picks.append((name, a.get("params") or {}, t_at(a.get("anchor_char", 0))))
+        if not picks:  # never a blank board: someone thinking it over
+            picks.append(("person", {"pose": "think"}, times[0][0] if times else s0))
         # the doodles that say the most about this topic go first (a bubble beats a generic laptop)
         picks.sort(key=lambda p: p[0] not in SPECIFIC)
         picks = picks[: int(self.ex["max_icons"])]

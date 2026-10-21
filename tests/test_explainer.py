@@ -420,3 +420,17 @@ def test_auto_tag_keeps_words_and_matches_numbers(tmp_path):
     assert '[article 1 "' in out and "18.1%" in out.split("[article 1")[1]
     assert extract_cues(out)[0].split() == extract_cues(script)[0].split()  # narration unchanged
     assert draft.auto_tag(out, "en", ev.articles, {}, [], True)[0] == out  # already tagged: left alone
+
+
+def test_initials_do_not_end_a_sentence():
+    sents = [s.text for s in analyze_script("There were 1.5 million sellers in the U.S., but fewer buyers. Next one.", "en")]
+    assert sents == ["There were 1.5 million sellers in the U.S., but fewer buyers.", "Next one."]
+
+
+def test_scene_without_doodles_still_gets_one(ex_cfg):
+    scene = {"scene_id": "scene_001", "narration_text": "According to Redfin, the gap is the biggest yet.", "start_seconds": 0, "end_seconds": 3,
+             "visual_actions": [{"id": "a1", "action": "draw", "object": "people_group", "position": "center", "draw_order": 1}], "quantities": []}
+    sprites = ExplainerLayout(ex_cfg, "en", None, 1.0).scene_icons(scene, [(0.0, 0.3)] * 8, 0.0, 3.0, [], 300.0, [])
+    assert [sp.name for sp in sprites] == ["person"]
+    scene["visual_actions"] = []
+    assert ExplainerLayout(ex_cfg, "en", None, 1.0).scene_icons(scene, [(0.0, 0.3)] * 8, 0.0, 3.0, [], 300.0, [])

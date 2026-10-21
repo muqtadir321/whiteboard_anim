@@ -381,6 +381,9 @@ class LanguageJob:
                         t += dd
                 else:
                     segments.append(Segment(ts.text, ts.start, ts.end, i, ts.words))
+            for prev, seg in zip(segments, segments[1:]):  # word timings can overlap by a few ms at boundaries
+                if seg.start < prev.end:
+                    seg.start = min(prev.end, seg.end)
             plan = plan_scenes(segments, self.lang, cfg, self.key)
             plan["timing"] = {"source": timing.source, "confidence": timing.confidence}
             validate_plan(plan)
