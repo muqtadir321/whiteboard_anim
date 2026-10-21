@@ -1,14 +1,14 @@
 topic: strongest buyer's market home prices Redfin sellers
 region: US
-created: '2026-10-21T06:24:46+00:00'
+created: '2026-10-21T12:11:06+00:00'
 model: none (your own script)
 languages:
 - english
 sources:
 - kind: news
   title: Redfin Reports U.S. Home Prices Ticked Up 0.25% in September
-  publisher: TradingView
-  url: https://news.google.com/rss/articles/CBMiuwFBVV95cUxOY1FSWEt3MExoVHpYRllrU01NZGtjbkVkalFhRmVXOXAyVkJUdTNfWnY4UnFqaFg2cDVqd2RUSXZyMGQ4U25OdE9TNVNLZlJZQ3pDZldxOGx1MmYwYmh3SWdrNlhqaERpc2xObWlSYWJ6NEZYQXM4NHJjX0xZSkRwb1IxV1JoemlxODVjRFloRGFfaGZTbXVjVDNhSGgxQTM2WHBLV2hoWWhZVGZITnkyTWRTanlOcnZVamFz?oc=5
+  publisher: PR Newswire
+  url: https://news.google.com/rss/articles/CBMiswFBVV95cUxPRzRSdWhDNWN3T1dRa0JXSkVWcEtjWTRKUzFpMXFSYjQ5eDcwTExFQ2ZTMldvOVk4dkwtcU54Ty1aR21ZaW9JVmZUelVqeVN1Q3ZSR0JiV1k2LVozWVI1ZEhtTEZSVktEUVBEWi1MVjJZLURDMmFNV1ZBc3BpYkhNMGN6cEJNck5NTW9YX0g1TmV6Mlp2aTg0SHZPcXVPaWJEYjhkUmY1aVRHRkhkOVoyeVNiOA?oc=5
 - kind: news
   title: Only 5 US housing markets still favor sellers — everywhere else, a record
     seller glut has buyers calling the shots
@@ -24,14 +24,14 @@ sources:
   publisher: Newsweek
   url: https://news.google.com/rss/articles/CBMinwFBVV95cUxQRXhHVGVHYXhWYzl4cnk1TTZoZEhna3FKUS1wZFNvSmFzR0tiNW9oT012cGlOZzNqMkFITHllN2U5VDMxYmIxMmZ4U0x4MWt0eURmc2RrN2RRZ25zZnkwUWpCcTVLNjctNEZzQV81Yno4eHJPdmpJWVBKS3dBUEN0NS1VSk5aOEZ6Sm1wNzFldTRLNFEzSjFrOVdLeGNaaWs?oc=5
 - kind: article
+  title: Redfin Reports Home Sellers Now Outnumber Buyers By 63%, the Biggest Gap
+    in at Least 13 Years
+  publisher: Yahoo Finance
+  url: https://finance.yahoo.com/real-estate/articles/redfin-reports-home-sellers-now-120000869.html
+- kind: article
   title: Map Reveals Where Home Sellers Outnumber Buyers by Record Margin
   publisher: Newsweek
   url: https://www.newsweek.com/map-reveals-where-home-sellers-outnumber-buyers-by-record-margin-12571092
-- kind: article
-  title: Redfin signals a shift in power to buyers amid price cuts—but 7% mortgage
-    rates are a problem
-  publisher: Fortune
-  url: https://fortune.com/2026/10/06/redfin-power-shift-buyers-housing-market-price-cuts-listings-mortgage-rates/
 - kind: chart
   title: 'Housing Inventory: Active Listing Count in the United States'
   publisher: Realtor.com via FRED

@@ -14,22 +14,55 @@
 - `[article N "exact words"]` article screenshot with those words highlighted
 - `[chart ID 2021]` data chart with a marker on a date
 - `[logo "Name"]` organisation logo
-- `[icon house]` force a doodle (house, bank, document, money_bag, rate_badge, lock, car, …)
+- `[icon oil-drum]` a drawing on the next word: any Fluent Emoji name (oil-drum, fuel-pump, mobile-phone, pill, house, …, see icon-sets.iconify.design/fluent-emoji-flat) or a doodle (house, bank, document, money_bag, rate_badge, lock, …)
 
 ## Check these
 
+- english: meaning match 0.14 (chosen by qwen2.5:7b): [article 1 "That's why a market with a lot more sellers than
+- english: meaning match 0.10 (chosen by qwen2.5:7b): [article 2 "At the same time, sellers hit their highest leve
+- english: meaning match 0.01 (chosen by qwen2.5:7b): [article 2 "The data also show that pandemic hangover is not
 - english: [news] -> It's officially the strongest buyer's market in America on r
-- english: [article 1 "According to Redfin, there were over 1.5 million sellers in"] -> In September, there were about one and a half million home s
-- english: [article 1 "homebuyers by a record 63 percent as those discouraged by"] -> That's sixty-three percent more sellers than buyers.
-- english: [article 1 "Redfin started tracking data in 2013, down to about 928,892."] -> According to Redfin, it's the biggest gap since they started
+- english: [article 2 "According to Redfin, there were over 1.5 million sellers in"] -> In September, there were about one and a half million home s
+- english: [article 2 "homebuyers by a record 63 percent as those discouraged by"] -> That's sixty-three percent more sellers than buyers.
+- english: [article 2 "Redfin started tracking data in 2013, down to about 928,892."] -> According to Redfin, it's the biggest gap since they started
+- english: [article 1 "That's why a market with a lot more sellers than"] -> Basic economics says too many sellers should push prices dow
+- english: [article 2 "At the same time, sellers hit their highest level since"] -> That's higher than a year ago, for the thirty-ninth month in
+- english: [article 1 "For house hunters who have the budget and job security"] -> So when the offers are too low, they simply say no, and take
+- english: [article 2 "The data also show that pandemic hangover is not all"] -> So if you're waiting for prices to crash, don't hold your br
+- english: [icon house] -> four hundred seventeen thousand dollars
+- english: [icon house] -> four out of ten
+- english: [icon piata] -> off the market
+- english: [icon man] -> nearly forty-five thousand
+- english: [icon department-store] -> close its doors
 
 Placeholders to fill: **0**
 
 ## Evidence
 
-### Article 1: Map Reveals Where Home Sellers Outnumber Buyers by Record Margin
-Newsweek — https://www.newsweek.com/map-reveals-where-home-sellers-outnumber-buyers-by-record-margin-12571092
+### Article 1: Redfin Reports Home Sellers Now Outnumber Buyers By 63%, the Biggest Gap in at Least 13 Years
+Yahoo Finance — https://finance.yahoo.com/real-estate/articles/redfin-reports-home-sellers-now-120000869.html
 ![article 1](evidence/article_1.png)
+
+Sentences you can quote:
+
+- The number of buyers in the market dipped to the lowest level in records dating back to 2013, while the number of sellers rose to its highest level since 2020
+- There are just 5 seller's markets: San Francisco, and a few Northeast metros
+- 14, 2026 /PRNewswire/ -- There were an estimated 62.6% more home sellers than buyers in the U.S.
+- housing market in September, the biggest gap in records dating back to 2013.
+- This marks the fourth record-breaking month in a row, and the margin is up sharply from 56.9% in August.
+- Redfin defines a market where there are over 10% more sellers than buyers as a buyer's market and a market where there are over 10% fewer sellers than buyers as a seller's market.
+- A market where the gap is plus or minus 10% is considered a balanced market.
+- There were an estimated 928,892 homebuyers in the market nationwide in September, the lowest level in records dating back through 2013.
+- That's down 2.4% from a month earlier, the fifth straight monthly decline.
+- On the flip side, there were an estimated 1,510,784 home sellers in the market, the most since March 2020.
+- That's the most in records dating back through 2013.
+- In the top 13 buyer's markets, there were more than twice as many sellers as buyers in September.
+- The surplus increased most in Miami, which also has the biggest surplus of sellers over buyers; there were 158.9% more sellers than buyers in September, up from 134.5% the month before.
+- The next-biggest monthly increase was in Tampa, where there were 103.7% more sellers than buyers in September, up from 82.2% in August.
+
+### Article 2: Map Reveals Where Home Sellers Outnumber Buyers by Record Margin
+Newsweek — https://www.newsweek.com/map-reveals-where-home-sellers-outnumber-buyers-by-record-margin-12571092
+![article 2](evidence/article_2.png)
 
 Sentences you can quote:
 
@@ -47,22 +80,6 @@ Sentences you can quote:
 - As of the week ending October 8, the 30-year fixed-rate mortgage averaged 7.4 percent, up from 6.30 percent a year earlier.
 - Forty-one of the 50 most populous metropolitan areas in the nation are now technically “buyer’s markets”—ones where buyers appear to have the upper hand over sellers and can negotiate better deals for themselves.
 - Normally, Redfin defines a buyer’s market as one where there are over 10 percent more sellers than buyers.
-
-### Article 2: Redfin signals a shift in power to buyers amid price cuts—but 7% mortgage rates are a problem
-Fortune — https://fortune.com/2026/10/06/redfin-power-shift-buyers-housing-market-price-cuts-listings-mortgage-rates/
-![article 2](evidence/article_2.png)
-
-Sentences you can quote:
-
-- Steven Bartlett built The Diary of a CEO into a global hit.
-- Steven Bartlett built The Diary of a CEO into a global hit.
-- Steven Bartlett built The Diary of a CEO into a global hit.
-- Steven Bartlett built The Diary of a CEO into a global hit.
-- There was a time when open houses were packed, homes drew multiple offers on listing day, and buyers wrote love letters to sellers hoping to beat the competition.
-- The share of home sellers cutting t heir asking price has hit a record for this time of year, according to Redfin, which calls it a strong buyer’s market.
-- Use of this site constitutes acceptance of our Terms of Use and Privacy Policy | CA Notice at Collection and Privacy Notice | Do Not Sell/Share My Personal Information FORTUNE is a trademark of Fortune Media IP Limited, registered in the U.S.
-- FORTUNE may receive compensation for some links to products and services on this website.
-- Offers may be subject to change without notice.
 
 ### Chart ACTLISCOUUS: Housing Inventory: Active Listing Count in the United States
 Realtor.com via FRED — https://fred.stlouisfed.org/series/ACTLISCOUUS

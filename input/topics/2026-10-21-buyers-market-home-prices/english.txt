@@ -1,19 +1,19 @@
-[curious] It's officially the strongest buyer's market in America on record. So why aren't home prices falling?
+[curious] [news] It's officially the strongest buyer's market in America on record. So why aren't home prices falling?
 
-[measured] In September, there were about one and a half million home sellers in the U.S., but only about nine hundred thirty thousand buyers. That's sixty-three percent more sellers than buyers. According to Redfin, it's the biggest gap since they started tracking it in 2013.
+[measured] [article 2 "According to Redfin, there were over 1.5 million sellers in"] In September, there were about one and a half million home sellers in the U.S., but only about nine hundred thirty thousand buyers. [article 2 "homebuyers by a record 63 percent as those discouraged by"] That's sixty-three percent more sellers than buyers. [article 2 "Redfin started tracking data in 2013, down to about 928,892."] According to Redfin, it's the biggest gap since they started tracking it in 2013.
 
-[thoughtful] Basic economics says too many sellers should push prices down.
+[thoughtful] [article 1 "That's why a market with a lot more sellers than"] Basic economics says too many sellers should push prices down.
 
-[surprised] But they didn't. The typical existing home sold for about four hundred seventeen thousand dollars in September. That's higher than a year ago, for the thirty-ninth month in a row, according to the National Association of Realtors.
+[surprised] But they didn't. The typical existing home sold for about [icon house] four hundred seventeen thousand dollars in September. [article 2 "At the same time, sellers hit their highest level since"] That's higher than a year ago, for the thirty-ninth month in a row, according to the National Association of Realtors.
 
 [pause] [curious] So what's going on?
 
-[confident] Here's the secret. Almost four out of ten American homeowners have no mortgage at all. No monthly payment. No pressure. No reason to sell cheap.
+[confident] Here's the secret. Almost [icon house] four out of ten American homeowners have no mortgage at all. No monthly payment. No pressure. No reason to sell cheap.
 
-[measured] So when the offers are too low, they simply say no, and take the house off the market. In December, a record number of sellers pulled their listings. And in January, nearly forty-five thousand of those homes came right back, the most for any January since 2016.
+[measured] [article 1 "For house hunters who have the budget and job security"] So when the [icon piata] offers are too low, they simply say no, and take the house off the market. In December, a record number of sellers pulled their listings. And in January, [icon man] nearly forty-five thousand of those homes came right back, the most for any January since 2016.
 
-[thoughtful] It's like a shop that would rather close its doors for a few months than ever put a sale sign in the window.
+[thoughtful] It's like a shop that would rather [icon department-store] close its doors for a few months than ever put a sale sign in the window.
 
-[serious] So if you're waiting for prices to crash, don't hold your breath. In this market, the real power isn't a lower price. It's negotiation. Ask for repairs, closing costs, or a rate buydown.
+[serious] [article 2 "The data also show that pandemic hangover is not all"] So if you're waiting for prices to crash, don't hold your breath. In this market, the real power isn't a lower price. It's negotiation. Ask for repairs, closing costs, or a rate buydown.
 
 [soft] Sellers aren't desperate. They're just patient.
