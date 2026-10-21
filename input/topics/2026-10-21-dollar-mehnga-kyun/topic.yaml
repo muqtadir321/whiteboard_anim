@@ -1,0 +1,43 @@
+topic: rupee record low against dollar oil prices
+region: PK
+created: '2026-10-21T07:04:17+00:00'
+model: none (your own script)
+languages:
+- urdu
+sources:
+- kind: news
+  title: 'Rupee in Freefall: Slips Past 94 vs Dollar; Indian Currency Falls to Record
+    Low, What''s Behind Crash?'
+  publisher: Goodreturns
+  url: https://news.google.com/rss/articles/CBMi2AFBVV95cUxNYnd3bmRDVnpvblBxS2R0VEFFdHNld29yMnlRR3VELWtFbWhYaDVrWDY5M0lWV1ZlWkNFejhiRm5zNDVtazJwYjVXVkprMnhmV2tnbXJSb0d6SG4tNlhnRG9UcWg4c3otQ2oyY3J6N09OX1RfZVIxUFRncnNCTzVKVXhYUnB5alJUNEF0azNmTzNpdmphVE0ybWpnakFmU2ttOE1VZXU2c19IZmpWNmFVUkJMaHJtbnhpcER4OE14SUZMYnNXV2NhWVJrQThrTXFfbDJfcmNVU2U?oc=5
+- kind: news
+  title: Rupee Appreciates by 49 Paise to 95.28 Against Dollar on RBI Measures
+  publisher: Deccan Chronicle
+  url: https://news.google.com/rss/articles/CBMiuAFBVV95cUxOMVUxaUMzdVBOREhVcGVld1YxbmhjV2g4c1RyVDhZSm9YcFBkM0dOZXRwd1g5SFh3VmxzMW5OU0xQQV9jNGQ4V2s1MTdrNWR5MnUtNnM1QzNfSzdIbUFtVnFwbEQ1M1R2Z1pSMXQ3Z1padXpjaFJRVUFxbnkwbzBmVXlCRkpGMUxybGFOazBicG1TMzJ5YlNnX0NaM1ZMNjE4QkMzNjQ0M2pCQ21pbW52LVFPZ0phNTNy0gG-AUFVX3lxTE1Kc29mdjlxa3QweWlNX0ZQdzRUSFlrVGtqUnRsWDF4WE5YdkdxWnpsODZabDVudWFjOHFHdXhBQzh6bHhOcU1uekZoYUliWVppbHBOMkZ5dHg3ckxORnlTVGVtdVhmMW1lN2Fsb2J0enBsSmczczR2amg0RWtEY3h5bmIzT2hQYWd1NEJlV0tGZUhKNEJGbWtNSVFlLTgwd2pFSnN1YTNCejJtdzFmTU5pZVpYenRnNDl4YTkwUlE?oc=5
+- kind: news
+  title: India’s rupee recovery faces test from oil prices, capital outflows
+  publisher: The Business Times
+  url: https://news.google.com/rss/articles/CBMitAFBVV95cUxNVkkteXpMRFFTWVpKZFlzUl9tRXdzZUhMRndkMkZ4REFObGxLT1h6aDhuc2U3VW04aU5LTnh3a3hTalRKMlMyMDcxa2hFU1JlcUU3Yjkzd1d0cEJFc0hBYzMxaGxiQ2d6cklqY25scEp5aTVyTTBVNVRmYWFxdUFJSzFLb0c1cVJUTzJKOF9TVmVaSExhUm5SaG1HSW9kNXNBNTBURFRkeE9yR2NQVHE4ck5LQ1I?oc=5
+- kind: news
+  title: Rupee Surges 1% Against Dollar as RBI Steps In to Ease Currency Pressure
+  publisher: Newstrack English
+  url: https://news.google.com/rss/articles/CBMingFBVV95cUxOWXpPemVJOGNRbktWbUhkWDI2dEdmZEpvRkVOd0p4cWt4Ul9iLVpBc3RKeUV1aTBfSFo1NUt6WVY1dXJFTGdsWE1HVTdSOW5OcUNpazljSWVZWFlaYjY4Tk5TcGNlbEYxQjFLY01fcWhac1RUcjdLdHB5ZnI5ZWdSSFFtem1QSVhGa1hjNElYdnZYeUZvUWZZZG43QlNwQdIBowFBVV95cUxQMXlKNnJjbmtzN2VUbUljRGlybV9adnlMeWdPWlJ1aGN4bEJESXVCM19Vek9GYzJoNk5jWWZoZFdGRmpJdzVPTGtXRkZoNnpTWHhxQzJPczZnS3NRRl9wZDBIZjJSbUpqZjQ2eTR4WU9XM2ZVYjZlVWU0VXNvODJPTzd6ZFpTbUwxOEtEQ1l5cDA1UXN5MER6QlBPVEUtdU9oQ3dN?oc=5
+- kind: article
+  title: India’s Forex Reserves Hit Record $729.3 Billion on Strong Dollar Inflows,
+    RBI Gains Firepower to Support Rupee
+  publisher: Gulf News
+  url: https://gulfnews.com/business/economy/indias-forex-reserves-hit-record-7293-billion-on-strong-dollar-inflows-1.500655519
+- kind: article
+  title: India Moves to Support Rupee as Currency Nears Record Low Against US Dollar
+  publisher: Sada Elbalad English
+  url: https://see.news/india-moves-to-support-rupee-as-currency-nears-record-low-against-us-dollar
+- kind: chart
+  title: Indian Rupees to One U.S. Dollar (exchange rate)
+  publisher: Board of Governors of the Federal Reserve System via FRED
+  url: https://fred.stlouisfed.org/series/DEXINUS
+- kind: chart
+  title: 'Crude Oil Prices: Brent, dollars per barrel'
+  publisher: U.S. Energy Information Administration via FRED
+  url: https://fred.stlouisfed.org/series/DCOILBRENTEU
+notice: Screenshots and logos belong to their owners; they are shown as evidence for
+  commentary. Check each source before publishing.
