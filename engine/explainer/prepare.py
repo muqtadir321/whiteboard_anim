@@ -213,9 +213,10 @@ def add_drawings(text: str, code: str, model: str | None, host: str, log) -> tup
     from .layout import emoji_library
     from .semantic import get_embedder
 
-    lib = emoji_library()
+    lib = emoji_library(log)
     emb = get_embedder(log=log) if lib else None
     if lib is None or emb is None:
+        log("drawings: not available, the hand-made doodles are used")
         return text, []
     return tag_drawings(text, code, lib, emb, model=model, host=host, log=log)
 

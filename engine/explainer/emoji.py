@@ -35,9 +35,11 @@ OUTLINE = (0.13, 0.13, 0.15)
 def download(timeout: float = 60) -> Path:
     path = cache_dir() / f"fluent-emoji-flat-{VERSION}.json"
     if not path.exists():
-        from ..research.sources import fetch
+        import urllib.request
 
-        data = fetch(URL, timeout)
+        req = urllib.request.Request(URL, headers={"User-Agent": "whiteboard-anim"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # ~9 MB: read it all
+            data = resp.read()
         json.loads(data)  # refuse to cache a broken download
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)

@@ -176,7 +176,7 @@ def render_time_drawings(raw, lang: str, cfg: dict, log=print):
     ex = cfg["animation"]["explainer"]
     if any(c.kind == "icon" for c in extract_cues(text)[1]) or not ex["semantic"]:
         return raw, []
-    lib = emoji_library()
+    lib = emoji_library(log)
     emb = get_embedder(ex["semantic_model"], log) if lib else None
     if lib is None or emb is None:
         return raw, []

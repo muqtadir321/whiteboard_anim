@@ -50,9 +50,9 @@ VIVID_FILL = 0.92
 _EMOJI: list = []  # loaded once: [EmojiLibrary | None]
 
 
-def emoji_library() -> EmojiLibrary | None:
+def emoji_library(log=print) -> EmojiLibrary | None:
     if not _EMOJI:
-        _EMOJI.append(EmojiLibrary.load())
+        _EMOJI.append(EmojiLibrary.load(log))
     return _EMOJI[0]
 
 

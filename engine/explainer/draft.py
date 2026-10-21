@@ -45,7 +45,8 @@ def key_sentences(paragraphs: list[str], limit: int = 14) -> list[str]:
     """Sentences with numbers first: they carry the facts a short video needs."""
     sents = []
     for p in paragraphs:
-        sents += [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if 40 <= len(s.strip()) <= 260]
+        # sentences only: bylines and captions start with a symbol ("✍️ Anshul Majumdar looks at ...")
+        sents += [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if 40 <= len(s.strip()) <= 260 and s.strip()[0].isalnum()]
     with_num = [s for s in sents if re.search(r"\d", s)]
     rest = [s for s in sents if s not in with_num]
     return (with_num + rest)[:limit]
