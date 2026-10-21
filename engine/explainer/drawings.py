@@ -1,12 +1,12 @@
 """Choose the drawings for a script: the things the narrator actually names, on the word they are said.
 
-1. Shortlist (any language, no word lists): every word and word pair of a sentence is compared
-   with the names of the ~1,250 Fluent Emoji drawings using multilingual embeddings, corrected
-   for "hub" words and drawings that are close to everything (CSLS), plus how well the drawing
-   fits the whole sentence.
-2. Choose: the free local model (Ollama) reads each sentence with its shortlist and keeps only
-   drawings that literally show something said in that sentence ("hold your breath" is not
-   lungs). Without the model, only very confident shortlist entries are kept.
+1. With the free local model (Ollama): it lists the drawable things each sentence mentions, in
+   English, with the exact word from the sentence ("oil = تیل"). Listing things is easy for a
+   small model in any language; each English name is then matched to one of the ~1,250 Fluent
+   Emoji drawings by meaning (multilingual embeddings with CSLS hub correction), and only clear
+   matches are kept ("rupee" finds no drawing and gets none).
+2. Without a model, every word and word pair is compared with the drawing names directly and
+   only near-certain matches are kept.
 
 The result is written into the script as `[icon name]` tags right before the word, so the
 renderer draws it exactly when that word is spoken, and a person can still edit the choice.
@@ -24,7 +24,7 @@ from .emoji import EmojiLibrary
 SENT_END = re.compile(r"(?<=[.!?۔؟])\s+")
 PUNCT = ".,،۔؟?!:;\"'“”‘’()"
 STRICT_COS, STRICT_CSLS = 0.83, 0.45  # without the model: the word alone must clearly name the drawing
-FLOOR = 0.30  # below this a drawing is not even offered to the model
+FLOOR = 0.30  # shortlist entries below this are dropped
 
 
 def _word_spans(text: str) -> list[tuple[int, int]]:
@@ -55,12 +55,8 @@ def shortlist(sentences: list[str], lib: EmojiLibrary, emb, per_sentence: int = 
     if not phrases:
         return out
     labels = lib.vectors(emb)
-    q = emb.embed(phrases)
-    sim = q @ labels.T
-    # CSLS against the drawing names: words/drawings that are close to everything score lower
-    rq = np.sort(sim, axis=1)[:, -10:].mean(axis=1, keepdims=True)
-    rc = np.sort(sim, axis=0)[-10:, :].mean(axis=0, keepdims=True)
-    score = 2 * sim - rq - rc
+    # CSLS: words and drawings that are close to everything score lower
+    sim, score = lib.scores(phrases, emb)
     ctx = emb.embed([" ".join(w for w in ws if w) or "-" for ws in words_per]) @ labels.T
     ctx -= ctx.mean(axis=1, keepdims=True)
     for row, (si, wi) in enumerate(owner):
@@ -76,48 +72,71 @@ def shortlist(sentences: list[str], lib: EmojiLibrary, emb, per_sentence: int = 
     return out
 
 
-LETTERS = "abcdefgh"
+THING_COS, THING_CSLS = 0.62, 0.22  # an English thing name must clearly match the drawing
 
 
-def model_prompt(sentences: list[str], lists) -> str:
-    lines = []
-    for i, (s, rows) in enumerate(zip(sentences, lists), 1):
-        if rows:
-            opts = "  ".join(f"{LETTERS[k]}) {r[3]} ({r[2]})" for k, r in enumerate(rows[: len(LETTERS)]))
-            lines.append(f"{i}. {s}\n   {opts}")
-    return ("You choose small pictures for a narrated explainer video. Under each numbered sentence are picture options, "
-            "each with the words it was matched to. Pick 0 to 2 options that show a thing or action the sentence really "
-            "talks about. Skip idioms and other meanings of a word (\"hold your breath\" is not lungs, a patient person "
-            "is not a hospital, a number is not a clock, December is not Christmas).\n"
-            "Answer with one line per sentence and nothing else, using the option letters, for example:\n"
-            "3: a, c\n4: none\n\n" + "\n".join(lines))
+def things_prompt(sentences: list[str]) -> str:
+    lines = [f"{i}. {s}" for i, s in enumerate(sentences, 1)]
+    return ("Below are the numbered sentences of a narrated video. For each sentence, list the concrete things it "
+            "mentions that can be shown as a small picture: objects, places, vehicles, money, products, buildings, "
+            "people's jobs. Skip abstract ideas, numbers, dates, feelings and idioms. Give each thing as a short English "
+            "name, then \"=\", then the exact word or words from the sentence. At most 2 per sentence.\n"
+            "Answer with one line per sentence and nothing else, for example:\n"
+            "3: oil = تیل; mobile phone = موبائل فون\n4: none\n\n" + "\n".join(lines))
 
 
-def parse_choice(raw: str, lists) -> list[list[tuple]]:
-    out = [[] for _ in lists]
+def parse_things(raw: str, n: int) -> list[list[tuple[str, str]]]:
+    out: list[list[tuple[str, str]]] = [[] for _ in range(n)]
     for m in re.finditer(r"^\W*(\d+)\s*[:.)\-]+\s*(.*)$", raw, re.M):
         si = int(m.group(1)) - 1
-        if not 0 <= si < len(lists) or "none" in m.group(2).lower():
+        if not 0 <= si < n or m.group(2).strip().lower().startswith("none"):
             continue
-        for letter in re.findall(r"\b([a-h])\b", m.group(2).lower()):
-            k = LETTERS.index(letter)
-            if k < len(lists[si]) and all(lists[si][k][3] != q[3] for q in out[si]):
-                out[si].append(lists[si][k][:4])
-    return [rows[:2] for rows in out]
+        for part in re.split(r"[;|]", m.group(2)):
+            if "=" in part:
+                name, src = (x.strip(" *\"'`") for x in part.split("=", 1))
+                if name and src and len(out[si]) < 2:
+                    out[si].append((name.lower(), src))
+    return out
 
 
-def choose_with_model(sentences: list[str], lists, model: str, host: str, lang: str, log=print):
-    """Ask the local model which shortlisted drawings show what each sentence literally says."""
+def _source_index(sentence: str, src: str, name: str, emb) -> int:
+    words = [w.strip(PUNCT) for w in sentence.split()]
+    first = src.split()[0].strip(PUNCT) if src.split() else ""
+    for k, w in enumerate(words):
+        if first and (w == first or (len(first) > 2 and first in w)):
+            return k
+    if not words:
+        return 0
+    sims = emb.embed([w or "-" for w in words]) @ emb.embed([name])[0]
+    return int(np.argmax(sims))  # the word that means the thing
+
+
+def choose_with_model(sentences: list[str], lib: EmojiLibrary, emb, model: str, host: str, log=print):
+    """Things named by the local model -> drawings; at most 2 per sentence, no repeats in neighbouring sentences."""
     from .draft import ollama
 
-    if not any(lists):
-        return [[] for _ in sentences]
-    raw = ollama(model_prompt(sentences, lists), model, host, timeout=900, temperature=0.1)
-    log("drawing choice reply: " + " | ".join(raw.strip().splitlines()[:12])[:400])
-    chosen = parse_choice(raw, lists)
-    if not any(chosen):
-        raise ValueError("no usable choice in the reply")
-    return chosen
+    raw = ollama(things_prompt(sentences), model, host, timeout=900, temperature=0.1)
+    log("things named by the model: " + " | ".join(raw.strip().splitlines()[:12])[:400])
+    things = parse_things(raw, len(sentences))
+    flat = [(si, name, src) for si, rows in enumerate(things) for name, src in rows]
+    if not flat:
+        raise ValueError("no usable lines in the reply")
+    names = sorted({name for _, name, _ in flat})
+    sim, score = lib.scores(names, emb)
+    row_of = {name: k for k, name in enumerate(names)}
+    out: list[list[tuple]] = [[] for _ in sentences]
+    recent: dict[str, int] = {}
+    for si, name, src in flat:
+        row = row_of[name]
+        j = int(np.argmax(score[row]))
+        drawing = lib.names[j]
+        if sim[row, j] < THING_COS or score[row, j] < THING_CSLS:
+            continue
+        if si - recent.get(drawing, -9) <= 2 or any(drawing == q[3] for q in out[si]):
+            continue  # the same picture again right away says nothing new
+        recent[drawing] = si
+        out[si].append((float(score[row, j]), _source_index(sentences[si], src, name, emb), src, drawing))
+    return out
 
 
 def choose_strict(lists):
@@ -144,16 +163,15 @@ def tag_drawings(script: str, lang: str, lib: EmojiLibrary, emb, model: str | No
         for s in SENT_END.split(para.strip()):
             sent_raw.append((pi, s))
     spoken = [" ".join(s[a:b] for a, b in _word_spans(s)) for _, s in sent_raw]
-    lists = shortlist(spoken, lib, emb)
     chosen = None
     if model:
         try:
-            chosen = choose_with_model(spoken, lists, model, host, lang, log)
-            log(f"drawings chosen by {model}: {sum(map(len, chosen))}")
+            chosen = choose_with_model(spoken, lib, emb, model, host, log)
+            log(f"drawings from the things {model} named: {sum(map(len, chosen))}")
         except Exception as exc:
-            log(f"drawing choice by {model} failed ({type(exc).__name__}: {exc}); keeping only confident matches")
+            log(f"naming things with {model} failed ({type(exc).__name__}: {exc}); keeping only confident matches")
     if chosen is None:
-        chosen = choose_strict(lists)
+        chosen = choose_strict(shortlist(spoken, lib, emb))
     notes = []
     new_sents: list[tuple[int, str]] = []
     for (pi, raw), picks in zip(sent_raw, chosen):

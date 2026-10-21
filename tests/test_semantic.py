@@ -93,30 +93,28 @@ def test_strict_choice_keeps_one_drawing_per_phrase():
     assert [r[3] for r in choose_strict(rows)[0]] == ["mobile-phone"]
 
 
-def test_model_choice_must_come_from_the_shortlist(monkeypatch, emb):
+def test_model_names_things_and_only_clear_drawings_are_kept(monkeypatch, emb):
     from engine.explainer import drawings
 
     lib = lib_with("house", "lungs", "window", "rocket", "pill", "tree", "dog", "car")
 
-    def fake_model(prompt, *a, **k):  # picks "window" by its letter, and a letter that does not exist
+    def fake_model(prompt, *a, **k):  # names the window, a thing with no drawing, and nothing for the idiom
         lines = []
-        for m in re.finditer(r"^(\d+)\. .*\n\s+(.*)$", prompt, re.M):
-            letter = next((l for l, name in re.findall(r"([a-h])\) ([\w-]+)", m.group(2)) if name == "window"), None)
-            lines.append(f"{m.group(1)}: {letter}, h" if letter else f"{m.group(1)}: none")
-        return "\n".join(lines)
+        for num, text in re.findall(r"^(\d+)\. (.*)$", prompt, re.M):
+            lines.append(f"{num}: window = window; unicorn = sign" if "window" in text else f"{num}: none")
+        return "Sure:\n" + "\n".join(lines)
 
     monkeypatch.setattr(draft, "ollama", fake_model)
-    script = "Do not hold your breath lungs.\n\nA shop puts a sign in the window.\n"
+    script = "Do not hold your breath.\n\nA shop puts a sign in the window.\n"
     tagged, _ = drawings.tag_drawings(script, "en", lib, emb, model="qwen")
-    assert "[icon window] window" in tagged and "lungs]" not in tagged
+    assert "[icon window] window" in tagged and "lungs]" not in tagged and tagged.count("[icon") == 1
 
 
 def test_model_reply_parsing():
-    from engine.explainer.drawings import parse_choice
+    from engine.explainer.drawings import parse_things
 
-    rows = [[(0.5, 0, "oil", "oil-drum"), (0.4, 2, "phone", "mobile-phone")], [(0.5, 1, "house", "house")]]
-    assert parse_choice("1: b, a\n2: none", rows) == [[(0.4, 2, "phone", "mobile-phone"), (0.5, 0, "oil", "oil-drum")], []]
-    assert parse_choice("Sure!\n**2.** a", rows)[1] == [(0.5, 1, "house", "house")]
+    raw = "1: Oil = تیل; mobile phone = موبائل فون; car = x\n**2.** none\n3 - bank = \"bank\""
+    assert parse_things(raw, 3) == [[("oil", "تیل"), ("mobile phone", "موبائل فون")], [], [("bank", "bank")]]
 
 
 def test_semantic_gap_gives_untagged_paragraphs_evidence(emb):

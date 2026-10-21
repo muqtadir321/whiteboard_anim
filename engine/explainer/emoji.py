@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import cairo
+import numpy as np
 
 from .semantic import cache_dir
 
@@ -26,7 +27,7 @@ LICENSE = "Fluent Emoji by Microsoft, MIT licence (github.com/microsoft/fluentui
 UNSUPPORTED = re.compile(r"Gradient|<filter|<use|<clipPath|<mask|transform=|stroke=|<text|<image")
 TONES = ("-light", "-medium-light", "-medium", "-medium-dark", "-dark")
 # drawings that rarely say anything about a sentence (symbols, letters, zodiac, clocks, ...)
-SKIP_NAME = re.compile(r"button|symbol|sign$|^keycap|^regional|^input|flag-for|oclock|thirty$|^(aries|taurus|gemini|cancer|leo|virgo|"
+SKIP_NAME = re.compile(r"button|symbol|sign$|^keycap|^regional|^input|flag-for|oclock|thirty$|face\b|^facepalm|^hundred-points$|^(aries|taurus|gemini|cancer|leo|virgo|"
                        r"libra|scorpio|sagittarius|capricorn|aquarius|pisces|ophiuchus)$|^family-|^couple|^kiss|^people-holding|"
                        r"^(man|woman|person)-(and|with)-|-(man|woman)$|^(man|woman)-")
 OUTLINE = (0.13, 0.13, 0.15)
@@ -83,6 +84,22 @@ class EmojiLibrary:
         if self._vecs is None:
             self._vecs = embedder.embed_cached([self.label(n) for n in self.names], f"emoji-{VERSION}")
         return self._vecs
+
+    def hubness(self, embedder, k: int = 10):
+        """How close each drawing name is to everything: the mean of its k best matches among all words
+        used in the drawing names (a fixed, neutral vocabulary). Used for the CSLS correction, so
+        "kaaba" or "dna" do not win for any word that the model cannot place."""
+        if getattr(self, "_hub", None) is None:
+            vocab = sorted({w for n in self.names for w in n.split("-") if len(w) > 2})
+            sim = embedder.embed_cached(vocab, f"emoji-vocab-{VERSION}") @ self.vectors(embedder).T
+            self._hub = np.sort(sim, axis=0)[-min(k, len(vocab)):, :].mean(axis=0)
+        return self._hub
+
+    def scores(self, queries: list[str], embedder, k: int = 10):
+        """(cosine, CSLS) of each query against every drawing name."""
+        sim = embedder.embed(queries) @ self.vectors(embedder).T
+        rq = np.sort(sim, axis=1)[:, -k:].mean(axis=1, keepdims=True)
+        return sim, 2 * sim - rq - self.hubness(embedder, k)[None, :]
 
     def match(self, phrases: list[str], embedder) -> list[tuple[str, float, float]]:
         """For each phrase: (best drawing, its similarity, margin over the phrase's typical match)."""
