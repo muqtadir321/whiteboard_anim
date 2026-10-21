@@ -97,12 +97,26 @@ def test_model_choice_must_come_from_the_shortlist(monkeypatch, emb):
     from engine.explainer import drawings
 
     lib = lib_with("house", "lungs", "window", "rocket", "pill", "tree", "dog", "car")
-    replies = iter(['[{"sentence": 1, "word": "breath", "drawing": "lungs"}, {"sentence": 2, "word": "window", "drawing": "window"},'
-                    ' {"sentence": 2, "word": "x", "drawing": "unicorn"}]'])
-    monkeypatch.setattr(draft, "ollama", lambda *a, **k: next(replies))
+
+    def fake_model(prompt, *a, **k):  # picks "window" by its letter, and a letter that does not exist
+        lines = []
+        for m in re.finditer(r"^(\d+)\. .*\n\s+(.*)$", prompt, re.M):
+            letter = next((l for l, name in re.findall(r"([a-h])\) ([\w-]+)", m.group(2)) if name == "window"), None)
+            lines.append(f"{m.group(1)}: {letter}, h" if letter else f"{m.group(1)}: none")
+        return "\n".join(lines)
+
+    monkeypatch.setattr(draft, "ollama", fake_model)
     script = "Do not hold your breath lungs.\n\nA shop puts a sign in the window.\n"
     tagged, _ = drawings.tag_drawings(script, "en", lib, emb, model="qwen")
-    assert "[icon window] window" in tagged and "unicorn" not in tagged
+    assert "[icon window] window" in tagged and "lungs]" not in tagged
+
+
+def test_model_reply_parsing():
+    from engine.explainer.drawings import parse_choice
+
+    rows = [[(0.5, 0, "oil", "oil-drum"), (0.4, 2, "phone", "mobile-phone")], [(0.5, 1, "house", "house")]]
+    assert parse_choice("1: b, a\n2: none", rows) == [[(0.4, 2, "phone", "mobile-phone"), (0.5, 0, "oil", "oil-drum")], []]
+    assert parse_choice("Sure!\n**2.** a", rows)[1] == [(0.5, 1, "house", "house")]
 
 
 def test_semantic_gap_gives_untagged_paragraphs_evidence(emb):

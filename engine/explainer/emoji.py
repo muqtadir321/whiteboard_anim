@@ -26,7 +26,7 @@ LICENSE = "Fluent Emoji by Microsoft, MIT licence (github.com/microsoft/fluentui
 UNSUPPORTED = re.compile(r"Gradient|<filter|<use|<clipPath|<mask|transform=|stroke=|<text|<image")
 TONES = ("-light", "-medium-light", "-medium", "-medium-dark", "-dark")
 # drawings that rarely say anything about a sentence (symbols, letters, zodiac, clocks, ...)
-SKIP_NAME = re.compile(r"button|symbol|sign$|^keycap|^regional|^input|flag-for|-o-clock|thirty$|^(aries|taurus|gemini|cancer|leo|virgo|"
+SKIP_NAME = re.compile(r"button|symbol|sign$|^keycap|^regional|^input|flag-for|oclock|thirty$|^(aries|taurus|gemini|cancer|leo|virgo|"
                        r"libra|scorpio|sagittarius|capricorn|aquarius|pisces|ophiuchus)$|^family-|^couple|^kiss|^people-holding|"
                        r"^(man|woman|person)-(and|with)-|-(man|woman)$|^(man|woman)-")
 OUTLINE = (0.13, 0.13, 0.15)

@@ -14,7 +14,6 @@ renderer draws it exactly when that word is spoken, and a person can still edit 
 
 from __future__ import annotations
 
-import json
 import re
 
 import numpy as np
@@ -77,43 +76,48 @@ def shortlist(sentences: list[str], lib: EmojiLibrary, emb, per_sentence: int = 
     return out
 
 
-def choose_with_model(sentences: list[str], lists, model: str, host: str, lang: str):
-    """Ask the local model which shortlisted drawings show what each sentence literally says."""
-    from .draft import ollama
+LETTERS = "abcdefgh"
 
+
+def model_prompt(sentences: list[str], lists) -> str:
     lines = []
     for i, (s, rows) in enumerate(zip(sentences, lists), 1):
         if rows:
-            names = ", ".join(r[3] for r in rows)
-            lines.append(f"{i}. {s}\n   drawings: {names}")
-    if not lines:
-        return [[] for _ in sentences]
-    prompt = (
-        "You pick small pictures for a narrated explainer video. For each numbered sentence, choose 0 to 2 drawings "
-        "from ITS OWN list that show a thing or action the sentence literally talks about. Skip idioms and "
-        "unrelated meanings (\"hold your breath\" is not lungs, a patient person is not a hospital, a number is not a clock). "
-        "For each choice give the exact word from the sentence where the thing is said.\n"
-        "Answer with JSON only: [{\"sentence\": 1, \"word\": \"...\", \"drawing\": \"...\"}]\n\n" + "\n".join(lines))
-    raw = ollama(prompt, model, host, timeout=900, temperature=0.1)
-    m = re.search(r"\[.*\]", raw, re.S)
-    picks = json.loads(m.group(0)) if m else []
-    out = [[] for _ in sentences]
-    for p in picks if isinstance(picks, list) else []:
-        try:
-            si = int(p["sentence"]) - 1
-            name, word = str(p["drawing"]).strip(), str(p.get("word", "")).strip(PUNCT)
-        except (KeyError, TypeError, ValueError):
+            opts = "  ".join(f"{LETTERS[k]}) {r[3]} ({r[2]})" for k, r in enumerate(rows[: len(LETTERS)]))
+            lines.append(f"{i}. {s}\n   {opts}")
+    return ("You choose small pictures for a narrated explainer video. Under each numbered sentence are picture options, "
+            "each with the words it was matched to. Pick 0 to 2 options that show a thing or action the sentence really "
+            "talks about. Skip idioms and other meanings of a word (\"hold your breath\" is not lungs, a patient person "
+            "is not a hospital, a number is not a clock, December is not Christmas).\n"
+            "Answer with one line per sentence and nothing else, using the option letters, for example:\n"
+            "3: a, c\n4: none\n\n" + "\n".join(lines))
+
+
+def parse_choice(raw: str, lists) -> list[list[tuple]]:
+    out = [[] for _ in lists]
+    for m in re.finditer(r"^\W*(\d+)\s*[:.)\-]+\s*(.*)$", raw, re.M):
+        si = int(m.group(1)) - 1
+        if not 0 <= si < len(lists) or "none" in m.group(2).lower():
             continue
-        if not 0 <= si < len(sentences):
-            continue
-        row = next((r for r in lists[si] if r[3] == name), None)
-        if row is None:
-            continue  # not offered: the model made it up
-        words = [w.strip(PUNCT) for w in sentences[si].split()]
-        wi = next((k for k, w in enumerate(words) if word and (w == word or word in w)), row[1])
-        if all(name != q[3] for q in out[si]):
-            out[si].append((row[0], wi, word or row[2], name))
+        for letter in re.findall(r"\b([a-h])\b", m.group(2).lower()):
+            k = LETTERS.index(letter)
+            if k < len(lists[si]) and all(lists[si][k][3] != q[3] for q in out[si]):
+                out[si].append(lists[si][k][:4])
     return [rows[:2] for rows in out]
+
+
+def choose_with_model(sentences: list[str], lists, model: str, host: str, lang: str, log=print):
+    """Ask the local model which shortlisted drawings show what each sentence literally says."""
+    from .draft import ollama
+
+    if not any(lists):
+        return [[] for _ in sentences]
+    raw = ollama(model_prompt(sentences, lists), model, host, timeout=900, temperature=0.1)
+    log("drawing choice reply: " + " | ".join(raw.strip().splitlines()[:12])[:400])
+    chosen = parse_choice(raw, lists)
+    if not any(chosen):
+        raise ValueError("no usable choice in the reply")
+    return chosen
 
 
 def choose_strict(lists):
@@ -144,8 +148,8 @@ def tag_drawings(script: str, lang: str, lib: EmojiLibrary, emb, model: str | No
     chosen = None
     if model:
         try:
-            chosen = choose_with_model(spoken, lists, model, host, lang)
-            log(f"drawings chosen by {model}")
+            chosen = choose_with_model(spoken, lists, model, host, lang, log)
+            log(f"drawings chosen by {model}: {sum(map(len, chosen))}")
         except Exception as exc:
             log(f"drawing choice by {model} failed ({type(exc).__name__}: {exc}); keeping only confident matches")
     if chosen is None:
