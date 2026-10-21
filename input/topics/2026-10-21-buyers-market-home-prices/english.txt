@@ -1,6 +1,6 @@
-[curious] It's officially the strongest buyer's market in America on record. So why aren't home prices falling?
+[curious] [news] It's officially the strongest buyer's market in America on record. So why aren't home prices falling?
 
-[measured] In September, there were about one and a half million home sellers in the U.S., but only about nine hundred thirty thousand buyers. That's sixty-three percent more sellers than buyers. According to Redfin, it's the biggest gap since they started tracking it in 2013.
+[measured] [article 1 "According to Redfin, there were over 1.5 million sellers in"] In September, there were about one and a half million home sellers in the U.S., but only about nine hundred thirty thousand buyers. [article 1 "homebuyers by a record 63 percent as those discouraged by"] That's sixty-three percent more sellers than buyers. [article 1 "Redfin started tracking data in 2013, down to about 928,892."] According to Redfin, it's the biggest gap since they started tracking it in 2013.
 
 [thoughtful] Basic economics says too many sellers should push prices down.
 
