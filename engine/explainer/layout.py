@@ -412,7 +412,8 @@ class ExplainerLayout:
         return out + drawn
 
     # stages ---------------------------------------------------------------------
-    def build_stages(self, timed: list[TimedCue], end_time: float, warnings: list[str], layout: Layout) -> list[Stage]:
+    def build_stages(self, timed: list[TimedCue], end_time: float, warnings: list[str], layout: Layout,
+                     narration_end: float | None = None) -> list[Stage]:
         ev = self.evidence
         stages: list[Stage] = []
         cur: Stage | None = None
@@ -487,7 +488,8 @@ class ExplainerLayout:
                 cur.t_out = max(cur.t_out, t_out)
                 cur.sprites.append(Sprite(png_surface(lg["path"]), (0, 0, 1, 1), t, "pop", name=lg["name"]))
                 layout.used_evidence.add(f"logo:{lg['name']}")
-        narration_end = max((max(tc.sentence_end, tc.paragraph_end) for tc in timed), default=0.0)
+        if narration_end is None:
+            narration_end = max((max(tc.sentence_end, tc.paragraph_end) for tc in timed), default=0.0)
         for st in stages:
             # evidence still up when the narration ends stays through the outro
             if st.t_out >= narration_end - 1e-3:
@@ -544,7 +546,8 @@ class ExplainerLayout:
             words, bottom = self.layout_words(scene, times)
             texts.append((scene, s0, s1, times, words, bottom))
             self.text_spans.append((s0, s1, bottom))
-        layout.stages = self.build_stages(timed, total, layout.warnings, layout)
+        spoken_end = max((sc["end_seconds"] for sc in plan["scenes"]), default=0.0) + offset
+        layout.stages = self.build_stages(timed, total, layout.warnings, layout, narration_end=spoken_end)
         icon_cues = [(tc.t, tc.cue.ref) for tc in timed if tc.cue.kind == "icon"]
         for scene, s0, s1, times, words, bottom in texts:
             forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]
