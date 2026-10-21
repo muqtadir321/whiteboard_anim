@@ -27,55 +27,14 @@
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> اسی سال تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> پیٹرول، موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگ
 - urdu: [article 1 "The RBI also directed market participants to maintain a foreign-exchange"] -> لیکن اپنے پیسے کی حفاظت ضرور کر سکتے ہیں۔
-- urdu: [icon money-mouth-face] -> ڈالر مہنگا
-- urdu: [icon money-bag] -> ڈالر مہنگا
-- urdu: [icon money-bag] -> پیسہ
-- urdu: [icon money-mouth-face] -> کا پیسہ
 - urdu: [icon dollar-banknote] -> ڈالر
-- urdu: [icon money-mouth-face] -> روپے کا
-- urdu: [icon money-mouth-face] -> روپے کا
-- urdu: [icon hundred-points] -> دو سو
-- urdu: [icon money-mouth-face] -> ڈالر مہنگا
-- urdu: [icon money-bag] -> ڈالر مہنگا
-- urdu: [icon mammoth] -> بڑی
-- urdu: [icon om] -> اس
-- urdu: [icon om] -> پہلی
-- urdu: [icon shopping-cart] -> خریدتے
-- urdu: [icon plus] -> زیادہ
 - urdu: [icon mobile-phone] -> موبائل
-- urdu: [icon slot-machine] -> موبائل مشینیں
-- urdu: [icon crescent-moon] -> مانگ
-- urdu: [icon currency-exchange] -> جب ڈالر
 - urdu: [icon oil-drum] -> تیل
-- urdu: [icon plus] -> زیادہ
-- urdu: [icon oil-drum] -> وہی تیل
-- urdu: [icon oil-drum] -> تیل کی
-- urdu: [icon hundred-points] -> اسی سال
-- urdu: [icon megaphone] -> اونچی ہے
-- urdu: [icon globe-showing-americas] -> امریکہ میں
-- urdu: [icon globe-showing-americas] -> ہمارے ملکوں
-- urdu: [icon money-bag] -> پیسہ
-- urdu: [icon clutch-bag] -> کی جیب
-- urdu: [icon purse] -> کی جیب
-- urdu: [icon mobile-phone] -> موبائل فون
-- urdu: [icon fuel-pump] -> پیٹرول موبائل
-- urdu: [icon om] -> ہیں
-- urdu: [icon money-bag] -> نقد میں
-- urdu: [icon money-mouth-face] -> نقد میں
-- urdu: [icon timer-clock] -> وقت کے
-- urdu: [icon mantelpiece-clock] -> وقت کے
-- urdu: [icon plus] -> دوسرا
 - urdu: [icon dollar-banknote] -> ڈالر
-- urdu: [icon plus] -> بڑھ
-- urdu: [icon dollar-banknote] -> جب ڈالر
-- urdu: [icon minus] -> غیر
-- urdu: [icon dollar-banknote] -> ڈالر کی
-- urdu: [icon currency-exchange] -> ڈالر کی
-- urdu: [icon money-mouth-face] -> پیسے کی
-- urdu: [icon money-bag] -> پیسے
-- urdu: [icon minus] -> نہیں
-- urdu: [icon check-mark] -> چیک
-- urdu: [icon currency-exchange] -> ڈالر کا
+- urdu: [icon oil-drum] -> تیل
+- urdu: [icon mobile-phone] -> موبائل
+- urdu: [icon oil-drum] -> پیٹرول
+- urdu: [icon money-bag] -> نقد
 
 Placeholders to fill: **0**
 
