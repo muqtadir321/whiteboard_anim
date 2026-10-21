@@ -1,0 +1,85 @@
+The 4% home loan is back—and for buyers, it looks like a gift. For everyone else, it may be more complicated.
+
+Nearly 1 in 7 new-construction listings advertised reduced interest in August, according to a new Realtor.com® analysis, with an average advertised rate of just 3.92%. The typical 30-year fixed mortgage rate for everyone else, meanwhile, was 6.67%.
+
+“A sub-4% mortgage rate is extremely valuable, even for just a year or two, because it significantly cuts your early interest costs and builds home equity much faster,” Jeremy Olsher, a Florida-based real estate agent explains.
+
+On a median-priced $450,000 new home with 20% down, the difference between those mortgages works out to about $614 less in principal and interest each month, or nearly $7,400 a year.
+
+It's real affordability relief in a market that's showing signs of strain from elevated borrowing costs.
+
+Median list prices fell 1.3% year over year in August, the 10th straight annual decline, while 20.4% of listings took a price cut, the highest share of 2026. And by Thursday, the market rate had climbed again to 6.76%, its highest level since June 2025.
+
+But when builders deploy the strategy at scale, it can also reduce some of the pressure that high mortgage rates would otherwise put on home prices—helping buyers with subsidized financing afford more while potentially keeping prices higher for those shopping without it.
+
+Reduced rates aren't the only strategy that builders are using to sweeten the deal of buying new construction: Nearly 1 in 5 listings advertised an incentive of some kind in August.
+
+But rate reductions were by far the most common—appearing on 13.8% of listings, compared with just 4.8% for flex cash, the next most-common incentive.
+
+That dominance offers a clue about what builders are trying hardest to solve: the monthly payment.
+
+Just 1.4% of new homes priced between $100,000 and $200,000 advertised a reduced rate. The share climbed with price, peaking at 17.1% among $500,000 to $750,000 homes, followed by 15.8% among those priced from $750,000 to $1 million.
+
+That concentration puts the promotions squarely into move-up territory, where buyers may face a particularly difficult hurdle: giving up the cheap mortgage on the home they already own.
+
+Nearly 88% of existing-home owners with mortgages still have a rate below 6%, and the report notes a reduced builder rate may help overcome the “psychological hurdle” of giving that up.
+
+The strongest clue about how builders are using the incentive comes from the local data.
+
+In San Antonio, TX, where the median new-construction listing price is about $330,000, reduced rates cluster in the $350,000 to $500,000 range. In Denver, where the median is nearly $639,000, they cluster in the $500,000 to $1 million range.
+
+The report links that shift to competition: Builders tend to concentrate incentives on inventory facing more competitors. The offers aren’t simply following expensive homes; they are following the parts of local markets where builders have more reason to fight for a buyer.
+
+And one way to win that buyer is to compete on the mortgage payment instead of the home price.
+
+But creating those lower payments comes at a cost, and builders are picking up the tab.
+
+Lennar reported that sales incentives (including primarily price discounts and financing incentives) averaged $62,700 per home in fiscal 2025, or 13.8% of home-sale revenue. That was up from $42,900, or 8.8%, two years earlier.
+
+PulteGroup reported a similar increase, with incentives reaching 10.9% of gross sales price in the first quarter of 2026, up from 8% a year earlier. Its home-sale gross margin fell to 24.4% from 27.5%, with the company citing higher incentives as one factor.
+
+The question, then, is why would builders absorb that cost instead of doing what sellers elsewhere in the market are increasingly doing—cutting the price?
+
+An analysis by the American Enterprise Institute Housing Center provides one possible explanation.
+
+AEI estimated that reducing a mortgage rate by 1 percentage point costs a builder roughly 3.2% of the sale price. Producing approximately the same reduction in the buyer’s monthly payment through a price cut would require a roughly 10% reduction in price.
+
+That makes the financing subsidy expensive, but potentially much cheaper than reducing the home price enough to deliver the same monthly payment.
+
+Applying the national average advertised rate of 3.92% to median new-home prices in the 10 metros where builder incentives were most prevalent illustrates how large that difference can be. Compared with 6.67%, monthly principal and interest would be about $450 lower in San Antonio and $871 lower in Denver, assuming 20% down.
+
+And if a buyer keeps the same monthly payment instead of pocketing the savings, the lower rate supports roughly $95,000 to $184,000 more mortgage debt across those markets.
+
+That extra purchasing power is the source of both the opportunity and the tension, as Joel Berner, senior economist at Realtor.com and author of the report, explains.
+
+“If new-home prices get propped up by rate incentives, buyers paying the same monthly payment could have a larger loan balance on the discounted mortgage rate than they would have at a market mortgage rate," he says.
+
+Recent research provides a reason to test for that possibility.
+
+In a 2026 Brookings report, University of Pennsylvania economist Joe Gyourko included interest-rate buydowns among demand-side affordability policies that can put upward pressure on prices.
+
+So, if builders are making that trade at scale, the natural place to look next is what has happened to new-home prices.
+
+Nationally, the trends are consistent with the possibility Gyourko identifies. New-construction listing prices were down just 0.3% from a year earlier in August, compared with a 2.5% decline for resale homes.
+
+Locally, however, it looks a lot messier. If rate subsidies were broadly cushioning prices, you might expect the pattern to be especially clear where builders rely most heavily on incentives. It isn’t.
+
+Among the 10 metros where builder incentives of any kind were most prevalent, new-construction prices outperformed resale prices in 4 and underperformed in 6.
+
+In Denver, new-home prices fell 1.6%, compared with a 5.7% drop for resale homes. In Durham–Chapel Hill, NC, the relationship reversed: New-home prices fell 8.5%, versus just 1.2% for resale.
+
+Even if the data can't prove a widespread price effect, the mortgage industry already recognizes that subsidized financing can affect the market.
+
+Freddie Mac has warned appraisers to account for financing and sales concessions when analyzing comparable sales, noting that builders may use buydowns in new subdivisions to “drive interest and support higher prices.”
+
+“I emphasize to clients and appraisers that concessions, especially rate buydowns, are not ‘free,’” says Joseph Pravettone, chief appraiser at Atlas VMS. “They are price influencers, and if we fail to analyze them properly, we risk supporting contract prices that do not reflect market value.”
+
+“If buyers unexpectedly need to move, they lose the discounted rate they just paid for while trying to sell a home purchased near record-high prices,” says Jon Brooks, housing market analyst and co-founder of Momentum Realty. “They may also compete against the builder’s new inventory, which comes with incentives they cannot offer to a resale buyer.”
+
+And if home prices fall at the same time, Berner says the larger loan balance that a lower rate can support could become a liability.
+
+“This higher loan balance, if combined with falling home prices, could lead to buyers ending up underwater—owing more on their home than it’s worth,” he says.
+
+"Incentives solve affordability today, but they can create equity, refinance, and resale problems tomorrow,” he says. “Buyers who purchase at incentive-supported prices are exposed to risks that the market does not see until the incentives disappear.”
+
+Allaire Conte is a senior advice writer covering real estate and personal finance trends. She previously served as deputy editor of home services at CNN Underscored Money and was a lead writer at Orchard, where she simplified complex real estate topics for everyday readers. She holds an MFA in Nonfiction Writing from Columbia University and a BFA in Writing, Literature, and Publishing from Emerson College. When she’s not writing about homeownership hurdles and housing market shifts, she’s biking around Brooklyn or baking cakes for her friends.

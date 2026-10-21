@@ -1,0 +1,42 @@
+topic: why aren't home prices falling in america ?
+region: US
+created: '2026-10-21T14:42:08+00:00'
+model: qwen2.5:7b
+languages:
+- english
+- urdu
+sources:
+- kind: news
+  title: Why home prices aren’t falling in US despite a growing surplus of sellers
+  publisher: Baltimore Sun
+  url: https://news.google.com/rss/articles/CBMiswFBVV95cUxOTWFlTS14QkFmY2VuVlVXV1FvalhHQnVOTXlEVVRGSDdNYkw0VW1kMVVvOUlqTHBoLXlHaGJ0M2FxVTRyeWhydU41aU5Dc05EQXhieHVCS0phRlJ4M0ZqbDRVSlJlQWlxNWlpZHlCRFZwbVZpSUFxMFlGUDlHU3Q0cmxHRkxsYjdGVFhxQ3NkYldqell1UFdyaXdMN19DeWJhS09CU0YtelNJZTZ2Y2s2Vl9NQQ?oc=5
+- kind: news
+  title: Why home prices aren't falling despite a growing surplus of sellers
+  publisher: KATU
+  url: https://news.google.com/rss/articles/CBMiqgFBVV95cUxPU2JydUo1Sk5XcWt3MXlBbVM1Wmx4aG9hVDE5Tzh4bUhVNmstR0NhX3Zkc1ZLNGNMSjdaazJLelJrUXZOZmhpLVM1eFhMbS1GS3dqME92amdOQlVpV3JCc0RieWMzNnZHR1hJSXBxQmozNFM4VGZpTDFFU21aZUEyQkdBVGxFR3ZZWERVVnNudzhvdGVOOWhyX045QlFlWWZqaTY3ZXRfX0RzZw?oc=5
+- kind: news
+  title: Why home prices aren't coming down as the market slows
+  publisher: WCNC
+  url: https://news.google.com/rss/articles/CBMixAFBVV95cUxNaW9tOE15aDdOTnVLb3lBZVZtSjhqb0JIUDEyZlpyUFVKMENydUlNeVJSeFZFZ0VJWTh2VWREV3pQdEZxeFJ0d2ZSS09YckRKeVBUcEZEVzB4RzY4d3dSemJ2UkFPMVRFRDVwMGNtN01icUxNZWlSOWQ0dXpOWFFobDVLRHFQUDUweXNDbm12TzdDa3B6UmNOWjFFbWFFd3NvWndISHNiNGxjSkxUVWp4MjVLdVNsVml5ejROVEN0QUEyV1VK?oc=5
+- kind: news
+  title: Houses aren't moving despite falling property prices
+  publisher: Australian Broker
+  url: https://news.google.com/rss/articles/CBMisgFBVV95cUxOWEtmdkJJUHpQOVlTZ2dFTExEejI3czM2YjN3QkJ5Q1g4RHl3Q2c3TjhPRjU2d0EtQ0RQak1DQS03T2RyQVk4anlJaGdIUjVnb19zSFpnZ3BKeWY0aXRiM3pQdmlkTE5iYTlqMXNZRHpucmZYeWh4ZDF2NWRUemlnNDdPN0JqV0xfVGhScG9XYnBDYmc1LU5MZUU5SlRXdTZaWFZDWXNyZ2NTRF9HOURWeWVR?oc=5
+- kind: article
+  title: The 4% Mortgage Is Back. Is It Keeping New-Home Prices From Falling?
+  publisher: Realtor.com
+  url: https://www.realtor.com/news/trends/builder-mortgage-rates-new-home-incentives-2026/
+- kind: article
+  title: Why home prices aren't falling despite a growing surplus of sellers
+  publisher: KATU
+  url: https://katu.com/news/nation-world/why-home-prices-arent-falling-despite-a-growing-surplus-of-sellers
+- kind: chart
+  title: 30-Year Fixed Rate Mortgage Average in the United States
+  publisher: Freddie Mac via FRED
+  url: https://fred.stlouisfed.org/series/MORTGAGE30US
+- kind: chart
+  title: Median Sales Price of Houses Sold for the United States
+  publisher: U.S. Census Bureau and HUD via FRED
+  url: https://fred.stlouisfed.org/series/MSPUS
+notice: Screenshots and logos belong to their owners; they are shown as evidence for
+  commentary. Check each source before publishing.
