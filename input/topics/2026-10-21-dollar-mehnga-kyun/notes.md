@@ -27,6 +27,55 @@
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> اسی سال تیل کی قیمت بڑھنے سے بھارتی روپیہ ریکارڈ حد تک گرا۔
 - urdu: [chart DCOILBRENTEU 2026-10-14] -> پیٹرول، موبائل فون، دوائیں، یہاں تک کہ کھانے کا تیل، سب مہنگ
 - urdu: [article 1 "The RBI also directed market participants to maintain a foreign-exchange"] -> لیکن اپنے پیسے کی حفاظت ضرور کر سکتے ہیں۔
+- urdu: [icon money-mouth-face] -> ڈالر مہنگا
+- urdu: [icon money-bag] -> ڈالر مہنگا
+- urdu: [icon money-bag] -> پیسہ
+- urdu: [icon money-mouth-face] -> کا پیسہ
+- urdu: [icon dollar-banknote] -> ڈالر
+- urdu: [icon money-mouth-face] -> روپے کا
+- urdu: [icon money-mouth-face] -> روپے کا
+- urdu: [icon hundred-points] -> دو سو
+- urdu: [icon money-mouth-face] -> ڈالر مہنگا
+- urdu: [icon money-bag] -> ڈالر مہنگا
+- urdu: [icon mammoth] -> بڑی
+- urdu: [icon om] -> اس
+- urdu: [icon om] -> پہلی
+- urdu: [icon shopping-cart] -> خریدتے
+- urdu: [icon plus] -> زیادہ
+- urdu: [icon mobile-phone] -> موبائل
+- urdu: [icon slot-machine] -> موبائل مشینیں
+- urdu: [icon crescent-moon] -> مانگ
+- urdu: [icon currency-exchange] -> جب ڈالر
+- urdu: [icon oil-drum] -> تیل
+- urdu: [icon plus] -> زیادہ
+- urdu: [icon oil-drum] -> وہی تیل
+- urdu: [icon oil-drum] -> تیل کی
+- urdu: [icon hundred-points] -> اسی سال
+- urdu: [icon megaphone] -> اونچی ہے
+- urdu: [icon globe-showing-americas] -> امریکہ میں
+- urdu: [icon globe-showing-americas] -> ہمارے ملکوں
+- urdu: [icon money-bag] -> پیسہ
+- urdu: [icon clutch-bag] -> کی جیب
+- urdu: [icon purse] -> کی جیب
+- urdu: [icon mobile-phone] -> موبائل فون
+- urdu: [icon fuel-pump] -> پیٹرول موبائل
+- urdu: [icon om] -> ہیں
+- urdu: [icon money-bag] -> نقد میں
+- urdu: [icon money-mouth-face] -> نقد میں
+- urdu: [icon timer-clock] -> وقت کے
+- urdu: [icon mantelpiece-clock] -> وقت کے
+- urdu: [icon plus] -> دوسرا
+- urdu: [icon dollar-banknote] -> ڈالر
+- urdu: [icon plus] -> بڑھ
+- urdu: [icon dollar-banknote] -> جب ڈالر
+- urdu: [icon minus] -> غیر
+- urdu: [icon dollar-banknote] -> ڈالر کی
+- urdu: [icon currency-exchange] -> ڈالر کی
+- urdu: [icon money-mouth-face] -> پیسے کی
+- urdu: [icon money-bag] -> پیسے
+- urdu: [icon minus] -> نہیں
+- urdu: [icon check-mark] -> چیک
+- urdu: [icon currency-exchange] -> ڈالر کا
 
 Placeholders to fill: **0**
 
@@ -60,15 +109,19 @@ LinkedIn — https://www.linkedin.com/posts/cnbc-tv18_rupee-edges-higher-to-9557
 Sentences you can quote:
 
 - https://lnkd.in/daKZ7Dkn #Rupee #Forex #CrudeOil
-- https://lnkd.in/dwDmf6Ts #Rupee #Dollar #Markets
-- The #rupee traded in a tight range around 90.35 per dollar, supported by RBI intervention, even as global risk aversion and India–US trade uncertainty capped gains in early trade.
-- Manisha Gupta explains | #Silver #SilverPrice #SilverPrice https://lnkd.in/gk3_6JVi
-- The currency weakened to 94.90 against the #USDollar as dollar index climbed to a one-year high, overshadowing support from lower crude oil prices.
-- Anshul Majumdar explains what's driving the move and what traders are watching next: https://lnkd.in/dshND4bb
-- Foreign equity outflows, rising #crude oil prices, and a cautious global risk environment kept pressure on the Indian currency.
-- https://lnkd.in/dVYtAQfk #Nifty #StockMarket #Sensex #ITStocks
-- Anshul Majumdar | #RupeeFall #RupeeAtRecordLow #RupeeVsDollar https://lnkd.in/gtmWuSHr
-- Heavy profit-taking and steep margin hikes have triggered volatility, even as long-term fundamentals remain intact.
+- Iran's Rial Hits Record Low Above 2.5 Million to Dollar The Iranian rial plunged to a new low of more than 2.5 million per dollar, just 27 days after its prior record of 2.2 million on September 2, more than doubling from a year ago.
+- Inflation hit 84.4 percent last August, driving up costs for imports, fuel, and basics, while the economy faces over 5 percent GDP contraction and ongoing talks to reopen the Strait of Hormuz.
+- The US 10-year Treasury yield fell nearly 2bps to 4.93% on Tuesday, reversing a modest early-session rise, as oil prices declined for a fifth straight session.
+- and Iran broke down, rising 16% during the quarter on higher oil prices.
+- Jordan's Foreign Reserves Rise 11.7 Percent This Year to 28.5 Billion Dollars Jordan's central bank now holds reserves that would cover more than 9 months of the kingdom's imports.
+- How far reserves have climbed since the end of 2025, when most of the rise came, and why the buffer matters for the import bill, in our analysis.
+- Brent slipped to 98.47 dollars, from 107.46 a week ago, as diplomacy eased some supply fear.
+- Now set that beside what the Federal Reserve did on 16 September.
+- It raised interest rates for the first time since 2023, amid an inflation shock largely driven by oil, and sixteen of its eighteen policymakers pencilled in another rise before the year is out.
+- If the strait opens and the two-year holds above 4.60, the market has decided the hike will outlive its own justification.
+- On 15 August 1971 the United States ended the dollar’s convertibility into gold.
+- Chinese export receipts in the 1990s and 2000s were denominated in that post-1971 dollar.
+- Nigerian naira maintained relative stability against the US dollar across both the official and parallel foreign exchange markets on Friday, September 25, 2026, as balanced supply and demand continued to support market conditions.
 
 ### Chart DEXINUS: Indian Rupees to One U.S. Dollar (exchange rate)
 Board of Governors of the Federal Reserve System via FRED — https://fred.stlouisfed.org/series/DEXINUS
