@@ -109,5 +109,6 @@ Workflows: `0-make-video.yml` (render, also reusable), `1-research-viral-topics.
 
 * `engine/research/` (viral topics) and `engine/explainer/sources.py` both talk to Google News. The
   explainer reuses `research.sources.fetch`/`_clean`/`_date`, so there is little real duplication.
-* `planner.local_llm` is in config and schema but no code path reads it.
+* `planner.local_llm` (off by default) is only consulted for whiteboard fallback scenes
+  (`scene_planner.py`); the explainer path never calls it.
 * `docs/AUDIT.md` describes a much earlier state (80 tests) and is superseded by this file.

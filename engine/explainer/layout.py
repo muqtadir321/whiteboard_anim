@@ -447,7 +447,7 @@ class ExplainerLayout:
 
         for tc in timed:
             hold = tc.paragraph_end if self.ex["evidence_hold"] == "paragraph" else tc.sentence_end
-            c, t, t_out = tc.cue, tc.t, max(hold + 0.35, tc.t + 2.2)
+            c, t, t_out = tc.cue, tc.t, max(hold + 0.35, tc.t + float(self.ex["min_evidence_seconds"]))
             if c.kind == "icon":
                 continue
             if c.kind == "news":
@@ -455,7 +455,9 @@ class ExplainerLayout:
                     warnings.append("[news] cue but no headline cards were captured")
                     continue
                 img = png_surface(ev.news_image)
-                st = start(Stage("news", self.region_for(t, t_out), t, t_out, image=img, fit="contain", id="news"))
+                st = start(Stage("news", self.region_for(t, t_out), t, t_out, image=img, fit="contain", id="news",
+                                 label="Headlines found during research" if self.ex["source_label"] else "",
+                                 source_ids=[c["source_id"] for c in ev.news_cards if c.get("source_id")]))
                 cx, cy, _ = self.top_view(st)  # cards hang from the top of the stage, then a slow push-in
                 st.keys = [CameraKey(t, cx, cy, 1.0), CameraKey(t_out, cx, cy / 1.07, 1.07, move=max(0.5, t_out - t))]
                 layout.used_evidence.add("news")
@@ -467,8 +469,8 @@ class ExplainerLayout:
                 if cur is None or cur.id != f"article:{c.ref}" or t >= cur.t_out + 1.2:
                     img = png_surface(art.image)
                     st = start(Stage("article", self.region_for(t, t_out), t, t_out, image=img, id=f"article:{c.ref}",
-                                     label=f"Source: {art.publisher}" if self.ex["source_label"] and art.publisher else "",
-                                     source_url=art.url))
+                                     label=self.article_label(art) if self.ex["source_label"] else "",
+                                     source_url=art.url, source_ids=[art.source_id] if art.source_id else []))
                     st.keys = [CameraKey(t, *self.top_view(st))]
                     layout.used_evidence.add(f"article:{c.ref}")
                 st = cur
@@ -482,7 +484,8 @@ class ExplainerLayout:
                         color = self.ex["highlight_alt_color"] if n % 2 else self.ex["highlight_color"]
                         dur = min(2.2, 0.35 + 0.09 * len(c.quote.split()))
                         st.highlights.append(Highlight(rects, t + 0.45, t + 0.45 + dur, color))
-                        st.keys.append(CameraKey(t + 0.4, *self.focus_view(st, rects)))
+                        if art.capture != "source_card":  # a card already fits the stage: zooming would crop its text
+                            st.keys.append(CameraKey(t + 0.4, *self.focus_view(st, rects)))
                     else:
                         warnings.append(f"quote not found on article {c.ref}: {c.quote[:60]!r}")
             elif c.kind == "chart":
@@ -492,7 +495,7 @@ class ExplainerLayout:
                     continue
                 if cur is None or cur.id != f"chart:{c.ref}" or t >= cur.t_out + 1.2:
                     start(Stage("chart", self.region_for(t, t_out), t, t_out, painter=ChartPainter(chart, t), id=f"chart:{c.ref}",
-                                source_url=chart.url))
+                                source_url=chart.url, source_ids=[chart.source_id] if chart.source_id else []))
                     layout.used_evidence.add(f"chart:{c.ref}")
                 cur.t_out = max(cur.t_out, t_out)
                 if c.date and not cur.painter.add_marker(t + 0.2, c.date):
@@ -503,7 +506,8 @@ class ExplainerLayout:
                     warnings.append(f"[logo {c.ref}] cue but no logo was found")
                     continue
                 if cur is None or cur.kind != "logos" or t >= cur.t_out + 1.2:
-                    start(Stage("logos", self.region_for(t, t_out), t, t_out, id="logos"))
+                    start(Stage("logos", self.region_for(t, t_out), t, t_out, id="logos",
+                                label="Logos shown for identification only" if self.ex["source_label"] else ""))
                 cur.t_out = max(cur.t_out, t_out)
                 cur.sprites.append(Sprite(png_surface(lg["path"]), (0, 0, 1, 1), t, "pop", name=lg["name"]))
                 layout.used_evidence.add(f"logo:{lg['name']}")
@@ -518,6 +522,18 @@ class ExplainerLayout:
             if st.kind == "logos":
                 self.arrange_logos(st)
         return stages
+
+    @staticmethod
+    def article_label(art) -> str:
+        """Publisher, date and domain; a drawn source card says it is not a screenshot."""
+        from ..package.urls import short_url
+
+        parts = [art.publisher or short_url(art.url, 30)]
+        if art.published:
+            parts.append(art.published[:10])
+        if art.publisher and art.url:
+            parts.append(short_url(art.url, 30).split("/")[0])
+        return ("Source card: " if art.capture == "source_card" else "Source: ") + " · ".join(parts)
 
     def keep_board_busy(self, layout: Layout) -> None:
         """Never a blank board between sentences: a scene's drawings stay until the next scene's first

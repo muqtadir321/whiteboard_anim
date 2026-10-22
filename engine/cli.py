@@ -1,6 +1,10 @@
 """Command-line entry point.
 
-    python -m engine.cli run [options]       generate videos
+    python -m engine.cli research --topic "..." [--language-mode both] [--english-script F] [--urdu-script F]
+                                  [--source-urls "u1,u2"] [--research-depth standard]     research package, no video
+    python -m engine.cli render --research-dir output/<job> [--english-audio F] [--urdu-audio F] ...
+                                                                                         videos from a research package
+    python -m engine.cli run [options]       generate videos (classic inputs and topic folders)
     python -m engine.cli deps                print optional engines this run needs
     python -m engine.cli check-config        validate configuration
 """
@@ -10,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -218,6 +223,83 @@ def cmd_deps(args) -> int:
     return 0
 
 
+def _gh_output(**kv) -> None:
+    gh_out = os.environ.get("GITHUB_OUTPUT")
+    if gh_out:
+        with open(gh_out, "a", encoding="utf-8") as fh:
+            for k, v in kv.items():
+                fh.write(f"{k}={v}\n")
+
+
+def _read_script(path: str, what: str) -> str:
+    p = Path(path)
+    if not p.is_file():
+        raise ConfigError(f"{what} not found: {path}")
+    if p.suffix.lower() not in (".txt", ".md") or p.stat().st_size > 200_000:
+        raise ConfigError(f"{what} must be a .txt/.md file under 200 kB")
+    return p.read_text(encoding="utf-8-sig")
+
+
+def cmd_research(args) -> int:
+    from .package.research import ResearchError, ResearchInputs, run_research
+
+    try:
+        cfg = load_config(args.config or None, {}, Path(args.repo_root))
+        scripts = {}
+        if args.english_script:
+            scripts["english"] = _read_script(args.english_script, "English script")
+        if args.urdu_script:
+            scripts["urdu"] = _read_script(args.urdu_script, "Urdu script")
+        urls = [u for u in re.split(r"[\s,]+", args.source_urls or "") if u]
+        if args.source_urls_file:
+            urls += [u for u in re.split(r"[\s,]+", _read_script(args.source_urls_file, "source URL list")) if u]
+        if args.ur_script_mode:
+            cfg["research"]["ur_script_mode"] = args.ur_script_mode
+        if parse_bool(args.auto_translate):
+            raise ConfigError("auto_translate_missing_language=true is not supported: no free translation engine is configured; supply the script")
+        inp = ResearchInputs(args.topic.strip(), args.language_mode, scripts, urls, args.region or "global", args.research_depth,
+                             float(args.duration) if args.duration else None, args.label.strip())
+        job = run_research(inp, cfg, Path(args.output or Path(args.repo_root) / cfg["project"]["output_directory"]).resolve(), _log,
+                           draft_model=args.draft_model)
+    except (ConfigError, ResearchError, ValueError) as exc:
+        print(f"::error::{exc}")
+        return 2
+    _gh_output(job_dir=str(job), job_id=job.name)
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        info = json.loads((job / "research" / "research.json").read_text(encoding="utf-8"))
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write(f"# Research package `{job.name}`\n\nClaims: {info['claim_status']}\n\nProviders: "
+                     + ", ".join(f"{k}={v.get('status')}" for k, v in info["providers"].items()) + "\n\n")
+            fh.write("\n".join(f"- warning: {w}" for w in info["warnings"]) + "\n")
+    return 0
+
+
+def cmd_render(args) -> int:
+    from .package.job import JobError
+    from .package.render import RenderError, RenderInputs, render_package
+
+    audio = {k: Path(v) for k, v in (("english", args.english_audio), ("urdu", args.urdu_audio)) if v}
+    scripts = {k: Path(v) for k, v in (("english", args.english_script), ("urdu", args.urdu_script)) if v}
+    modes = {k: v for k, v in (("english", args.english_voice_mode), ("urdu", args.urdu_voice_mode)) if v}
+    try:
+        ri = RenderInputs(Path(args.research_dir), args.languages, audio, scripts, modes, Path(args.voice_reference) if args.voice_reference else None,
+                          bool(parse_bool(args.voice_consent)), args.render_quality, bool(parse_bool(args.subtitles)),
+                          Path(args.music) if args.music else None, bool(parse_bool(args.allow_restricted_models)), args.config)
+        out = Path(args.output or Path(args.repo_root) / "output").resolve()
+        job, results = render_package(ri, out, _log)
+    except (RenderError, JobError, ConfigError) as exc:
+        print(f"::error::{exc}")
+        return 2
+    ok = [r for r in results if r.status.ok]
+    for r in results:
+        if not r.status.ok:
+            print(f"::warning title={r.key} failed::{r.message[:300]}")
+    _gh_output(job_dir=str(job), job_id=job.name, videos=len(ok))
+    _log(f"render job {job.name}: {len(ok)}/{len(results)} language(s) rendered")
+    return 0 if ok else 1
+
+
 def cmd_check(args) -> int:
     try:
         cfg = load_config(args.config or None, build_overrides(args), Path(args.repo_root))
@@ -233,8 +315,41 @@ def main(argv=None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("run", "deps", "check-config"):
         add_common(sub.add_parser(name))
+    r = sub.add_parser("research", help="research package for a topic (no rendering)")
+    r.add_argument("--topic", required=True)
+    r.add_argument("--language-mode", default="both", choices=["english", "urdu", "both"])
+    r.add_argument("--english-script", default="")
+    r.add_argument("--urdu-script", default="", help="Urdu script or Roman Urdu; kept in the form supplied")
+    r.add_argument("--ur-script-mode", default="", choices=["", "urdu", "roman_urdu", "auto"])
+    r.add_argument("--duration", default="")
+    r.add_argument("--region", default="global")
+    r.add_argument("--source-urls", default="", help="comma/space separated URLs to use first")
+    r.add_argument("--source-urls-file", default="")
+    r.add_argument("--research-depth", default="standard", choices=["standard", "deep"])
+    r.add_argument("--label", default="")
+    r.add_argument("--auto-translate", default="false")
+    r.add_argument("--draft-model", default="none")
+    r.add_argument("--output", default="")
+    r.add_argument("--config", default="")
+    r.add_argument("--repo-root", default=str(REPO_ROOT))
+    v = sub.add_parser("render", help="render videos from a research package")
+    v.add_argument("--research-dir", required=True)
+    v.add_argument("--languages", default="both", choices=["english", "urdu", "both"])
+    for lang in ("english", "urdu"):
+        v.add_argument(f"--{lang}-audio", default="")
+        v.add_argument(f"--{lang}-script", default="", help="narration text replacing the package script")
+        v.add_argument(f"--{lang}-voice-mode", default="", choices=["", "provided_audio", "clone_voice", "system_tts"])
+    v.add_argument("--voice-reference", default="", help="your own voice recording (clone_voice); never copied to the output")
+    v.add_argument("--voice-consent", default="false", help="true: the reference is your voice or you have written permission")
+    v.add_argument("--render-quality", default="final", choices=["draft", "final"])
+    v.add_argument("--subtitles", default="false")
+    v.add_argument("--music", default="")
+    v.add_argument("--allow-restricted-models", default="false", help="true: non-commercial voice models may be used")
+    v.add_argument("--output", default="")
+    v.add_argument("--config", default="")
+    v.add_argument("--repo-root", default=str(REPO_ROOT))
     args = parser.parse_args(argv)
-    return {"run": cmd_run, "deps": cmd_deps, "check-config": cmd_check}[args.cmd](args)
+    return {"run": cmd_run, "deps": cmd_deps, "check-config": cmd_check, "research": cmd_research, "render": cmd_render}[args.cmd](args)
 
 
 if __name__ == "__main__":

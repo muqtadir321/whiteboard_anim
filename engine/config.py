@@ -86,8 +86,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "online_providers": [],
         # Local engines are tried in this order; unavailable ones are skipped.
         "local_engines": ["piper", "mms", "espeak"],
-        # Meta MMS voices are CC-BY-NC-4.0 (non-commercial). Reported in metadata.
-        "allow_noncommercial_models": True,
+        # Meta MMS voices are CC-BY-NC-4.0 (non-commercial): off unless you opt in (monetised channels).
+        "allow_noncommercial_models": False,
         # Pauses in generated narration (supplied voice-overs are never changed).
         "sentence_pause_seconds": 0.15,
         "paragraph_pause_seconds": 0.3,
@@ -113,6 +113,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "reference_text": "",
             "tau": 0.3,
             "max_duration_change": 0.05,
+            # "render" (research package) path: cloning needs this set by you, for your own voice or one
+            # you have written permission to use. The classic "run" path keeps its automatic behaviour.
+            "consent_confirmed": False,
         },
         "espeak_voices": {"en": "en-us", "ur": "ur"},
         "edge_voices": {
@@ -192,6 +195,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
             # match script sentences to evidence and words to drawings by meaning (free multilingual model)
             "semantic": True,
             "semantic_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            # an evidence card/screenshot stays at least this long, so its source label can be read
+            "min_evidence_seconds": 2.2,
+            # pen tip that follows the stroke being drawn
+            "pen_cursor": True,
         },
     },
     "planner": {
@@ -208,6 +215,44 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "maximum_duration_mismatch_seconds": 0.75,
         "minimum_audio_peak_db": -45.0,
         "frame_samples_per_scene": 1,
+    },
+    "research": {
+        # identifies every request; RESEARCH_USER_AGENT overrides it
+        "user_agent": "whiteboard_anim-research/1.0 (+https://github.com/muqtadir321/whiteboard_anim)",
+        # SEC EDGAR asks for a name and contact e-mail: set SEC_USER_AGENT ("Name you@example.com"); without it EDGAR is skipped
+        "sec_user_agent": "",
+        "timeout_seconds": 20,
+        "retries": 2,
+        "backoff_seconds": 2.0,
+        "min_interval_seconds": 1.0,
+        "respect_robots_txt": True,
+        "cache_dir": "",
+        "cache_ttl_hours": 24,
+        "max_news_items": 30,
+        "max_articles": 3,
+        # news discovery (see engine/package/providers.py); restricted ones are off unless you turn them on
+        "providers": {"official_feeds": True, "gdelt": True, "bing_news_rss": False, "google_news_rss": False},
+        "official_feeds": [
+            "https://www.federalreserve.gov/feeds/press_all.xml",
+            "https://www.bls.gov/feed/news_release.rss",
+            "https://apps.bea.gov/rss/rss.xml",
+        ],
+        "screenshots": True,
+        "official_charts": True,
+        # a missing language script is never written by translation unless this is true
+        "auto_translate_missing_language": False,
+        # a supplied "Urdu" script: urdu (Arabic script), roman_urdu, or auto (detected); kept as supplied
+        "ur_script_mode": "auto",
+        "claims": {"outdated_after_days": 400, "min_word_overlap": 0.5},
+        "finance": {
+            "enabled": "auto",
+            "sec_edgar": True,
+            "issuer_releases": True,
+            # Yahoo Finance has no public API and its terms restrict automated use: discovery links only, never fetched
+            "yahoo_finance_links": True,
+            "min_sources_per_claim": 3,
+            "max_companies": 3,
+        },
     },
     "automation": {
         "automatic_topic_discovery": False,

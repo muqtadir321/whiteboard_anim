@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 
 import cairo
 
+from ..hand_cursor import HandCursor
 from ..illustration_composer import DESIGN_W
 
 
@@ -95,6 +96,7 @@ class Stage:
     sprites: list[Sprite] = field(default_factory=list)  # logos
     id: str = ""
     source_url: str = ""
+    source_ids: list[str] = field(default_factory=list)  # research package ledger ids
     exit: bool = True  # animate out (False when it stays to the end of the video)
 
     def base_scale(self) -> float:
@@ -152,6 +154,10 @@ class ExplainerRenderer:
         self.captions = None  # explainer writes the narration on the board; no burned-in captions
         self.stats = ExStats()
         self.pop = cfg["animation"]["explainer"]["pop_seconds"]
+        # a marker tip that sits exactly where the current stroke is being drawn
+        pen = cfg["animation"]["explainer"].get("pen_cursor", True) and cfg["animation"]["hand_cursor_enabled"]
+        self.pen = HandCursor(self.scale * 0.42, "marker", cfg["animation"]["primary_stroke"]) if pen else None
+        self._pen_at: tuple[float, float] | None = None
 
     # -- painting ------------------------------------------------------------
     def paint_stage(self, ctx: cairo.Context, st: Stage, t: float) -> None:
@@ -214,7 +220,7 @@ class ExplainerRenderer:
         s = self.scale
         ctx.save()
         ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-        ctx.set_font_size(22 * s)
+        ctx.set_font_size(26 * s)  # readable on a phone
         ext = ctx.text_extents(text)
         x = region[2] * s - ext.width - 22 * s
         y = region[3] * s - 14 * s
@@ -259,6 +265,7 @@ class ExplainerRenderer:
             if p < 1:  # written left to right
                 ctx.rectangle((x0 - 4) * s, (y0 - 30) * s, (x1 - x0 + 8) * p * s, (y1 - y0 + 60) * s)
                 ctx.clip()
+                self._pen_at = ((x0 + (x1 - x0) * p) * s, (y0 + y1) / 2 * s)
         self._glyphs(ctx, w)
         ctx.restore()
         if w.underline and age > 0.3:
@@ -277,12 +284,14 @@ class ExplainerRenderer:
             ctx.stroke()
             ctx.restore()
 
-    def _draw_strokes(self, ctx: cairo.Context, sp: Sprite, p: float) -> None:
-        """Doodle being drawn: strokes appear one after another, each filled once closed."""
+    def _draw_strokes(self, ctx: cairo.Context, sp: Sprite, p: float) -> tuple[float, float] | None:
+        """Doodle being drawn: strokes appear one after another, each filled once closed.
+        Returns the point the pen has reached (surface pixels)."""
         if not hasattr(sp, "_lens"):
             sp._lens = [sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) for pts, *_ in sp.strokes]
         target = sum(sp._lens) * p
         done = 0.0
+        tip = None
         ctx.set_line_cap(cairo.LINE_CAP_ROUND)
         ctx.set_line_join(cairo.LINE_JOIN_ROUND)
         for (pts, color, width, fill), ln in zip(sp.strokes, sp._lens):
@@ -294,6 +303,7 @@ class ExplainerRenderer:
             if part >= 1.0:
                 for pt in pts[1:]:
                     ctx.line_to(*pt)
+                tip = pts[-1]
                 if fill:
                     ctx.close_path()
                     ctx.set_source_rgba(*fill)
@@ -304,13 +314,15 @@ class ExplainerRenderer:
                     d = math.dist(a, b)
                     if d >= left:
                         f = left / d if d else 0
-                        ctx.line_to(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+                        tip = (a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f)
+                        ctx.line_to(*tip)
                         break
                     ctx.line_to(*b)
                     left -= d
             ctx.set_source_rgb(*color)
             ctx.set_line_width(width)
             ctx.stroke()
+        return tip
 
     def paint_sprite(self, ctx: cairo.Context, sp: Sprite, t: float) -> None:
         if t < sp.t or (sp.end is not None and t >= sp.end):
@@ -328,7 +340,9 @@ class ExplainerRenderer:
             ctx.save()
             ctx.translate(cx - sw / 2 * f, cy - sh / 2 * f)
             ctx.scale(f, f)
-            self._draw_strokes(ctx, sp, min(1.0, p / 0.85))
+            tip = self._draw_strokes(ctx, sp, min(1.0, p / 0.85))
+            if tip is not None and p < 0.85:
+                self._pen_at = (cx - sw / 2 * f + tip[0] * f, cy - sh / 2 * f + tip[1] * f)
             if p > 0.85:  # labels and final colours settle in
                 ctx.set_source_surface(sp.surf, 0, 0)
                 ctx.paint_with_alpha((p - 0.85) / 0.15)
@@ -354,6 +368,7 @@ class ExplainerRenderer:
     def paint_frame(self, ctx: cairo.Context, scene: ExScene | None, stages: list[Stage], t: float) -> None:
         ctx.set_source_rgb(*self.bg)
         ctx.paint()
+        self._pen_at = None
         for st in stages:
             if st.t_in <= t < st.t_out:
                 self.paint_stage(ctx, st, t)
@@ -363,6 +378,11 @@ class ExplainerRenderer:
             self.paint_word(ctx, w, t)
         for sp in scene.sprites:
             self.paint_sprite(ctx, sp, t)
+        if self.pen is not None and self._pen_at is not None:  # on top of everything, at the stroke's end
+            x, y = self._pen_at
+            self.pen.paint(ctx, x, y)
+            if not (0 <= x <= self.width and 0 <= y <= self.height):
+                self.stats.cursor_out_of_bounds += 1
 
     # -- frame loop ----------------------------------------------------------
     def render(self, scenes: tuple[list[ExScene], list[Stage]], total_duration: float, write_frame, sample_times=None) -> ExStats:

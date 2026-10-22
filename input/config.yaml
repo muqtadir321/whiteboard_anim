@@ -15,8 +15,9 @@ voice:
   # Online voices are off unless listed. "edge_tts" uses an UNOFFICIAL Microsoft service.
   online_providers: []
   local_engines: [piper, mms, espeak]
-  # Meta MMS voices (Urdu/Pashto) are licensed CC-BY-NC-4.0 (non-commercial).
-  # Set to false if your channel is monetised and you do not want them.
+  # NON-COMMERCIAL model weights: Meta MMS voices (Urdu/Pashto, CC-BY-NC-4.0) and the OmniVoice
+  # cloning model (CC-BY-NC, see its model card; only its code is Apache-2.0).
+  # Set to false if your channel is monetised. The engine default is false.
   allow_noncommercial_models: true
   clone:
     # Your voice comes from input/voice/reference.*. OmniVoice (true cloning) is slow on

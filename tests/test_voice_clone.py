@@ -82,6 +82,10 @@ def test_deps_requests_mms_and_clone(repo, capsys):
     tone(repo / "input/voice/reference.wav", 12)
     cli.main(["deps", "--repo-root", str(repo)])
     out = capsys.readouterr().out
+    assert "mms=false" in out and "voice_clone=true" in out  # MMS is non-commercial: off by default
+    (repo / "input/config.yaml").write_text("voice:\n  allow_noncommercial_models: true\n", encoding="utf-8")
+    cli.main(["deps", "--repo-root", str(repo)])
+    out = capsys.readouterr().out
     assert "mms=true" in out and "voice_clone=true" in out and "transcription=false" in out
 
 

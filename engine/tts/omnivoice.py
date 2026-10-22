@@ -1,4 +1,8 @@
-"""OmniVoice zero-shot voice-cloning TTS (k2-fsa, Apache-2.0, 600+ languages).
+"""OmniVoice zero-shot voice-cloning TTS (k2-fsa, 600+ languages).
+
+Licence: the code is Apache-2.0, but the pre-trained model is CC-BY-NC (model card, "due to
+constraints from its training data"): NON-COMMERCIAL. It is only used when
+voice.allow_noncommercial_models is true, like Meta MMS, and recorded in each video's metadata.
 
 Speaks the script directly in the reference speaker's voice, in English, Urdu
 and Pashto (and Roman Urdu via derived Urdu-script text). Only used when a
@@ -20,8 +24,8 @@ LANGUAGE_IDS = {"en": "en", "ur": "ur", "ps": "ps"}
 
 class OmniVoiceProvider(TTSProvider):
     name = "omnivoice"
-    license = "Apache-2.0 (OmniVoice); you must have the right to use the reference voice"
-    commercial_use = "yes (Apache-2.0); reference voice must be yours or licensed"
+    license = "code Apache-2.0; pre-trained model CC-BY-NC (k2-fsa/OmniVoice model card); reference voice must be yours or licensed"
+    commercial_use = "no (non-commercial model weights)"
     clones_voice = True
     # Whole paragraphs sound continuous; sentence-by-sentence output adds an
     # audible breath/tail and a gap at every full stop.
@@ -37,6 +41,9 @@ class OmniVoiceProvider(TTSProvider):
         if self.reference is None or language not in LANGUAGE_IDS:
             return False
         if language not in self.cfg["voice"]["clone"].get("omnivoice_languages", list(LANGUAGE_IDS)):
+            return False
+        if not self.cfg["voice"].get("allow_noncommercial_models", False):
+            self.unavailable_reason = "OmniVoice weights are CC-BY-NC (non-commercial); set voice.allow_noncommercial_models: true to use them"
             return False
         try:
             import torch  # noqa: F401

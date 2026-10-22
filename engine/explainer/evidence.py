@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime as dt
 import difflib
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -34,6 +35,9 @@ class Article:
     title: str = ""
     publisher: str = ""
     words: list[tuple[str, float, float, float, float]] = field(default_factory=list)
+    source_id: str = ""  # id in the research package's source ledger
+    capture: str = "screenshot"  # screenshot | source_card (drawn from verified metadata)
+    published: str = ""
 
     def find_quote(self, quote: str, min_ratio: float = 0.72) -> list[tuple[float, float, float, float]]:
         """Line rectangles (image pixels) covering the quoted words, [] if not on the page."""
@@ -78,6 +82,7 @@ class Chart:
     source: str
     url: str
     points: list[tuple[dt.date, float]]
+    source_id: str = ""
 
     def nearest(self, date: str) -> tuple[dt.date, float] | None:
         d = parse_date(date)
@@ -95,6 +100,24 @@ def parse_date(s: str) -> dt.date | None:
         except ValueError:
             continue
     return None
+
+
+def _file(root: Path, rel: str) -> Path:
+    """Evidence image path with "../" folded away (research packages keep images in research/screenshots;
+    unfolded paths can pass Windows' 260-character limit)."""
+    return Path(os.path.normpath(root / rel))
+
+
+def _sid(url: str, skip: str = "") -> str:
+    """Topic folders made before the source ledger: the same stable id the ledger would give the URL."""
+    from ..package.urls import UrlError, source_id, validate_url
+
+    if not url or (skip and skip in url):
+        return ""  # aggregator redirect links do not identify the publisher's document
+    try:
+        return source_id(validate_url(url))
+    except UrlError:
+        return ""
 
 
 @dataclass
@@ -115,20 +138,23 @@ class Evidence:
             return ev
         data = json.loads(path.read_text(encoding="utf-8"))
         news = data.get("news") or {}
-        if news.get("image") and (root / news["image"]).exists():
-            ev.news_image = root / news["image"]
-            ev.news_cards = news.get("cards", [])
+        if news.get("image") and _file(root, news["image"]).exists():
+            ev.news_image = _file(root, news["image"])
+            ev.news_cards = [{**c, "source_id": c.get("source_id") or _sid(c.get("url", ""), "news.google.com")} for c in news.get("cards", [])]
         for a in data.get("articles", []):
-            if (root / a["image"]).exists():
-                ev.articles[str(a["id"])] = Article(str(a["id"]), root / a["image"], a.get("url", ""), a.get("title", ""), a.get("publisher", ""),
-                                                     [tuple(w) for w in a.get("words", [])])
+            if _file(root, a["image"]).exists():
+                ev.articles[str(a["id"])] = Article(str(a["id"]), _file(root, a["image"]), a.get("url", ""), a.get("title", ""), a.get("publisher", ""),
+                                                     [tuple(w) for w in a.get("words", [])], a.get("source_id") or _sid(a.get("url", "")),
+                                                     a.get("capture", "screenshot"),
+                                                     a.get("published", ""))
         for c in data.get("charts", []):
             pts = [(d, float(v)) for d, v in ((parse_date(p[0]), p[1]) for p in c.get("points", [])) if d is not None and v is not None]
             if pts:
-                ev.charts[c["id"].upper()] = Chart(c["id"].upper(), c.get("title", c["id"]), c.get("units", ""), c.get("source", ""), c.get("url", ""), pts)
+                ev.charts[c["id"].upper()] = Chart(c["id"].upper(), c.get("title", c["id"]), c.get("units", ""), c.get("source", ""), c.get("url", ""), pts,
+                                                   c.get("source_id") or _sid(c.get("url", "")))
         for lg in data.get("logos", []):
-            if (root / lg["image"]).exists():
-                ev.logos[lg["name"].lower()] = {**lg, "path": root / lg["image"]}
+            if _file(root, lg["image"]).exists():
+                ev.logos[lg["name"].lower()] = {**lg, "path": _file(root, lg["image"])}
         return ev
 
     def logo(self, name: str) -> dict | None:
@@ -137,6 +163,22 @@ class Evidence:
             return self.logos[key]
         close = difflib.get_close_matches(key, list(self.logos), n=1, cutoff=0.75)
         return self.logos[close[0]] if close else None
+
+    def ledger(self):
+        """A source ledger built from this evidence (for folders without research/sources.json)."""
+        from ..package.ledger import Ledger, make_source
+
+        led = Ledger()
+        for c in self.news_cards:
+            if c.get("source_id"):
+                led.add(make_source(c["url"], c.get("title", ""), c.get("publisher", ""), "", source_type="news", retrieval_method="rss"))
+        for a in self.articles.values():
+            if a.source_id:
+                led.add(make_source(a.url, a.title, a.publisher, "", source_type="news", retrieval_method="playwright"))
+        for ch in self.charts.values():
+            if ch.source_id:
+                led.add(make_source(ch.url, ch.title, ch.source, "", source_type="dataset", retrieval_method="api"))
+        return led
 
     def sources(self) -> list[dict]:
         out = [{"kind": "news", "title": c.get("title", ""), "publisher": c.get("publisher", ""), "url": c.get("url", "")} for c in self.news_cards]

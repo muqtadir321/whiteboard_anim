@@ -109,9 +109,9 @@ class ChartPainter:
         ctx.stroke()
         # source
         ctx.set_source_rgb(0.35, 0.35, 0.35)
-        ctx.set_font_size(19 * s)
+        ctx.set_font_size(26 * s)  # readable on a phone
         ctx.move_to((x0 + 28) * s, (y0 + h - 24) * s)
-        ctx.show_text(f"Source: {self.chart.source}" if self.chart.source else "")
+        ctx.show_text(f"Source: {self.chart.source} · series {self.chart.id}" if self.chart.source else "")
         self.paint_marker(ctx, plot, t, s)
         ctx.restore()
 

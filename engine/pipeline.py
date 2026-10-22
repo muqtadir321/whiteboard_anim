@@ -21,7 +21,7 @@ from .explainer.sources_file import write_sources
 from .illustration_composer import CAPTION_REGION, Composer, to_svg
 from .input_discovery import LanguageInputs
 from .language_detector import detect_language
-from .quality_checker import QualityReport, check_explainer, check_file, check_frames, check_semantics, check_visuals
+from .quality_checker import QualityReport, check_explainer, check_file, check_frames, check_motion, check_semantics, check_visuals, contact_sheet
 from .results import StageError, StageResult, Status
 from .scene_planner import Segment, plan_scenes
 from .scene_schema import validate_plan
@@ -62,7 +62,7 @@ def file_hash(path: Path | None) -> str:
 class LanguageJob:
     def __init__(self, inputs: LanguageInputs, cfg: dict, out_root: Path, tmp_root: Path, log=print, transcriber=None, tts_chain=None,
                  script_text_override: str | None = None, reference_voice: Path | None = None, cloner=None, aligner="auto",
-                 evidence_dir: Path | None = None):
+                 evidence_dir: Path | None = None, package: dict | None = None):
         self.inp = inputs
         self.cfg = copy.deepcopy(cfg)
         self.key = inputs.key
@@ -78,6 +78,10 @@ class LanguageJob:
         self.cloner = cloner
         self._aligner = aligner
         self.evidence_dir = evidence_dir
+        # research package render: {"job_id", "topic", "claims" (this language), "ledger", "asset_base"};
+        # makes source ids and a valid scene manifest critical QA checks
+        self.package = package
+        self._manifest_problems: list[str] | None = None
         self.explainer = self.cfg["animation"]["style"] == "explainer"
         if self.explainer:
             # short phrases on the board, like the reference style; the narration is written, not captioned
@@ -106,6 +110,23 @@ class LanguageJob:
         st.data["evidence_stages"] = [f"{s.id}@{s.t_in:.1f}-{s.t_out:.1f}s" for s in self._layout.stages]
         st.data["highlights"] = self._layout.highlights
         return renderer, (self._layout.scenes, self._layout.stages)
+
+    def _write_manifest(self, plan, timing, offset: float, total: float, script_text: str, st) -> None:
+        from .package import manifest as man
+
+        pk = self.package or {}
+        lay = self._layout
+        lay.articles, lay.news_image = self._evidence.articles, self._evidence.news_image
+        base = Path(pk.get("asset_base") or self.out)
+        audio = self.inp.audio_path or (self.tmp / "narration.wav")
+        m = man.build(pk.get("job_id") or time.strftime("local-%Y%m%d-%H%M%S"), self.lang, pk.get("topic", ""),
+                      hashlib.sha256(script_text.encode("utf-8")).hexdigest(), file_hash(audio) if audio and Path(audio).exists() else "",
+                      self.cfg, plan, lay, timing, offset, total, pk.get("claims"), base, pk.get("ledger") or self._evidence.ledger())
+        (self.out / "scene_manifest.json").write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
+        self._manifest_problems = man.validate(m, base)
+        st.data["scene_manifest_problems"] = self._manifest_problems[:20]
+        if self._manifest_problems:
+            st.warnings.append(f"scene manifest has {len(self._manifest_problems)} problem(s), e.g. {self._manifest_problems[0]}")
 
     # -- stage helper ------------------------------------------------------
     def stage(self, name: str, fn):
@@ -499,6 +520,19 @@ class LanguageJob:
             if (self.tmp / "tts_text.txt").exists():
                 shutil.copy(self.tmp / "tts_text.txt", self.out / "tts_input_text.txt")
             (self.out / "scene_plan.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+            from .package.manifest import timing_confidence
+
+            # word timing actually used, and the audio (hashes only: the audio itself is not copied here)
+            words = [{"text": w.get("word", ""), "start": round(w["start"], 3), "end": round(w["end"], 3)} for ts in timing.sentences for w in ts.words]
+            (self.out / "alignment.json").write_text(json.dumps({**timing.to_dict(), "timing_confidence": timing_confidence(timing.source, timing.confidence),
+                                                                 "phrase_fallback": timing.source == "estimated", "words": words},
+                                                                ensure_ascii=False, indent=1), encoding="utf-8")
+            (self.out / "audio_info.json").write_text(json.dumps({"supplied": {**audio_info.to_dict(), "path": Path(audio_info.path).name}
+                                                                  if audio_info else None,
+                                                                  "supplied_sha256": file_hash(self.inp.audio_path) if audio_info else "",
+                                                                  "voice": {k: v for k, v in voice_desc.items() if k != "source"},
+                                                                  "final_track_seconds": round(total, 3), "intro_seconds": intro, "outro_seconds": outro},
+                                                                 ensure_ascii=False, indent=1, default=str), encoding="utf-8")
             # Thumbnail: the most detailed fully drawn scene.
             if self.explainer:
                 lay = self._layout
@@ -507,6 +541,7 @@ class LanguageJob:
                                                                    len(lay.scenes[i].sprites), len(lay.scenes[i].words)))
                 renderer.render_still((lay.scenes, lay.stages), best, str(self.out / "thumbnail.png"))
                 write_sources(self.out / "sources.txt", self._evidence, lay.used_evidence)
+                self._write_manifest(plan, timing, intro, total, script_text, st)
                 return
             best = max(range(len(programs)), key=lambda i: sum(len(it.ops) for it in programs[i])) if programs else 0
             renderer.render_still(RenderScene(timelines[best], programs[best]), str(self.out / "thumbnail.png"))
@@ -519,8 +554,15 @@ class LanguageJob:
         def do_qa(st):
             check_file(report, str(video_path), cfg, total)
             samples = check_frames(report, str(video_path), cfg, plan, timelines)
+            check_motion(report, str(video_path), cfg)
+            try:
+                st.data["contact_sheet_times"] = contact_sheet(str(video_path), str(self.out / "contact_sheet.jpg"), cfg)
+            except Exception as exc:  # a missing sheet is a warning, not a failed video
+                st.warnings.append(f"contact sheet not written: {exc}")
             if self.explainer:
-                check_explainer(report, self._layout, cfg)
+                check_explainer(report, self._layout, cfg, require_source_ids=bool(self.package))
+                if self._manifest_problems is not None:
+                    report.add("scene_manifest_valid", not self._manifest_problems, bool(self.package), self._manifest_problems[:10], "no problems")
             else:
                 check_visuals(report, composed, plan, render_stats, cfg, renderer.captions.missing_chars if renderer.captions else set())
             check_semantics(report, plan, cfg)

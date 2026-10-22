@@ -326,6 +326,9 @@
                   "ps"
                 ]
               }
+            },
+            "consent_confirmed": {
+              "type": "boolean"
             }
           }
         },
@@ -591,6 +594,14 @@
                 "sentence",
                 "paragraph"
               ]
+            },
+            "min_evidence_seconds": {
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 30
+            },
+            "pen_cursor": {
+              "type": "boolean"
             }
           }
         }
@@ -756,6 +767,147 @@
           "type": "number",
           "minimum": 0.05,
           "maximum": 2
+        }
+      }
+    },
+    "research": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user_agent": {
+          "type": "string",
+          "minLength": 3
+        },
+        "sec_user_agent": {
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "backoff_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "min_interval_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "respect_robots_txt": {
+          "type": "boolean"
+        },
+        "cache_dir": {
+          "type": "string"
+        },
+        "cache_ttl_hours": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_news_items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200
+        },
+        "max_articles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "screenshots": {
+          "type": "boolean"
+        },
+        "official_charts": {
+          "type": "boolean"
+        },
+        "auto_translate_missing_language": {
+          "type": "boolean"
+        },
+        "ur_script_mode": {
+          "enum": [
+            "urdu",
+            "roman_urdu",
+            "auto"
+          ]
+        },
+        "claims": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "outdated_after_days": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "min_word_overlap": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        "finance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "enum": [
+                "auto",
+                true,
+                false
+              ]
+            },
+            "sec_edgar": {
+              "type": "boolean"
+            },
+            "issuer_releases": {
+              "type": "boolean"
+            },
+            "yahoo_finance_links": {
+              "type": "boolean"
+            },
+            "min_sources_per_claim": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "max_companies": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          }
+        },
+        "providers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "official_feeds": {
+              "type": "boolean"
+            },
+            "gdelt": {
+              "type": "boolean"
+            },
+            "bing_news_rss": {
+              "type": "boolean"
+            },
+            "google_news_rss": {
+              "type": "boolean"
+            }
+          }
+        },
+        "official_feeds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^https?://"
+          }
         }
       }
     }

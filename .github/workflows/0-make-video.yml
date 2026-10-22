@@ -242,7 +242,7 @@ jobs:
         if: steps.deps.outputs.mms == 'true'
         run: pip install transformers==4.46.3 uroman || echo "::warning::MMS dependencies could not be installed; eSpeak NG will be used"
 
-      - name: Install voice cloning (OmniVoice, Apache-2.0)
+      - name: Install voice cloning (OmniVoice - code Apache-2.0, model weights CC-BY-NC)
         if: steps.deps.outputs.voice_clone == 'true'
         run: |
           pip install omnivoice==0.2.1 \

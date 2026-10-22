@@ -202,7 +202,47 @@ def check_semantics(report: QualityReport, plan: dict, cfg: dict) -> None:
     report.add("scenes_cover_narration", not gaps, True, gaps[:5])
 
 
-def check_explainer(report: QualityReport, layout, cfg: dict) -> None:
+def contact_sheet(path: str, out_jpg: str, cfg: dict, n: int = 12, cols: int = 4) -> list[float]:
+    """A grid of frames sampled evenly through the video, each stamped with its time."""
+    from PIL import Image, ImageDraw
+
+    duration = float(ffprobe_json(path).get("format", {}).get("duration", 0) or 0)
+    if duration <= 0:
+        return []
+    w, h = cfg["video"]["width"], cfg["video"]["height"]
+    tw = 270
+    th = int(tw * h / w)
+    times = [round(duration * (i + 0.5) / n, 2) for i in range(n)]
+    rows = (n + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * tw, rows * (th + 24)), "white")
+    draw = ImageDraw.Draw(sheet)
+    for i, t in enumerate(times):
+        proc = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{t:.3f}", "-i", path, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                              capture_output=True, timeout=120)
+        if proc.returncode != 0 or len(proc.stdout) < w * h * 3:
+            continue
+        img = Image.frombytes("RGB", (w, h), proc.stdout[: w * h * 3]).resize((tw, th))
+        x, y = (i % cols) * tw, (i // cols) * (th + 24)
+        sheet.paste(img, (x, y + 24))
+        draw.text((x + 6, y + 5), f"{t:.1f}s", fill="black")
+    sheet.save(out_jpg, quality=85)
+    return times
+
+
+def check_motion(report: QualityReport, path: str, cfg: dict) -> dict:
+    """Black frames (never expected on a white board), long frozen runs and audio clipping."""
+    proc = subprocess.run(["ffmpeg", "-v", "info", "-i", path, "-vf", "blackdetect=d=0.3:pix_th=0.10,freezedetect=n=0.001:d=8", "-an", "-f", "null", "-"],
+                          capture_output=True, text=True, timeout=cfg["automation"]["subprocess_timeout_seconds"])
+    black = [float(x) for x in re.findall(r"black_duration:\s*([\d.]+)", proc.stderr)]
+    frozen = [float(x) for x in re.findall(r"freeze_duration:\s*([\d.]+)", proc.stderr)]
+    report.add("no_black_frames", not black, True, round(sum(black), 2), "0 s", "runs of black frames")
+    report.add("no_long_frozen_runs", not frozen, False, [round(f, 1) for f in frozen][:5], "< 8 s", "the picture did not change at all")
+    peak, _ = volume_stats(path)
+    report.add("audio_not_clipped", peak is None or peak < -0.1, False, peak, "< -0.1 dB")
+    return {"black_seconds": sum(black), "frozen_runs": frozen}
+
+
+def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids: bool = False) -> None:
     """Explainer style: the narration is written on the board and evidence is real and sourced."""
     q = cfg["quality"]
     def shown(sc):  # words, a doodle, or an evidence stage on screen at the end of the scene
@@ -218,7 +258,19 @@ def check_explainer(report: QualityReport, layout, cfg: dict) -> None:
                f"<= {q['maximum_unsupported_characters']}")
     unsourced = [st.id for st in layout.stages if st.kind in ("article", "chart") and not st.source_url]
     report.add("evidence_has_source", not unsourced, True, unsourced)
-    report.add("evidence_cues_resolved", not layout.warnings, False, layout.warnings[:10], 0)
+    no_id = [st.id for st in layout.stages if st.kind in ("article", "chart", "news") and not st.source_ids]
+    report.add("evidence_has_source_id", not no_id, require_source_ids, no_id, "every evidence card maps to the source ledger")
+    need = float(cfg["animation"]["explainer"]["min_evidence_seconds"]) - 0.05
+    end = max((sc.end for sc in layout.scenes), default=0.0)
+    short = [f"{st.id}:{st.t_out - st.t_in:.1f}s" for st in layout.stages
+             if st.kind in ("article", "chart", "news") and st.t_out - st.t_in < need and st.t_out < end - 0.05]
+    report.add("source_labels_visible_long_enough", not short, True, short, f">= {need + 0.05:.1f} s on screen")
+    labelled = [st.id for st in layout.stages if st.kind in ("article", "news") and not st.label]
+    report.add("evidence_labelled", not labelled or not cfg["animation"]["explainer"]["source_label"], False, labelled)
+    # research packages promise their evidence: a cue that cannot be shown is a failure there, a warning elsewhere
+    unresolved = [w for w in layout.warnings if "cue but" in w]
+    report.add("evidence_cues_resolved", not unresolved, require_source_ids, unresolved[:10], 0)
+    report.add("layout_warnings", not layout.warnings, False, layout.warnings[:10], 0)
     h = layout.highlights
     report.add("highlights_found_on_page", h["matched"] == h["requested"], False, f"{h['matched']}/{h['requested']}", "all")
 
