@@ -76,8 +76,8 @@ def test_clone_engine_missing_is_reported_not_fatal(cfg, tmp_path):
 
 
 def test_deps_requests_mms_and_clone(repo, capsys):
-    (repo / "input/scripts/urdu.txt").write_text("ایک شخص نے پچاس ڈالر لگائے۔")
-    (repo / "input/scripts/pashto.txt").write_text("یو سړی.")
+    (repo / "input/scripts/urdu.txt").write_text("ایک شخص نے پچاس ڈالر لگائے۔", encoding="utf-8")
+    (repo / "input/scripts/pashto.txt").write_text("یو سړی.", encoding="utf-8")
     (repo / "input/voice").mkdir(parents=True)
     tone(repo / "input/voice/reference.wav", 12)
     cli.main(["deps", "--repo-root", str(repo)])

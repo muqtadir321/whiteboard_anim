@@ -51,7 +51,7 @@ def test_english_script_with_supplied_audio(repo):
     espeak_audio(repo / "input/audio/english.wav", "A person starts investing with fifty dollars. Over time, their money grows by one hundred percent.")
     r = run_job(repo, "english", cfg)
     assert r.status == Status.SUCCESS, r.message
-    meta = json.loads((repo / "output/english/metadata.json").read_text())
+    meta = json.loads((repo / "output/english/metadata.json").read_text(encoding="utf-8"))
     assert meta["voice"]["provider"] == "supplied"
     assert meta["timing"]["source"] == "estimated"
     assert r.quality["passed"]
@@ -63,7 +63,7 @@ def test_english_script_without_audio_generates_narration(repo):
     (repo / "input/scripts/english.txt").write_text("A worker receives a salary from the company.")
     r = run_job(repo, "english", cfg)
     assert r.status == Status.SUCCESS, r.message
-    meta = json.loads((repo / "output/english/metadata.json").read_text())
+    meta = json.loads((repo / "output/english/metadata.json").read_text(encoding="utf-8"))
     assert meta["voice"]["provider"] == "espeak" and meta["timing"]["source"] == "exact"
 
 
@@ -73,8 +73,8 @@ def test_audio_without_script_is_transcribed(repo):
     text = "Prices rise every year. Families save less money."
     r = run_job(repo, "english", cfg, transcriber=FakeTranscriber(text, 4.0))
     assert r.status == Status.SUCCESS, r.message
-    assert (repo / "output/english/transcript.txt").read_text().strip() == text
-    assert json.loads((repo / "output/english/metadata.json").read_text())["timing"]["source"] == "words"
+    assert (repo / "output/english/transcript.txt").read_text(encoding="utf-8").strip() == text
+    assert json.loads((repo / "output/english/metadata.json").read_text(encoding="utf-8"))["timing"]["source"] == "words"
 
 
 def test_audio_without_script_and_no_recogniser_fails_clearly(repo):
@@ -92,9 +92,9 @@ def test_roman_urdu_script_with_supplied_audio(repo):
     espeak_audio(repo / "input/audio/roman_urdu.wav", "ایک شخص نے پچاس ڈالر لگائے۔ وقت کے ساتھ پیسہ سو فیصد بڑھ گیا۔", "ur")
     r = run_job(repo, "roman_urdu", cfg)
     assert r.status == Status.SUCCESS, r.message
-    plan = json.loads((repo / "output/roman_urdu/scene_plan.json").read_text())
+    plan = json.loads((repo / "output/roman_urdu/scene_plan.json").read_text(encoding="utf-8"))
     assert plan["language"] == "roman_urdu"
-    srt = (repo / "output/roman_urdu/captions.srt").read_text()
+    srt = (repo / "output/roman_urdu/captions.srt").read_text(encoding="utf-8")
     assert "Aik shakhs" in srt  # captions keep the original Roman Urdu text
 
 
@@ -102,7 +102,7 @@ def test_roman_urdu_script_with_supplied_audio(repo):
 def test_urdu_script_and_audio_with_rtl_numeric_captions(repo):
     cfg = make_cfg()
     text = "منافع 100% ہو گیا۔ مہنگائی کی وجہ سے لوگ کم بچت کرتے ہیں۔"
-    (repo / "input/scripts/urdu.txt").write_text(text)
+    (repo / "input/scripts/urdu.txt").write_text(text, encoding="utf-8")
     espeak_audio(repo / "input/audio/urdu.wav", text, "ur")
     r = run_job(repo, "urdu", cfg)
     assert r.status == Status.SUCCESS, r.message
@@ -112,10 +112,10 @@ def test_urdu_script_and_audio_with_rtl_numeric_captions(repo):
 
 def test_pashto_with_compatible_test_voice(repo):
     cfg = make_cfg()
-    (repo / "input/scripts/pashto.txt").write_text("یو سړی دوکان ته ځي او ټیلیفون اخلي. ګټه یې سل سلنه شوه.")
+    (repo / "input/scripts/pashto.txt").write_text("یو سړی دوکان ته ځي او ټیلیفون اخلي. ګټه یې سل سلنه شوه.", encoding="utf-8")
     r = run_job(repo, "pashto", cfg, tts_chain=[ToneTTS(cfg, ("ps",))])
     assert r.status == Status.SUCCESS, r.message
-    plan = json.loads((repo / "output/pashto/scene_plan.json").read_text())
+    plan = json.loads((repo / "output/pashto/scene_plan.json").read_text(encoding="utf-8"))
     assert any(q["display"] == "100%" for s in plan["scenes"] for q in s["quantities"])
 
 
@@ -126,7 +126,7 @@ def test_invalid_audio_falls_back_to_tts(repo):
     (repo / "input/audio/english.mp3").write_bytes(b"this is not audio" * 50)
     r = run_job(repo, "english", cfg)
     assert r.status == Status.PARTIAL_SUCCESS, r.message
-    assert json.loads((repo / "output/english/metadata.json").read_text())["voice"]["provider"] == "espeak"
+    assert json.loads((repo / "output/english/metadata.json").read_text(encoding="utf-8"))["voice"]["provider"] == "espeak"
 
 
 def test_corrupt_script_without_audio_fails(repo):
@@ -152,11 +152,11 @@ def test_duration_limit_is_enforced_without_truncation(repo):
 @needs_espeak
 def test_one_language_fails_others_succeed_via_cli(repo, monkeypatch):
     (repo / "input/scripts/english.txt").write_text("A person buys a phone from the shop.")
-    (repo / "input/scripts/pashto.txt").write_text("یو سړی دوکان ته ځي.")  # no Pashto voice installed in CI
+    (repo / "input/scripts/pashto.txt").write_text("یو سړی دوکان ته ځي.", encoding="utf-8")  # no Pashto voice installed in CI
     (repo / "input/config.yaml").write_text("voice:\n  local_engines: [espeak]\n  allow_noncommercial_models: false\ntranscription:\n  engine: none\n")
     code = cli.main(["run", "--repo-root", str(repo), "--quality", "fast"])
     assert code == 0
-    gen = json.loads((repo / "output/reports/generation_report.json").read_text())
+    gen = json.loads((repo / "output/reports/generation_report.json").read_text(encoding="utf-8"))
     assert gen["overall"] == "partial_success"
     assert "english" in gen["summary"]["SUCCESS"] and "pashto" in gen["summary"]["PERMANENT_FAILURE"]
     assert "urdu" in gen["summary"]["SKIPPED"]
@@ -168,9 +168,9 @@ def test_one_language_fails_others_succeed_via_cli(repo, monkeypatch):
 def test_nothing_to_do_produces_diagnostic_report(repo):
     code = cli.main(["run", "--repo-root", str(repo)])
     assert code == 0
-    gen = json.loads((repo / "output/reports/generation_report.json").read_text())
+    gen = json.loads((repo / "output/reports/generation_report.json").read_text(encoding="utf-8"))
     assert gen["overall"] == "nothing_to_do"
-    assert "No video was produced" in (repo / "output/reports/summary.md").read_text()
+    assert "No video was produced" in (repo / "output/reports/summary.md").read_text(encoding="utf-8")
 
 
 @needs_espeak
@@ -190,7 +190,7 @@ def test_end_to_end_acceptance_standard_profile(repo):
     assert (v["width"], v["height"], v["codec_name"], v["pix_fmt"]) == (1080, 1920, "h264", "yuv420p")
     assert v["avg_frame_rate"] in ("30/1", "30000/1000")
     assert a["codec_name"] == "aac" and a["sample_rate"] == "48000"
-    plan = json.loads((out / "scene_plan.json").read_text())
+    plan = json.loads((out / "scene_plan.json").read_text(encoding="utf-8"))
     assert any(s["scene_type"] not in ("text_emphasis",) for s in plan["scenes"])
     assert r.quality["passed"]
     for name in ("captions.srt", "captions.vtt", "transcript.txt", "metadata.json", "thumbnail.png", "quality_report.json"):
@@ -208,7 +208,7 @@ def test_broken_recogniser_does_not_fail_script_plus_audio(repo):
     tone(repo / "input/audio/english.mp3", 5.0)
     r = run_job(repo, "english", cfg, transcriber=Broken("", 5.0))
     assert r.status == Status.SUCCESS, r.message
-    assert "[" not in (repo / "output/english/captions.srt").read_text()
+    assert "[" not in (repo / "output/english/captions.srt").read_text(encoding="utf-8")
 
 
 def test_supplied_audio_uses_forced_alignment_word_times(repo):
@@ -229,7 +229,7 @@ def test_supplied_audio_uses_forced_alignment_word_times(repo):
     tone(repo / "input/audio/english.mp3", 6.0)
     r = run_job(repo, "english", cfg, aligner=FakeAligner())
     assert r.status == Status.SUCCESS, r.message
-    meta = json.loads((repo / "output/english/metadata.json").read_text())
+    meta = json.loads((repo / "output/english/metadata.json").read_text(encoding="utf-8"))
     assert meta["timing"]["source"] == "forced_alignment"
-    plan = json.loads((repo / "output/english/scene_plan.json").read_text())
+    plan = json.loads((repo / "output/english/scene_plan.json").read_text(encoding="utf-8"))
     assert plan["scenes"][0]["timeline"]["timing_source"] == "word_timestamps"

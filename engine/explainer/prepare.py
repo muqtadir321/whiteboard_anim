@@ -306,7 +306,7 @@ def main(argv=None) -> int:
                      log=lambda m: print(m, flush=True), auto=a.auto, script_dir=(REPO_ROOT / a.script_dir).resolve() if a.script_dir else None)
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
-        with open(gh_out, "a") as fh:
+        with open(gh_out, "a", encoding="utf-8") as fh:
             rel = folder.relative_to(REPO_ROOT) if folder.is_relative_to(REPO_ROOT) else folder
             fh.write(f"topic_dir={rel}\n")
     summary = os.environ.get("GITHUB_STEP_SUMMARY")

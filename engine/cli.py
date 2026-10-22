@@ -160,7 +160,7 @@ def cmd_run(args) -> int:
             print(f"::warning title={r.key} failed::{r.message[:300]}")
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
-        with open(gh_out, "a") as fh:
+        with open(gh_out, "a", encoding="utf-8") as fh:
             fh.write(f"overall={overall}\n")
             fh.write(f"videos={sum(1 for r in results if r.status.ok)}\n")
     return code
@@ -212,7 +212,7 @@ def cmd_deps(args) -> int:
         print(f"{k}={'true' if v else 'false'}")
     gh_out = os.environ.get("GITHUB_OUTPUT")
     if gh_out:
-        with open(gh_out, "a") as fh:
+        with open(gh_out, "a", encoding="utf-8") as fh:
             for k, v in need.items():
                 fh.write(f"{k}={'true' if v else 'false'}\n")
     return 0

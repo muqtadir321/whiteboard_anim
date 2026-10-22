@@ -299,7 +299,7 @@ class LanguageJob:
             key = hashlib.sha256(json.dumps([sentences, self.lang, cfg["voice"], file_hash(self.reference_voice)], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
             cache = self.tmp / f"voice_{key}.json"
             if cfg["automation"]["resume"] and cache.exists() and narration_wav.exists():
-                data = json.loads(cache.read_text())
+                data = json.loads(cache.read_text(encoding="utf-8"))
                 from .audio_timing import TimedSentence
 
                 timing = Timing([TimedSentence(**s) for s in data["timing"]], "exact", data["confidence"], {"resumed": True})
@@ -323,7 +323,7 @@ class LanguageJob:
                     st.warnings.append(f"reference voice not applied: {vr.clone.get('reason')}")
             if vr.wrong_language:
                 st.warnings.append("narration uses a different-language voice (allow_wrong_language_fallback)")
-            cache.write_text(json.dumps({"timing": [s.__dict__ for s in timing.sentences], "confidence": timing.confidence, "provider": voice_desc}, ensure_ascii=False))
+            cache.write_text(json.dumps({"timing": [s.__dict__ for s in timing.sentences], "confidence": timing.confidence, "provider": voice_desc}, ensure_ascii=False), encoding="utf-8")
 
         self.stage("voice_over", do_voice)
         if any(not ts.words for ts in timing.sentences):

@@ -13,7 +13,7 @@ WF = ROOT / ".github" / "workflows"
 
 
 def load(name):
-    data = yaml.safe_load((WF / name).read_text())
+    data = yaml.safe_load((WF / name).read_text(encoding="utf-8"))
     # PyYAML parses the `on:` key as boolean True
     data["on"] = data.pop(True, data.get("on"))
     return data
@@ -40,7 +40,7 @@ def test_workflow_uploads_artifacts_with_retention():
 
 
 def test_workflow_inputs_passed_via_env_not_shell_interpolation():
-    text = (WF / "0-make-video.yml").read_text()
+    text = (WF / "0-make-video.yml").read_text(encoding="utf-8")
     run_blocks = [s.get("run", "") for job in load("0-make-video.yml")["jobs"].values() for s in job["steps"]]
     for block in run_blocks:
         assert "${{ inputs." not in block and "${{ github.event.inputs." not in block

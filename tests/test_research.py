@@ -99,12 +99,12 @@ def test_cli_offline(tmp_path, monkeypatch):
     cfg.write_text("niche: finance\nseed_keywords: [gold price]\nregions: [US]\nyoutube_channels: ['@chan']\nreddit_subreddits: [x]\n")
     out = tmp_path / "out"
     assert cli.main(["--config", str(cfg), "--out", str(out)]) == 0
-    ideas = json.loads((out / "ideas.json").read_text())
+    ideas = json.loads((out / "ideas.json").read_text(encoding="utf-8"))
     assert ideas[0]["topic"] == "gold price"
     assert (out / ideas[0]["brief"]).exists()
-    report = (out / "report.md").read_text()
+    report = (out / "report.md").read_text(encoding="utf-8")
     assert "Gold Price" in report and "youtube_api" in report and "TikTok" in report
-    assert "Gold Price" in summary.read_text()
+    assert "Gold Price" in summary.read_text(encoding="utf-8")
 
 
 def test_cli_fails_when_every_source_fails(tmp_path, monkeypatch):
@@ -113,7 +113,7 @@ def test_cli_fails_when_every_source_fails(tmp_path, monkeypatch):
     cfg = tmp_path / "c.yaml"
     cfg.write_text("seed_keywords: [gold]\nregions: [US]\n")
     assert cli.main(["--config", str(cfg), "--out", str(tmp_path / "o")]) == 1
-    assert json.loads((tmp_path / "o" / "sources.json").read_text())[0]["failed"] == 1
+    assert json.loads((tmp_path / "o" / "sources.json").read_text(encoding="utf-8"))[0]["failed"] == 1
 
 
 def test_phrases_keep_inner_small_words_and_drop_filler():

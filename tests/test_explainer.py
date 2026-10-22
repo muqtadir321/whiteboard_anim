@@ -134,7 +134,7 @@ def test_load_manifest(tmp_path):
 
 # -- layout and rendering ---------------------------------------------------------------
 def build_layout(topic, cfg):
-    text, cues = normalize_script_with_cues((topic / "english.txt").read_text())
+    text, cues = normalize_script_with_cues((topic / "english.txt").read_text(encoding="utf-8"))
     an = analyze_script(text, "en")
     t, sents = 0.0, []
     for s in an:
@@ -272,9 +272,9 @@ def test_topic_folder_renders_explainer_video(tmp_path):
     assert code == 0
     out = repo / "out" / "english"
     assert (out / "video.mp4").exists() and (out / "thumbnail.png").exists()
-    sources = (out / "sources.txt").read_text()
+    sources = (out / "sources.txt").read_text(encoding="utf-8")
     assert "https://example.gov/paper" in sources and "fred.stlouisfed.org" in sources
-    q = json.loads((out / "quality_report.json").read_text())
+    q = json.loads((out / "quality_report.json").read_text(encoding="utf-8"))
     assert q["passed"]
     assert {c["name"]: c["passed"] for c in q["checks"]}["evidence_has_source"]
     assert not (repo / "out" / "roman_urdu" / "video.mp4").exists()
@@ -291,7 +291,7 @@ def test_verify_placeholder_blocks_rendering(tmp_path):
     tone(topic / "audio" / "english.wav", seconds=3.0)
     code = cli.main(["run", "--repo-root", str(repo), "--topic-dir", "input/topics/demo", "--quality", "fast", "--output", str(repo / "out")])
     assert code != 0
-    report = json.loads((repo / "out" / "reports" / "generation_report.json").read_text())
+    report = json.loads((repo / "out" / "reports" / "generation_report.json").read_text(encoding="utf-8"))
     assert "VERIFY" in json.dumps(report)
 
 
