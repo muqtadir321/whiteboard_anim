@@ -59,7 +59,7 @@ Section numbers follow `WHITEBOARD_VIDEO_PIPELINE_SRS.md`.
 |---|---|---|
 | Source priority (user URLs → official → RSS → APIs → search HTML → Wikipedia orientation) | Met (Wikipedia not used) | `research.discover`, `capture` order; RESEARCH_POLICY |
 | Independent adapters, timeouts, retries/backoff, cache, rate limits, user agent | Met | `providers.py`, `http.py`; `test_fetcher_backs_off_on_429_and_never_retries_403`, `test_one_blocked_official_feed_does_not_hide_the_others`, `test_rate_limited_host_waits_at_least_its_published_interval`, `test_fetcher_cache_has_provenance_and_ttl` |
-| Atomic claims; primary + second source; rank by authority/date/independence | Partly met | one claim per sentence (finance splits per figure); `independent_sources`, `primary_source`, note "only one independent source". Ranking is official-first then relevance and recency, not a full authority score |
+| Atomic claims; primary + second source; rank by authority/directness/date/independence | Met | one claim per sentence (finance splits per figure); `independent_sources`, `primary_source`; `claims.rank_evidence` (authority → figures matched → original before syndicated → wording → recency); `test_evidence_ranked_by_authority_then_directness` |
 | Publication date vs data date | Met | `published_at` vs `data_period`; gate `publication_date_vs_data_period` |
 | Six claim statuses | Met | `claims.STATUSES`; `test_claim_statuses_are_conservative`, `test_outdated_when_claim_says_now_but_source_is_old` |
 | Keyword overlap is not verification; conservative without semantics | Met | `match_claims`; `test_small_numbers_alone_do_not_support_a_claim` |
@@ -67,15 +67,15 @@ Section numbers follow `WHITEBOARD_VIDEO_PIPELINE_SRS.md`.
 | Predictions, opinions, rhetoric classified | Met | `classify`; `test_claim_kinds` |
 | Ledger files and 18 fields | Met | `ledger.CSV_FIELDS`; `test_ledger_merges_duplicates_and_writes_all_fields` |
 | Every sourced claim → source IDs; labels on evidence; full URLs in sources.txt; no endorsement | Met | gate `claims_map_to_sources`; stage labels; `sources.txt` |
-| **Finance**: EDGAR facts and filings, issuer releases, Yahoo (no scraping), independent news, ≥ 3 sources | Partly met | `sec.py`, `finance.py` (XBRL, 8-K EX-99, news cross-check, Yahoo links only, `min_sources_per_claim`). **Live EDGAR not run** (needs `SEC_USER_AGENT`) |
+| **Finance**: EDGAR facts and filings, issuer releases, Yahoo (no scraping), independent news, ≥ 3 sources | Met in code; live run = Human step | `sec.py`, `finance.py` (XBRL, 8-K EX-99, news cross-check, Yahoo links only, `min_sources_per_claim`). A live EDGAR call needs your name and e-mail in `SEC_USER_AGENT` (SEC rule); without it EDGAR is skipped and reported |
 | Finance: entity, metric, value, currency, scale, period, baseline, basis; normalised, originals kept | Met | `parse_claims`; `test_financial_amounts_are_normalised`, `test_financial_periods`, `test_one_sentence_two_atomic_financial_claims` |
 | Finance: excerpt, URL, form, accession, period, value, unit, formula, timestamp | Met | match records in `verify_with_facts` / `verify_in_text` |
 | Finance: recompute derived values | Met | `growth`, derived metrics, Q4; `test_xbrl_periods_restatement_and_q4_derivation`, `test_financial_matches_and_conflicts` |
-| Finance: 5 match statuses; restatements, preliminary values, basis, stale values, period flags | Partly met | statuses, restatement, basis, calendar-vs-fiscal, percent-vs-points: tested. "Preliminary" and "stale" are not separately detected |
+| Finance: 5 match statuses; restatements, preliminary values, basis, stale values, period flags | Met | restatement, basis, calendar-vs-fiscal, percent-vs-points, preliminary/unaudited, stale period; `test_preliminary_and_stale_financial_figures_are_flagged` and the tests above |
 | Finance: report, no rewrite | Met | `financial_verification_report.md` (proposed corrections only) |
 | SEC fair access: UA, cache, rate limit, 403/429 | Met | `sec_user_agent`, `HOST_INTERVALS`; fetcher behaviour tested |
 | Structured data first; HTML table fallback | Met | companyfacts → `document_text` table rows; `test_issuer_release_table_in_millions` |
-| Financial visuals: filing crop or evidence card; charts only from verified values | Partly met | release text reaches claims and cards; no automatic filing-table *screenshot* crop |
+| Financial visuals: filing crop or evidence card; charts only from verified values | Met | a confirmed release row becomes a labelled card quoting the row (`Research.finance_cards`), the SRS's "clean evidence card" option; `test_matched_release_row_becomes_a_labelled_evidence_card` |
 | Finance outputs and tests (normalisation, periods, GAAP, syndication, restatement, missing, calculations) | Met | `financial_claims.json/csv`, report; tests listed above plus `test_syndicated_copy_is_not_an_independent_source`, `test_non_gaap_and_missing_values_are_flagged` |
 | Screenshots: accessible pages, settled, cropped; else source card; short exact quotes; record URL/time/size/status | Met | existing `capture.py`; `source_card.py`; `test_screenshot_failure_becomes_labelled_source_card`, `test_source_card_words_allow_highlighting`; live source cards |
 | Charts from official data, units/period/series/retrieval; no data → no chart | Met | FRED CSV stored, json metadata; `test_missing_dataset_omits_chart_and_research_continues` |
@@ -190,7 +190,7 @@ Section numbers follow `WHITEBOARD_VIDEO_PIPELINE_SRS.md`.
 | Requirement | Status | Evidence |
 |---|---|---|
 | CPU only; bounded parallelism; resume without repeating research; draft/final | Met | sequential per language; package reuse |
-| Runtime/RAM measured, no invented benchmarks | Partly met | runtime measured (LOCAL_RUN); **RAM not measured** |
+| Runtime/RAM measured, no invented benchmarks | Met | LOCAL_RUN: final 16 s video 18–37 s, peak 748 MB (psutil sampling) |
 | Validated configuration with all listed defaults; no secrets in config | Met | `research` section in `engine/config.py` and schema (resolution, fps, languages, screenshots, charts, music off, subtitles off, labels on, supplied audio first, no restricted models, limits/timeouts/retries, cache TTL, `min_evidence_seconds`, safe margins) |
 
 ## §17 Documentation

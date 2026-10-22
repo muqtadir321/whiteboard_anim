@@ -2,15 +2,14 @@
 
 ## Not verified against real services or models in development
 
-* **Screenshots on GitHub runners**: Playwright was not installed on the development machine, so the
-  live run used source cards. The screenshot path is the existing, unchanged `explainer/capture.py`;
-  its test is skipped without Chromium.
+* **Screenshots**: verified on a GitHub runner (workflow A captured freddiemac.com and census.gov, with
+  their readable card alternatives). Pages behind bot checks still fall back to source cards.
 * **SEC EDGAR live**: no `SEC_USER_AGENT` was configured, so live EDGAR calls were not made. The XBRL
   logic is tested with synthetic company facts (periods, year-to-date values, restatements, Q4
   derivation, growth). Real filings have more variety (custom tags, units, fiscal calendars), so expect
   some `not_found` for company-specific metrics.
-* **GDELT live**: returned HTTP 429 during development, after repeated manual queries. The adapter is
-  tested offline; on a fresh runner it should work, but it is a free service with its own limits.
+* **GDELT live**: returned HTTP 429 locally and from GitHub's runners (shared IP addresses). The run continues
+  with the other providers and records the failure. Give your own `source_urls` for dependable coverage.
 * **Voice cloning, Piper, MMS, faster-whisper, forced alignment**: covered by mocked tests only. The
   development machine had no eSpeak NG either (8 tests skipped there; CI installs it).
 * **Meaning model (fastembed)**: not installed locally. Claim matching was tested in its rule-based
