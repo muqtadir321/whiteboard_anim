@@ -53,6 +53,11 @@ METRICS: dict[str, dict] = {
 # a company's reported figures, not "home sales" or "household debt": a company/filing word must be there too
 FINANCE_HINT = re.compile(r"\b(company|companies|corp|inc|earnings|eps|per share|quarter(?:ly)?|fiscal|guidance|shareholders?|dividend|"
                           r"nasdaq|nyse|10-k|10-q|8-k|reported|revenue|net income|operating income|gross margin|market cap)\b|\([A-Z]{1,5}\)", re.I)
+PRELIMINARY = re.compile(r"\b(preliminary|unaudited|estimated results|flash estimate|subject to (?:change|revision))\b", re.I)
+NOW = re.compile(r"\b(now|currently|today|latest|this (?:year|quarter))\b", re.I)
+STALE_DAYS = 550  # a "latest" figure whose period ended more than ~18 months ago
+
+
 NON_GAAP = re.compile(r"\b(adjusted|non-gaap|non gaap|excluding|ex-items|core|underlying|pro forma|organic)\b", re.I)
 GAAP = re.compile(r"\bGAAP\b|\bas reported\b", re.I)  # "the company reported X" says nothing about the basis
 ORD = {"first": 1, "second": 2, "third": 3, "fourth": 4, "1st": 1, "2nd": 2, "3rd": 3, "4th": 4}
@@ -423,6 +428,8 @@ def verify_with_facts(fc: FinancialClaim, companyfacts: dict, source_id: str, so
         if a is not None and any(compare_value(a, v, fact.unit) != "conflict" for v in old) and status == "conflict":
             status = "conflict"
             flags.append("matches the originally reported value, not the restated one")
+    if NOW.search(fc.text) and fact.end and (dt.date.today() - dt.date.fromisoformat(fact.end)).days > STALE_DAYS:
+        flags.append(f"stale: the narration says now/latest but the newest filed period ends {fact.end}")
     if flags and status in ("exact_match", "normalized_match") and any(f.startswith(("period_not_stated", "calendar_vs_fiscal", "baseline_not_stated")) for f in flags):
         status = "partial_match"
     fc.matches.append({"source_id": source_id, "source_url": source_url, "document": f"SEC XBRL company facts ({entity})", "form": fact.form,
@@ -459,8 +466,11 @@ def verify_in_text(fc: FinancialClaim, text: str, source_id: str, source_url: st
             break
     if best:
         st, excerpt, raw, k = best
+        flags = []
+        if PRELIMINARY.search(text[:4000]) or PRELIMINARY.search(excerpt):
+            flags.append("preliminary: the document calls these figures preliminary/unaudited; check the later 10-Q/10-K")
         fc.matches.append({"source_id": source_id, "source_url": source_url, "document": document, "kind": kind, "status": st,
-                           "excerpt": excerpt, "reported_text": raw, "table_scale": k if k != 1.0 else None})
+                           "excerpt": excerpt, "reported_text": raw, "table_scale": k if k != 1.0 else None, "flags": flags})
 
 
 def summarise(fc: FinancialClaim, ledger, min_sources: int) -> None:

@@ -183,6 +183,7 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
             c.notes.append(f"{c.kind}: not checked as a fact")
             continue
         figs = key_numbers(c.text, c.language)
+        years = set(re.findall(r"\b(?:19|20)\d\d\b", c.text))
         words = content_words(c.text) if c.language == "en" else set()
         hits: list[tuple[int, float, Doc, int, list[str]]] = []  # (numbers matched, overlap, doc, sentence, displays)
         conflicts: list[tuple[Doc, int]] = []
@@ -193,7 +194,8 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
                 matched = [disp for _, disp in found]
                 ctx = " ".join(d.sents[max(0, i - 1):i + 2])
                 ov = len(words & content_words(ctx)) / len(words) if words else 0.0
-                if found and (ov >= 0.2 or any(distinctive(v) for v, _ in found)):
+                same_year = bool(years and any(y in s for y in years))  # "3% in 2021" next to a 2021 value
+                if found and (ov >= 0.2 or same_year or any(distinctive(v) for v, _ in found)):
                     hits.append((len(matched), ov, d, i, matched))
                 elif figs and ov >= max(0.6, min_overlap) and any(k == fk for _, fk, _ in figs for _, k in sf):
                     conflicts.append((d, i))
@@ -246,6 +248,7 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
             d, i = conflicts[0]
             chosen = [(0, 0.0, d, i, [])]
             c.notes.append("a source states a different figure in similar wording: check before publishing")
+        chosen = rank_evidence(chosen)
         for n, ov, d, i, matched in chosen[:5]:
             c.evidence.append(asdict(Evidence(d.source_id, d.sents[i][:400], matched, round(ov, 2),
                                               round(sem[(d.source_id, i)], 3) if (d.source_id, i) in sem else None)))
@@ -265,6 +268,18 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
                         "medium" if status == "supported" else "low")
         if status == "supported" and c.independent_sources < 2:
             c.notes.append("only one independent source")
+
+
+AUTHORITY = {"primary_filing": 0, "official": 0, "dataset": 0, "issuer_release": 1, "user_provided": 2, "news": 3, "reference": 4, "other": 4}
+
+
+def rank_evidence(hits: list[tuple]) -> list[tuple]:
+    """Order supporting sentences by authority (primary/official first), directness (figures matched, shared
+    wording), independence (original before syndicated copies) and recency, not by search rank."""
+    def key(h):
+        n, ov, d, i, matched = h
+        return (AUTHORITY.get(d.source_type, 4), -n, bool(d.duplicate_of), -ov, "".join(chr(255 - ord(c)) for c in (d.published_at or "")[:10]))
+    return sorted(hits, key=key)
 
 
 def report_markdown(claims: list[Claim], ledger) -> str:

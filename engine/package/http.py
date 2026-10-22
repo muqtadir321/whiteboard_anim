@@ -189,7 +189,7 @@ class Fetcher:
             retryable = status is None or status == 429 or status >= 500
             if not retryable or attempt >= self.retries:
                 raise FetchError(url, err or f"HTTP {status}", status)
-            wait = max(self.backoff * (2 ** attempt), 2 * HOST_INTERVALS.get(host, 0.0))  # never faster than the host asks
+            wait = max(self.backoff * (2 ** attempt), 5 * HOST_INTERVALS.get(host, 0.0))  # rate-limited hosts get a real pause
             ra = next((v for k, v in rh.items() if k.lower() == "retry-after"), "")
             if ra.strip().isdigit():
                 wait = max(wait, float(ra))

@@ -49,6 +49,8 @@ The classic commands are unchanged: `python -m engine.cli run …` and `python -
 
 Windows 11 laptop CPU, Python 3.13, no GPU. Offline fixture package, 16 s English narration
 (supplied tone), final quality 1080×1920 at 30 fps: render 17.8 s in total (frames + encode 7.5 s, QA
-5.0 s, audio handling 3.8 s). The full test suite takes about 65 s. Memory use was not measured.
+5.0 s, audio handling 3.8 s). With the later QA additions and a memory sampler running, the same render
+took 37 s, with a **peak of 748 MB** (Python process plus FFmpeg, sampled every 50 ms with psutil). The full
+test suite takes about 95 s.
 Live research time depends on the sites: one run with a user URL, official feeds and FRED took 64 s,
 mostly because of polite per-host waits.

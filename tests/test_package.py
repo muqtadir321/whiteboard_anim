@@ -626,3 +626,56 @@ def test_package_pronunciations_reach_the_voice_only(package, tmp_path):
     assert "at-LAN-tis" in spoken and "Atlantis" not in spoken
     narration = " ".join(s["narration_text"] for s in json.loads((job / "storyboard" / "scene_manifest.en.json").read_text(encoding="utf-8"))["scenes"])
     assert "Atlantis" in narration and "at-LAN-tis" not in narration  # the board and manifest keep the script
+
+
+def test_charts_tagged_at_the_number_and_at_named_years():
+    from engine.explainer import draft
+    from engine.explainer.cues import extract_cues
+
+    pts = [[f"{y}-06-01", v] for y, v in ((2019, 4.0), (2020, 3.1), (2021, 2.96), (2022, 5.4), (2023, 6.8))] + \
+          [[f"2026-{m:02d}-01", 7.3] for m in range(1, 10)]
+    charts = [{"id": "MORTGAGE30US", "points": pts}]
+    script = ("Mortgage rates in the US are back above 7 percent this month.\n\n"
+              "Many owners locked in rates around 3% in 2021, so they do not want to sell.\n")
+    out, _ = draft.auto_tag(script, "en", {}, {}, charts, True)
+    assert "above [chart MORTGAGE30US 2026-09-01] 7 percent" in out  # after the headlines had their time
+    assert "[chart MORTGAGE30US 2021] Many owners" in out
+    assert extract_cues(out)[0].split() == script.split()
+
+
+def test_year_context_lets_a_small_figure_count_partially():
+    cl = C.extract_claims("Many owners locked in rates around 3% in 2021.", "en", "EN")
+    C.match_claims(cl, [C.Doc("S-f", "30-Year Fixed Rate Mortgage Average was 2.96% on 2021-06-01.", "dataset", "fred.stlouisfed.org")])
+    assert cl[0].status == "partially_supported" and cl[0].source_ids == ["S-f"]
+
+
+def test_evidence_ranked_by_authority_then_directness():
+    news = C.Doc("S-news", "Rates rose to 6.8% this week across the country, data show.", "news", "news.example.com", "2026-10-16")
+    gov = C.Doc("S-gov", "Rates rose to 6.8% this week across the country.", "official", "agency.example.gov", "2026-10-10")
+    cl = C.extract_claims("Rates rose to 6.8% this week across the country.", "en", "EN")
+    C.match_claims(cl, [news, gov])
+    assert cl[0].source_ids[0] == "S-gov" and cl[0].primary_source
+
+
+def test_preliminary_and_stale_financial_figures_are_flagged():
+    fc = finance.parse_claims("EN-1", "Revenue was $35.1 billion in Q3 fiscal 2025.")[0]
+    finance.verify_in_text(fc, "Preliminary unaudited results.\nRevenue | $ 35,082 | $ 18,120", "S-rel", "u", "Issuer release 8-K", "issuer_release")
+    assert any(f.startswith("preliminary") for f in fc.matches[0]["flags"])
+    st = finance.parse_claims("EN-2", "Diluted EPS is now $1.24.")[0]
+    finance.verify_with_facts(st, companyfacts(), "S", "u", "Acme")  # newest period ends 2024-12-31
+    assert any(f.startswith("stale") for f in st.matches[0]["flags"])
+
+
+def test_matched_release_row_becomes_a_labelled_evidence_card(tmp_path):
+    cfg = research_cfg(load_config(repo_root=ROOT))
+    r = Research(ResearchInputs("acme earnings", "english", {"english": "Acme revenue was $35.1 billion.\n"}), cfg, tmp_path / "out",
+                 log=lambda m: None, fetcher=fake_fetcher(tmp_path), sec=None, browser_factory=lambda: None, embedder=None)
+    r.ledger.add(make_source("https://www.sec.gov/Archives/x/ex99.htm", "Acme earnings release (8-K)", "Acme", "2026-10-01T00:00:00+00:00",
+                             source_type="issuer_release"))
+    fc = finance.parse_claims("EN-001", "Acme revenue was $35.1 billion.")[0]
+    fc.company = "Acme"
+    finance.verify_in_text(fc, "Revenue | $ 35,082 | $ 18,120", source_id("https://www.sec.gov/Archives/x/ex99.htm"),
+                           "https://www.sec.gov/Archives/x/ex99.htm", "Issuer release 8-K", "issuer_release")
+    cards = r.finance_cards(2, [fc])
+    assert cards and cards[0]["id"] == "3" and cards[0]["capture"] == "source_card" and cards[0]["source_id"]
+    assert (r.shots / "finance_3.png").exists() and "35,082" in " ".join(w[0] for w in cards[0]["words"])

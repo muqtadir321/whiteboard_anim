@@ -529,6 +529,25 @@ class Research:
         self.coverage["finance"] = cov
         return fc_list
 
+    def finance_cards(self, start: int, fin: list) -> list[dict]:
+        """A filing/release row that confirms a narrated figure becomes an evidence card: the exact row text,
+        labelled as a card (never presented as the issuer's own graphic)."""
+        out, seen = [], set()
+        for fc in fin:
+            m = next((m for m in fc.matches if m.get("kind") == "issuer_release" and m.get("excerpt") and m["status"] != "conflict"), None)
+            if m is None or (m["source_id"], m["excerpt"]) in seen:
+                continue
+            seen.add((m["source_id"], m["excerpt"]))
+            k = start + len(out) + 1
+            src = self.ledger.get(m["source_id"])
+            title = src.title if src else m["document"]
+            card = make_card(self.shots / f"finance_{k}.png", fc.company or (src.publisher if src else ""), title, m["source_url"],
+                             src.published_at if src else "", m["excerpt"], "Source card · row from the filed earnings release")
+            out.append({"id": str(k), "image": f"../../screenshots/finance_{k}.png", "url": m["source_url"], "title": title,
+                        "publisher": fc.company, "words": card["words"], "source_id": m["source_id"], "capture": "source_card",
+                        "published": src.published_at if src else "", "paragraphs": [m["excerpt"]]})
+        return out
+
     # -- all -------------------------------------------------------------------------
     def run(self) -> Path:
         inp = self.inp
@@ -554,6 +573,7 @@ class Research:
             claims_mod.match_claims(cl, self.docs, self.rc["claims"]["min_word_overlap"], self.rc["claims"]["outdated_after_days"], emb)
             all_claims[key] = cl
         fin = self.financial(all_claims.get("english", []))
+        articles += self.finance_cards(len(articles), fin)
         for cl in all_claims.values():
             for c in cl:
                 for sid in c.source_ids:

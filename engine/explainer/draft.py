@@ -226,6 +226,14 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
             body = row[1]
             if first:
                 row[2], first = "[news] ", False
+                # the hook's figure can still show its chart, at the number word, once the headlines have had their time
+                hit = chart_cue(charts, body, _numbers(body, lang), chart_done)
+                if hit:
+                    toks = body.split(" ")
+                    at = next((i for i, t in enumerate(toks) if _numbers(t, lang) & {hit[1]}), -1)
+                    if at >= 6:
+                        row[1] = " ".join(toks[:at] + [hit[0].strip()] + toks[at:])
+                        chart_done.add(hit[2])
                 continue
             nums = _numbers(body, lang)
             cons = {m.concept for m in match_concepts(body, lang)}
@@ -241,14 +249,10 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
             if best and best_score >= 4:
                 row[2] = article_cue(best, nums)
             if not row[2]:
-                for ch in charts:
-                    if ch["id"] in chart_done:
-                        continue
-                    vals = [v for _, v in ch["points"]]
-                    if any(abs(n - v) <= max(0.5, abs(v) * 0.03) for n in nums for v in vals[-60:]):
-                        chart_done.add(ch["id"])
-                        row[2] = f"[chart {ch['id']} {ch['points'][-1][0]}] "
-                        break
+                hit = chart_cue(charts, body, nums, chart_done)
+                if hit:
+                    row[2] = hit[0]
+                    chart_done.add(hit[2])
     if emb is not None:
         notes += semantic_gaps(paras, lang, cands, charts, used, emb, article_cue, model, host)
     out_paras = []
@@ -258,6 +262,24 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
                 notes.append(f"{cue.strip()} -> {body[:60]}")
         out_paras.append(" ".join(lead + cue + body for lead, body, cue in rows))
     return "\n\n".join(out_paras) + "\n", notes
+
+
+def chart_cue(charts: list[dict], body: str, nums: set[float], done: set) -> tuple[str, float, tuple] | None:
+    """(cue, matched number, key) when a figure in the sentence is a value of a chart: at a year the sentence names
+    ("around 3% in 2021" -> marker on 2021), else among the latest values. Each chart/date is used once."""
+    years = {m for m in re.findall(r"\b(?:19|20)\d\d\b", body)}
+    figs = {n for n in nums if not (1900 <= n <= 2100 and float(n).is_integer())}
+    for ch in charts:
+        pts = ch["points"]
+        for y in sorted(years):
+            vals = [v for d, v in pts if str(d).startswith(y)]
+            n = next((n for n in figs for v in vals if abs(n - v) <= max(0.5, abs(v) * 0.03)), None)
+            if n is not None and (ch["id"], y) not in done:
+                return f"[chart {ch['id']} {y}] ", n, (ch["id"], y)
+        n = next((n for n in figs for _, v in pts[-60:] if abs(n - v) <= max(0.5, abs(v) * 0.03)), None)
+        if n is not None and (ch["id"], "latest") not in done:
+            return f"[chart {ch['id']} {pts[-1][0]}] ", n, (ch["id"], "latest")
+    return None
 
 
 SEMANTIC_MIN = 0.15  # evidence kept without the model: CSLS + cosine - 0.45 (unrelated text scores below 0)
