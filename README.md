@@ -36,8 +36,9 @@ Docs: [workflow guide](docs/WORKFLOW_GUIDE.md) · [local run](docs/LOCAL_RUN.md)
 [rights](docs/RIGHTS_AND_ATTRIBUTION.md) · [licences](docs/THIRD_PARTY_LICENSES.md) ·
 [limitations](docs/KNOWN_LIMITATIONS.md) · [implementation audit](docs/IMPLEMENTATION_AUDIT.md)
 
-> **Privacy:** `input/voice/reference.mp3` is committed to this public repository. See
-> [rights](docs/RIGHTS_AND_ATTRIBUTION.md#voice) for how to remove it and keep your reference private.
+> **Privacy:** voice recordings are no longer kept in the repository (`input/voice/*` is ignored). Set the
+> `VOICE_REFERENCE_URL` secret instead. An older recording is still in git history; see
+> [rights](docs/RIGHTS_AND_ATTRIBUTION.md#voice).
 
 ---
 

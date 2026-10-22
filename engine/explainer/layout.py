@@ -30,7 +30,7 @@ from .render import CameraKey, ExScene, Highlight, Sprite, Stage, Word
 
 TEXT_ZONE = (60.0, 120.0, 1020.0, 640.0)
 STAGE_ZONE = (0.0, 670.0, 1080.0, 1800.0)
-OVERLAY_BOX = (780.0, 1500.0, 1050.0, 1780.0)
+OVERLAY_BOX = (780.0, 1450.0, 1050.0, 1720.0)  # clear of the source label at the bottom of the stage
 INK = "#1E1E1E"
 LOW_WORDS = {"low", "lower", "cheap", "cheaper", "only", "down", "fell", "dropped", "drop", "under", "below",
              "kam", "sasta", "sirf", "neeche", "gir"}
@@ -76,6 +76,8 @@ class Layout:
     highlights: dict = field(default_factory=lambda: {"requested": 0, "matched": 0})
     used_evidence: set = field(default_factory=set)
     missing_glyphs: set = field(default_factory=set)
+    text_px: dict = field(default_factory=dict)  # stage id -> on-screen height of the evidence text (design px)
+    shown: dict = field(default_factory=dict)  # stage id -> the Article actually shown (screenshot or its card)
 
 
 # -- timing helpers -----------------------------------------------------------------
@@ -466,6 +468,7 @@ class ExplainerLayout:
                 if not art:
                     warnings.append(f"[article {c.ref}] cue but article {c.ref} was not captured")
                     continue
+                art = self.readable(art, layout)
                 if cur is None or cur.id != f"article:{c.ref}" or t >= cur.t_out + 1.2:
                     img = png_surface(art.image)
                     st = start(Stage("article", self.region_for(t, t_out), t, t_out, image=img, id=f"article:{c.ref}",
@@ -522,6 +525,23 @@ class ExplainerLayout:
             if st.kind == "logos":
                 self.arrange_logos(st)
         return stages
+
+    def readable(self, art, layout: Layout):
+        """A screenshot whose text would be too small on a phone is replaced by its source card."""
+        h = art.text_height()
+        if not h:
+            return art
+        px = h * (STAGE_ZONE[2] - STAGE_ZONE[0]) / png_surface(art.image).get_width()
+        alt = art.alternative() if px < float(self.ex["min_text_px"]) else None
+        if alt is not None:
+            alt_px = alt.text_height() * (STAGE_ZONE[2] - STAGE_ZONE[0]) / png_surface(alt.image).get_width()
+            layout.text_px[f"article:{art.id}"] = round(alt_px, 1)
+            layout.shown[f"article:{art.id}"] = alt
+            self.warnings.append(f"article {art.id}: screenshot text {px:.0f}px is too small; its source card is shown instead")
+            return alt
+        layout.text_px[f"article:{art.id}"] = round(px, 1)
+        layout.shown[f"article:{art.id}"] = art
+        return art
 
     @staticmethod
     def article_label(art) -> str:

@@ -8,3 +8,6 @@ tmp/
 engine_args.txt
 *.mp4
 .DS_Store
+# voice samples stay private (SRS): use the VOICE_REFERENCE_URL secret or a local file
+input/voice/*
+!input/voice/README.txt

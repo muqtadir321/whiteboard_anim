@@ -602,6 +602,11 @@
             },
             "pen_cursor": {
               "type": "boolean"
+            },
+            "min_text_px": {
+              "type": "number",
+              "minimum": 8,
+              "maximum": 80
             }
           }
         }

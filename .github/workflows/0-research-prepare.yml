@@ -45,7 +45,7 @@ on:
         required: false
         default: ""
       auto_translate_missing_language:
-        description: "Translate a missing script (not supported: no free engine is configured; must stay false)"
+        description: "Translate a missing script with a free local model (qwen2.5:7b via Ollama); marked machine-translated, review it"
         type: choice
         options: ["false", "true"]
         default: "false"
@@ -109,6 +109,14 @@ jobs:
       - name: Sanity checks (package tests, offline)
         run: python -m pytest -q tests/test_package.py
 
+      - name: Start a local model for translation (only when requested)
+        if: inputs.auto_translate_missing_language == 'true'
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
+          ollama pull qwen2.5:7b
+
       - name: Prepare script files from inputs
         run: |
           python - <<'PY'
@@ -134,6 +142,7 @@ jobs:
         run: |
           args=(--topic "$IN_TOPIC" --language-mode "$IN_MODE" --region "${IN_REGION:-global}" --research-depth "$IN_DEPTH"
                 --auto-translate "$IN_TRANSLATE" --output output)
+          [ "$IN_TRANSLATE" = "true" ] && args+=(--draft-model qwen2.5:7b)
           [ -f "$RUNNER_TEMP/scripts/english.txt" ] && args+=(--english-script "$RUNNER_TEMP/scripts/english.txt")
           [ -f "$RUNNER_TEMP/scripts/urdu.txt" ] && args+=(--urdu-script "$RUNNER_TEMP/scripts/urdu.txt")
           [ -n "$IN_URLS" ] && args+=(--source-urls "$IN_URLS")

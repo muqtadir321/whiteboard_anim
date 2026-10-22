@@ -103,8 +103,15 @@ def official_feeds(f: Fetcher, topic: str, feeds: list[str], limit: int, errors:
     return out[:limit]
 
 
-def gdelt(f: Fetcher, topic: str, limit: int, days: int = 30) -> list[Found]:
+GDELT_COUNTRY = {"US": "unitedstates", "GB": "unitedkingdom", "UK": "unitedkingdom", "PK": "pakistan", "IN": "india",
+                 "AE": "unitedarabemirates", "CA": "canada", "AU": "australia", "SA": "saudiarabia"}
+
+
+def gdelt(f: Fetcher, topic: str, limit: int, days: int = 30, region: str = "global") -> list[Found]:
     q = " ".join(topic_words(topic)[:6]) + " sourcelang:english"
+    country = GDELT_COUNTRY.get((region or "").upper())
+    if country:  # research locale: publishers from that country
+        q += f" sourcecountry:{country}"
     url = ("https://api.gdeltproject.org/api/v2/doc/doc?" +
            urllib.parse.urlencode({"query": q, "mode": "artlist", "maxrecords": min(75, max(5, limit)), "format": "json",
                                    "timespan": f"{days}d", "sort": "hybridrel"}))

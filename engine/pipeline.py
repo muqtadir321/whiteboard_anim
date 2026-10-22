@@ -124,6 +124,7 @@ class LanguageJob:
                       self.cfg, plan, lay, timing, offset, total, pk.get("claims"), base, pk.get("ledger") or self._evidence.ledger())
         (self.out / "scene_manifest.json").write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
         self._manifest_problems = man.validate(m, base)
+        self._repeats = man.repeated_types(m)
         st.data["scene_manifest_problems"] = self._manifest_problems[:20]
         if self._manifest_problems:
             st.warnings.append(f"scene manifest has {len(self._manifest_problems)} problem(s), e.g. {self._manifest_problems[0]}")
@@ -563,6 +564,7 @@ class LanguageJob:
                 check_explainer(report, self._layout, cfg, require_source_ids=bool(self.package))
                 if self._manifest_problems is not None:
                     report.add("scene_manifest_valid", not self._manifest_problems, bool(self.package), self._manifest_problems[:10], "no problems")
+                    report.add("visual_variety", not self._repeats, False, self._repeats, "no visual type more than twice in a row")
             else:
                 check_visuals(report, composed, plan, render_stats, cfg, renderer.captions.missing_chars if renderer.captions else set())
             check_semantics(report, plan, cfg)

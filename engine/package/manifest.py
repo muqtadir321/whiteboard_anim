@@ -99,7 +99,8 @@ def build(job_id: str, lang: str, topic: str, script_sha: str, audio_sha: str, c
             kind = st.kind
             path = None
             if st.kind == "article":
-                art = next((x for x in getattr(layout, "articles", {}).values() if f"article:{x.id}" == st.id), None)
+                art = getattr(layout, "shown", {}).get(st.id) or next((x for x in getattr(layout, "articles", {}).values()
+                                                                       if f"article:{x.id}" == st.id), None)
                 path = art.image if art else None
                 kind = "source_card" if art is not None and art.capture == "source_card" else "screenshot"
             elif st.kind == "news":
@@ -174,6 +175,20 @@ def build(job_id: str, lang: str, topic: str, script_sha: str, audio_sha: str, c
             "qa_expectations": {"min_evidence_seconds": cfg["animation"]["explainer"]["min_evidence_seconds"],
                                 "safe_margin_px": 48, "duration_tolerance_seconds": cfg["quality"]["maximum_duration_mismatch_seconds"],
                                 "timing": {"source": timing.source, "confidence": timing.confidence}}}
+
+
+def repeated_types(manifest: dict, limit: int = 2) -> list[str]:
+    """Runs of more than `limit` scenes of the same non-evidence visual type (SRS: vary the visuals unless
+    the evidence requires it)."""
+    out, run = [], []
+    for sc in manifest["scenes"] + [{"visual_type": None, "scene_id": ""}]:
+        if run and sc["visual_type"] == run[-1]["visual_type"]:
+            run.append(sc)
+            continue
+        if len(run) > limit and run[0]["visual_type"] not in FACTUAL_TYPES:
+            out.append(f"{run[0]['visual_type']} x{len(run)} ({run[0]['scene_id']}-{run[-1]['scene_id']})")
+        run = [sc]
+    return out
 
 
 def validate(manifest: dict, base: Path | None = None) -> list[str]:

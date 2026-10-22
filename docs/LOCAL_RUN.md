@@ -31,7 +31,9 @@ Useful flags:
   converts the TTS voice to yours. OmniVoice and MMS also need `--allow-restricted-models true`
   (non-commercial weights).
 * `render --english-script new.txt`: change the words after research; claims are re-checked.
-* `research --research-depth deep`, `--label`, `--ur-script-mode urdu|roman_urdu`.
+* `research --research-depth deep`, `--label`, `--ur-script-mode urdu|roman_urdu`, `--region PK`.
+* `research --auto-translate true --draft-model qwen2.5:7b` (needs `ollama serve`): translate a missing language, marked machine-translated.
+* `research --pronunciations words.yaml` (stored in the package) or `render --pronunciations words.yaml`: e.g. `SBP: S B P`.
 
 Exit codes: research 0 (package written) or 2 (bad input); render 0 (all languages passed), 3 (some
 failed), 1 (none), 2 (invalid package or input).

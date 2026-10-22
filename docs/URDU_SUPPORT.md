@@ -8,6 +8,8 @@
 * Nothing is transliterated for the screen. Roman Urdu is converted to Urdu script **only** as the
   input of a text-to-speech voice (`transliteration.roman_to_urdu`); the board and the manifests keep
   your spelling. Roman Urdu spelling is not normalised.
+* Pronunciation hints (`--pronunciations` or `pronunciations.yaml` in the package) adjust what the voice reads,
+  for example a Roman Urdu spelling to an Urdu-script word, without touching the screen text.
 * Urdu output files use the suffix `ur` for either form; `build_info.json` records which one was used.
 
 ## Shaping and layout

@@ -24,15 +24,17 @@
 * Each claim is one sentence. Several facts in a sentence share one status (the finance module does
   split figures).
 * Urdu claims are checked through their numbers only (and meaning, if the model is installed).
-* No automatic translation (`auto_translate_missing_language=true` is rejected).
+* Translation only on request, and only with a free local model (Ollama, `qwen2.5:7b` in workflow A). The result is marked
+  `machine_translated`, its numbers are compared with the source script, and it must be reviewed. No model means a clear failure.
 * No free, commercially usable forced aligner, so the default word timing of supplied voice-overs is
   whisper or pause based (`timing_confidence` medium or low).
 * Source cards and headline cards use cairo's built-in Sans/Serif fonts, which do not shape Urdu.
   Source titles are expected to be in Latin script.
-* Explainer QA does not yet detect overlapping text, labels and drawings. Layout zones keep them apart by
-  construction, and the contact sheet is the check. (The whiteboard style has an overlap check.)
-* Region is recorded but does not yet filter discovery (GDELT has no reliable locale filter here).
-* `duration` is recorded only; the video length always follows the narration.
+* Overlap detection (`no_overlaps`) compares bounding boxes of words, evidence regions, drawings and an estimated
+  source-label box. It is a geometric check, not a pixel check, and is a warning, not a failure.
+* Region filters GDELT by source country (US, GB, PK, IN, AE, CA, AU, SA); official feeds are not filtered by region.
+* `duration` is a target: the narration length is estimated from the words and a warning is raised if they differ by more
+  than 25 %. The video always follows the real narration.
 * Commercial clearance is almost never automatic: article screenshots are "unknown" by design.
 * The older `0-make-video.yml` has 18 `workflow_dispatch` inputs. GitHub accepts this (limit 25), but
   actionlint 1.7.7 reports its older limit of 10.

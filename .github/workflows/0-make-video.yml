@@ -145,6 +145,8 @@ jobs:
       INPUT_MAX_DURATION: ${{ inputs.max_duration }}
       INPUT_CAPTIONS: ${{ inputs.captions }}
       INPUT_PUBLISH: ${{ inputs.publish_artifacts }}
+      # private link to your own voice recording (never committed, never cached, never uploaded)
+      VOICE_REFERENCE_URL: ${{ secrets.VOICE_REFERENCE_URL }}
       WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
       HF_HOME: ${{ github.workspace }}/.model-cache/huggingface
       TORCH_HOME: ${{ github.workspace }}/.model-cache/torch
@@ -154,6 +156,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+
+      - name: Fetch the private voice reference (secret VOICE_REFERENCE_URL)
+        if: env.VOICE_REFERENCE_URL != ''
+        run: |
+          mkdir -p input/voice
+          ext=$(python3 -c "import os,urllib.parse,pathlib;e=pathlib.PurePosixPath(urllib.parse.urlsplit(os.environ['VOICE_REFERENCE_URL']).path).suffix.lower();print(e if e in ('.wav','.mp3','.m4a','.flac','.ogg') else '.mp3')")
+          curl -fsSL --max-time 300 --max-filesize 100000000 -o "input/voice/reference$ext" "$VOICE_REFERENCE_URL"
+          echo "voice reference fetched ($(stat -c %s "input/voice/reference$ext") bytes)"
 
       - name: Set up Python
         uses: actions/setup-python@v5

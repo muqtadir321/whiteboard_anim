@@ -46,7 +46,7 @@ on:
         options: [final, draft]
         default: final
       options:
-        description: "Optional flags: subtitles, voice_consent (reference is your voice), allow_restricted_models (non-commercial voices), music=<path>"
+        description: "Optional flags: subtitles, voice_consent, allow_restricted_models, music=<repo path>, pronunciations=<repo path .yaml>"
         required: false
         default: ""
 
@@ -172,8 +172,12 @@ jobs:
           for opt in re.split(r"[\s,]+", os.environ.get("IN_OPTIONS", "")):
               if opt in ("subtitles", "voice_consent", "allow_restricted_models"):
                   args += [f"--{opt.replace('_', '-')}", "true"]
-              elif opt.startswith("music="):
-                  args += ["--music", opt[6:]]
+              elif opt.startswith(("music=", "pronunciations=")):
+                  name, _, value = opt.partition("=")
+                  p = (repo / value).resolve()
+                  if repo not in p.parents or not p.is_file():
+                      raise SystemExit(f"::error::{name} file not found in the repository: {value}")
+                  args += [f"--{name}", str(p)]
               elif opt:
                   raise SystemExit(f"::error::unknown option {opt!r}")
           if clone:

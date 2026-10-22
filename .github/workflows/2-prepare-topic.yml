@@ -154,6 +154,7 @@ jobs:
     needs: prepare
     if: inputs.render != 'false'
     uses: ./.github/workflows/0-make-video.yml
+    secrets: inherit  # VOICE_REFERENCE_URL for cloning
     with:
       ref: ${{ needs.prepare.outputs.sha }}
       topic_dir: ${{ needs.prepare.outputs.topic_dir }}

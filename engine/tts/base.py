@@ -19,6 +19,16 @@ def cache_dir(sub: str) -> Path:
     return path
 
 
+def private_dir(sub: str) -> Path:
+    """Voice-derived files (reference clips, speaker embeddings): the system temp folder, never the
+    model cache, because workflows save $WHITEBOARD_CACHE to the shared Actions cache."""
+    import tempfile
+
+    path = Path(os.environ.get("WHITEBOARD_PRIVATE_TMP") or tempfile.gettempdir()) / "whiteboard-voice" / sub
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 class TTSProvider:
     """Base class. `language` is a pipeline code: en | ur | ps (Roman Urdu is
     transliterated to Urdu script by the voice manager when a provider needs it)."""

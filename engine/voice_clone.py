@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .audio_processor import probe, run
 from .results import StageError, Status
-from .tts.base import cache_dir
+from .tts.base import cache_dir, private_dir
 
 CONVERTER_REPO = "myshell-ai/OpenVoiceV2"
 CONVERTER_FILES = ("converter/config.json", "converter/checkpoint.pth")
@@ -110,7 +110,7 @@ class OpenVoiceCloner(VoiceCloner):
     def _embedding(self, wavs: list[Path], key: str):
         import torch
 
-        path = cache_dir("openvoice") / f"se_{key}.pth"
+        path = private_dir("openvoice") / f"se_{key}.pth"  # speaker embedding of your voice: not cached
         if path.exists():
             return torch.load(str(path))
         se = self._load().extract_se([str(w) for w in wavs], se_save_path=str(path))

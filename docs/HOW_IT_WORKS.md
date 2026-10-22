@@ -64,5 +64,8 @@ video as rendered:
 Streams, codec, resolution, fps, duration against the narration, silence, decode errors, black frames,
 blank scenes, glyph coverage, safe area, numbers kept, evidence with a URL, and in package renders:
 evidence with a source ID, evidence cues resolved, scene manifest valid, and source labels on screen
-long enough. Warnings: long frozen runs, audio clipping, highlights not found, layout notes. Every language
+long enough. Warnings: long frozen runs, audio clipping, highlights not found, overlapping boxes (`no_overlaps`),
+evidence text too small (`evidence_text_readable`), more than two scenes of the same non-evidence type in a row
+(`visual_variety`), layout notes. A screenshot whose text would be smaller than `min_text_px` (18) on screen is
+replaced by its readable source card, made from the same captured text. Every language
 also gets `qa/contact_sheet_<lang>.jpg`; `qa/contact_sheet.jpg` combines them.

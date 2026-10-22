@@ -67,9 +67,19 @@ def build_chain(cfg: dict, reference: Path | None = None) -> list[TTSProvider]:
     return chain
 
 
+def apply_pronunciations(text: str, pronunciations: dict | None) -> str:
+    """Whole-word replacements for the voice only (e.g. {"SBP": "S B P", "Nvidia": "en-vidia"}); case-insensitive."""
+    import re
+
+    for word, say in sorted((pronunciations or {}).items(), key=lambda kv: -len(kv[0])):
+        text = re.sub(rf"(?<!\w){re.escape(word)}(?!\w)", lambda m: say, text, flags=re.IGNORECASE)
+    return text
+
+
 def _convert(text: str, conversion: str | None, tts_lang: str = "", pronunciations: dict | None = None) -> str:
     if conversion == "roman_to_urdu":
         return roman_to_urdu(text, pronunciations)
+    text = apply_pronunciations(text, pronunciations)  # only what the voice reads; captions and the board keep the script
     if tts_lang == "ur":
         return spell_numbers(text)  # digits in Urdu-script narration are spoken as Urdu words
     return text

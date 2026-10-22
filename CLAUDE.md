@@ -59,7 +59,7 @@ The video workflow passes inputs via env vars (never interpolated into shell), r
 
 ## Content conventions
 
-- Current video inputs live in `input/scripts/<lang>.txt`, `input/audio/<lang>.*`, `input/voice/reference.*`. When starting a new video, move the previous inputs into `input/archive/<YYYY-MM-topic>/` with a short README.txt; the workflow does not read the archive.
+- Current video inputs live in `input/scripts/<lang>.txt` and `input/audio/<lang>.*`. Voice references are never committed: `input/voice/*` is git-ignored and workflows fetch the `VOICE_REFERENCE_URL` secret; files derived from a voice go to `tts.base.private_dir`, never the cached `$WHITEBOARD_CACHE`. When starting a new video, move the previous inputs into `input/archive/<YYYY-MM-topic>/` with a short README.txt; the workflow does not read the archive.
 - Licensing matters for monetised output: MMS, OmniVoice and MMS_FA weights are CC-BY-NC (voices gated by `voice.allow_noncommercial_models`, default false; the render path also turns forced alignment off unless `--allow-restricted-models`), edge-tts is unofficial and opt-in. `docs/THIRD_PARTY_LICENSES.md` is the register. Any new voice/model must be recorded in `metadata.json` / `reports/asset_licenses.json` via the existing reporting.
 - Pashto is a separate language (not Urdu); there is no MMS Pashto model, so Pashto narration relies on OmniVoice cloning or a supplied voice-over.
 - `docs/PROJECT_DETAILS.md` and `docs/AUDIT.md` describe what has and has not been verified against real models.

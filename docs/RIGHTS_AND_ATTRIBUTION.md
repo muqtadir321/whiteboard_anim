@@ -43,9 +43,9 @@ Clone only your own voice, or a voice you have **written** permission to use. Th
 `clone_voice` without `--voice-consent true` (or `voice.clone.consent_confirmed`). Reference recordings
 and voice-overs are read from where they are and never copied into job folders or artifacts.
 
-**Action needed in this repository:** `input/voice/reference.mp3` is committed to a public repository.
-If it is your voice, remove it from the repository *and its history* (for example with
-`git filter-repo --path input/voice/reference.mp3 --invert-paths`, then force-push), and keep the
-recording in a private place: the `VOICE_REFERENCE_URL` secret for the render workflow, or a local file
-with the CLI. This was not done automatically, because rewriting history is destructive and is your
-decision.
+**This repository:** `input/voice/reference.mp3` was committed to a public repository. It is now untracked
+(`git rm --cached`; your local copy stays) and `input/voice/*` is git-ignored. The workflows read the
+reference from the `VOICE_REFERENCE_URL` secret instead. Copies remain in **earlier commits**: removing
+them needs a history rewrite (for example `git filter-repo --path input/voice/reference.mp3 --invert-paths`
+followed by a force-push). That is destructive for everyone who has cloned the repository, so it is left
+to you.

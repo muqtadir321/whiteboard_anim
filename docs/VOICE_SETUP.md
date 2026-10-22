@@ -34,8 +34,11 @@ labelled Apache-2.0 here, which was wrong). Set it to `false` for a monetised ch
 * Reference recordings and voice-overs are read in place (locally) or downloaded to the runner's
   temporary folder (Actions), and never copied into a job folder or artifact. The render deletes any
   audio file it finds in a job folder and stops with an error.
-* Actions: put a private link in the `VOICE_REFERENCE_URL` secret. Do not commit recordings. This
-  repository currently contains `input/voice/reference.mp3` in public: see
-  `docs/RIGHTS_AND_ATTRIBUTION.md` for how to remove it.
+* Actions: put a private link in the `VOICE_REFERENCE_URL` secret (all video workflows read it). `input/voice/*` is
+  git-ignored. Older commits still hold the earlier recording: see `docs/RIGHTS_AND_ATTRIBUTION.md`.
+* Files derived from your voice (OmniVoice's reference clip, OpenVoice's speaker embedding) go to the system temp
+  folder, never to `$WHITEBOARD_CACHE`, which the workflows save to the shared Actions cache.
+* Pronunciation maps (`--pronunciations`, or `research/topic/pronunciations.yaml` in a package) change only what the
+  voice reads: acronyms, names, Roman Urdu spellings.
 * Urdu voice cloning has only mocked tests (no real OmniVoice/OpenVoice run in development). Listen to
   the result before publishing.

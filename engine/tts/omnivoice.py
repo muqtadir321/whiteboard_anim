@@ -17,7 +17,7 @@ import hashlib
 from pathlib import Path
 
 from ..audio_processor import probe, run
-from .base import RetryableTTSError, TTSError, TTSProvider, cache_dir
+from .base import RetryableTTSError, TTSError, TTSProvider, private_dir
 
 LANGUAGE_IDS = {"en": "en", "ur": "ur", "ps": "ps"}
 
@@ -56,7 +56,7 @@ class OmniVoiceProvider(TTSProvider):
     def _reference_clip(self) -> Path:
         """A clean 3-12 s excerpt: OmniVoice clones best from short references."""
         key = hashlib.sha256(self.reference.read_bytes()).hexdigest()[:16]
-        out = cache_dir("omnivoice") / f"ref_{key}.wav"
+        out = private_dir("omnivoice") / f"ref_{key}.wav"  # your voice: never in the shared cache
         if not out.exists():
             info = probe(self.reference)
             seconds = min(12.0, info.duration)

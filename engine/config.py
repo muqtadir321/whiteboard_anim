@@ -197,6 +197,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "semantic_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
             # an evidence card/screenshot stays at least this long, so its source label can be read
             "min_evidence_seconds": 2.2,
+            # evidence text smaller than this (design px on a 1080-wide frame) is replaced by its readable source card
+            "min_text_px": 18,
             # pen tip that follows the stroke being drawn
             "pen_cursor": True,
         },

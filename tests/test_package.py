@@ -467,9 +467,11 @@ def test_roman_urdu_package_renders_with_tts(tmp_path):
 
 
 # -- CLI ---------------------------------------------------------------------------------
-def test_cli_rejects_auto_translate_and_bad_packages(tmp_path, capsys):
-    assert cli.main(["research", "--topic", "x", "--auto-translate", "true", "--output", str(tmp_path)]) == 2
-    assert "auto_translate" in capsys.readouterr().out
+def test_cli_translation_needs_a_local_model_and_bad_packages_fail(tmp_path, capsys):
+    (tmp_path / "en.txt").write_text("Rates rose to 6.8% this week.\n", encoding="utf-8")
+    code = cli.main(["research", "--topic", "mortgage rates", "--english-script", str(tmp_path / "en.txt"), "--auto-translate", "true",
+                     "--draft-model", "none", "--output", str(tmp_path / "out")])
+    assert code == 2 and "no local model" in capsys.readouterr().out  # fails before any network request
     assert cli.main(["render", "--research-dir", str(tmp_path / "nope"), "--output", str(tmp_path)]) == 2
     assert "package.json not found" in capsys.readouterr().out
 
@@ -503,3 +505,124 @@ def test_household_figures_are_not_company_finance():
     assert not finance.is_financial("Home sales are still low because owners locked in rates around 3% in 2021.")
     assert not finance.is_financial("Household debt hit $18 trillion.")
     assert finance.is_financial("Target posted a quarterly profit of $1 billion.")
+
+
+# -- SRS completion: data gaps, research gates, readability, translation, privacy -------------
+def test_missing_dataset_omits_chart_and_research_continues(tmp_path):
+    class NoFred(FakeWeb):
+        def __call__(self, url, headers, timeout):
+            if url.startswith("https://fred.stlouisfed.org/graph/"):
+                return 503, url, {}, b""
+            return super().__call__(url, headers, timeout)
+
+    cfg = research_cfg(load_config(repo_root=ROOT))
+    job = run_research(ResearchInputs("mortgage rates housing lock-in", "english", {"english": ENGLISH}), cfg, tmp_path / "out", log=lambda m: None,
+                       fetcher=fake_fetcher(tmp_path, NoFred()), sec=None, browser_factory=lambda: None, embedder=None)
+    info = json.loads((job / "research" / "research.json").read_text(encoding="utf-8"))
+    assert info["charts"] == [] and any("not downloaded" in w for w in info["warnings"])
+    man = json.loads((job / "research" / "topic" / "evidence" / "manifest.json").read_text(encoding="utf-8"))
+    assert man["charts"] == []  # no data, no chart: nothing invented
+
+
+def test_research_gates_and_log(package):
+    job, _ = package
+    gates = json.loads((job / "research" / "qa.json").read_text(encoding="utf-8"))
+    for name in ("claims_map_to_sources", "urls_canonical", "quotes_match_extracted_text", "chart_values_traceable",
+                 "publication_date_vs_data_period", "unsupported_claims_flagged"):
+        assert gates[name]["passed"], (name, gates[name])
+    assert "EN-004" in gates["unsupported_claims_flagged"]["detail"]
+    assert "research package ready" in (job / "research" / "research.log").read_text(encoding="utf-8")
+    info = json.loads((job / "research" / "research.json").read_text(encoding="utf-8"))
+    assert info["scripts"]["english"]["estimated_seconds"] > 5
+
+
+def test_unreadable_screenshot_is_replaced_by_its_card(tmp_path, ex_cfg_pkg):
+    from engine.explainer.layout import ExplainerLayout, Layout
+
+    card = make_card(tmp_path / "card.png", "Pub", "Headline", "https://pub.example/x", excerpt="Rates rose to 6.8% this week across the country.")
+    import cairo
+
+    shot = cairo.ImageSurface(cairo.FORMAT_RGB24, 4000, 3000)  # a huge page: its 20 px words become ~5 px on screen
+    shot.write_to_png(str(tmp_path / "shot.png"))
+    art = Article("1", tmp_path / "shot.png", "https://pub.example/x", "Headline", "Pub", [("Rates", 10, 10, 60, 30)] * 5,
+                  "S-x", "screenshot", "", tmp_path / "card.png", card["words"])
+    lay = Layout([], [])
+    shown = ExplainerLayout(ex_cfg_pkg, "en", None, 1.0).readable(art, lay)
+    assert shown.capture == "source_card" and lay.text_px["article:1"] >= ex_cfg_pkg["animation"]["explainer"]["min_text_px"]
+
+
+@pytest.fixture
+def ex_cfg_pkg():
+    return load_config(overrides={"animation": {"style": "explainer"}, "video": {"quality": "fast"}}, repo_root=ROOT)
+
+
+def test_missing_language_translated_only_on_request(tmp_path, monkeypatch):
+    from engine.explainer import draft
+    from engine.package import research as R
+
+    monkeypatch.setattr(R, "_model_available", lambda host, model: True)
+    monkeypatch.setattr(draft, "ollama", lambda prompt, model, host, temperature=0.5, timeout=900: "مارگیج ریٹ اس ہفتے 6.8 فیصد ہو گیا۔")
+    cfg = research_cfg(load_config(repo_root=ROOT))
+    cfg["research"]["auto_translate_missing_language"] = True
+    cfg["research"]["providers"] = {k: False for k in cfg["research"]["providers"]}
+    cfg["research"]["official_charts"] = False
+    job = run_research(ResearchInputs("mortgage rates", "both", {"english": "Mortgage rates rose to 6.8 percent this week.\n"}), cfg,
+                       tmp_path / "out", log=lambda m: None, fetcher=fake_fetcher(tmp_path), sec=None, browser_factory=lambda: None,
+                       embedder=None, draft_model="qwen2.5:7b")
+    info = json.loads((job / "research" / "research.json").read_text(encoding="utf-8"))
+    assert info["scripts"]["urdu"]["origin"] == "machine_translated" and info["scripts"]["urdu"]["numbers_match_source"]
+    assert (job / "research" / "topic" / "urdu.txt").exists()
+
+
+def test_pronunciations_only_change_what_the_voice_reads():
+    from engine.voice_manager import _convert
+
+    assert _convert("The SBP said so.", None, "en", {"SBP": "S B P"}) == "The S B P said so."
+    assert _convert("SBPX stays.", None, "en", {"SBP": "S B P"}) == "SBPX stays."  # whole words only
+
+
+def test_region_filters_gdelt_and_voice_files_stay_out_of_the_cache(tmp_path, monkeypatch):
+    from engine.package.providers import gdelt
+    from engine.tts.base import cache_dir, private_dir
+
+    web = FakeWeb()
+    gdelt(fake_fetcher(tmp_path, web), "rupee dollar rate", 5, region="PK")
+    assert any("sourcecountry%3Apakistan" in u for u in web.calls)
+    monkeypatch.setenv("WHITEBOARD_CACHE", str(tmp_path / "cache"))
+    assert (tmp_path / "cache") in cache_dir("x").parents and (tmp_path / "cache") not in private_dir("omnivoice").parents
+
+
+def test_visual_variety_flags_long_runs_of_one_type():
+    m = minimal_manifest()
+    sc = m["scenes"][0]
+    m["scenes"] = [{**sc, "scene_id": f"scene_00{i}", "visual_type": "hand_drawn_illustration"} for i in range(1, 5)]
+    assert manifest.repeated_types(m) == ["hand_drawn_illustration x4 (scene_001-scene_004)"]
+    m["scenes"] = [{**sc, "scene_id": f"scene_00{i}", "visual_type": "data_chart"} for i in range(1, 5)]
+    assert manifest.repeated_types(m) == []  # evidence may repeat
+
+
+def test_render_log_and_overlap_checks(rendered):
+    job, _ = rendered
+    assert "voice mode" in (job / "qa" / "render.log").read_text(encoding="utf-8")
+    checks = {c["name"] for c in json.loads((job / "qa" / "qa_report.json").read_text(encoding="utf-8"))["english"]["quality"]["checks"]}
+    assert {"no_overlaps", "visual_variety", "evidence_text_readable", "no_long_frozen_runs", "audio_not_clipped"} <= checks
+
+
+def test_package_pronunciations_reach_the_voice_only(package, tmp_path):
+    from engine.package.job import write_package_manifest
+    from engine.package.render import RenderInputs, render_package
+
+    pkg, _ = package
+    copy = tmp_path / "pkg"
+    shutil.copytree(pkg, copy)
+    (copy / "research" / "topic" / "pronunciations.yaml").write_text("Atlantis: at-LAN-tis\n", encoding="utf-8")
+    old = json.loads((copy / "package.json").read_text(encoding="utf-8"))
+    write_package_manifest(copy, {k: old[k] for k in ("topic", "language_mode", "label", "languages")})
+    voice = ToneTTS(load_config(repo_root=ROOT), ("en",))
+    job, results = render_package(RenderInputs(copy, "english", voice_modes={"english": "system_tts"}, quality="draft"), tmp_path / "out",
+                                  log=lambda m: None, tts_chain=[voice], transcriber=None, aligner=None)
+    assert results[0].status.ok, results[0].message
+    spoken = " ".join(t for t, _ in voice.calls)
+    assert "at-LAN-tis" in spoken and "Atlantis" not in spoken
+    narration = " ".join(s["narration_text"] for s in json.loads((job / "storyboard" / "scene_manifest.en.json").read_text(encoding="utf-8"))["scenes"])
+    assert "Atlantis" in narration and "at-LAN-tis" not in narration  # the board and manifest keep the script

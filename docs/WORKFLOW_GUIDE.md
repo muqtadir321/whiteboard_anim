@@ -14,13 +14,15 @@ Actions → **A: Research & Prepare** → Run workflow.
 | source_urls | no | Read first, before anything found by search. |
 | research_depth | no (standard) | `deep` reads twice as many documents. |
 | label | no | Used in the job id. |
-| auto_translate_missing_language | no (false) | `true` fails: no free translation engine is configured. A missing language is never written for you. |
+| auto_translate_missing_language | no (false) | `true`: a missing language is translated by a free local model (Ollama `qwen2.5:7b`, started only then), saved as `machine_translated` with a number check. Review it. With `false` a missing language is never written. |
 
 Optional settings: the repository **secret** `SEC_USER_AGENT` ("Your Name you@example.com") turns on SEC
 EDGAR, and the repository **variable** `RESEARCH_USER_AGENT` overrides the default User-Agent.
 
 The run uploads the artifact **`research-package-<job_id>`** (kept 14 days). Nothing is committed.
-Read `research/source_report.md` first.
+Read `research/source_report.md` first; `research/qa.json` holds the research gates (claims mapped to
+sources, canonical URLs, exact quotes, chart values traceable to the CSV, dates vs data periods) and
+`research/research.log` the run log.
 
 ## B: Render Video (`.github/workflows/1-render-video.yml`)
 
@@ -34,7 +36,7 @@ Actions → **B: Render Video** → Run workflow.
 | english_script / urdu_script | Optional narration that replaces the package script (path or text with `||`). Claims are re-checked against the package's sources. |
 | voice_modes | Used for languages without audio: `english=system_tts`, `urdu=clone_voice`, … |
 | render_quality | final = 1080×1920 at 30 fps; draft = 720×1280 at 24 fps. |
-| options | Comma list: `subtitles`, `voice_consent`, `allow_restricted_models`, `music=<repository path>`. |
+| options | Comma list: `subtitles`, `voice_consent`, `allow_restricted_models`, `music=<repository path>`, `pronunciations=<repository path .yaml>` (word → how the voice says it; voice only). |
 
 `clone_voice` also needs the secret **`VOICE_REFERENCE_URL`** (a private link to your own recording)
 and `voice_consent` in options.
@@ -47,7 +49,7 @@ output/<job_id>/
   storyboard/scene_manifest.{en,ur}.json, consistency_report.json, draft_storyboard.*.json
   audio/{en,ur}_audio_info.json, alignment.{en,ur}.json      (no audio files)
   video/explainer_{en,ur}.mp4, thumbnail_{en,ur}.png
-  qa/qa_report.json, qa_report.md, contact_sheet.jpg, warnings.json, failed/<lang>/… (diagnostics)
+  qa/qa_report.json, qa_report.md, contact_sheet.jpg, warnings.json, render.log, failed/<lang>/… (diagnostics)
   build_info.json  sources.txt  upload_metadata.md  package.json
 ```
 

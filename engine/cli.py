@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -255,15 +256,23 @@ def cmd_research(args) -> int:
             urls += [u for u in re.split(r"[\s,]+", _read_script(args.source_urls_file, "source URL list")) if u]
         if args.ur_script_mode:
             cfg["research"]["ur_script_mode"] = args.ur_script_mode
-        if parse_bool(args.auto_translate):
-            raise ConfigError("auto_translate_missing_language=true is not supported: no free translation engine is configured; supply the script")
+        if parse_bool(args.auto_translate):  # only with a free local model (--draft-model, Ollama); fails clearly otherwise
+            cfg["research"]["auto_translate_missing_language"] = True
         inp = ResearchInputs(args.topic.strip(), args.language_mode, scripts, urls, args.region or "global", args.research_depth,
                              float(args.duration) if args.duration else None, args.label.strip())
+        if args.pronunciations and not Path(args.pronunciations).is_file():
+            raise ConfigError(f"pronunciations file not found: {args.pronunciations}")
         job = run_research(inp, cfg, Path(args.output or Path(args.repo_root) / cfg["project"]["output_directory"]).resolve(), _log,
-                           draft_model=args.draft_model)
+                           draft_model=args.draft_model, ollama_host=args.ollama_host)
     except (ConfigError, ResearchError, ValueError) as exc:
         print(f"::error::{exc}")
         return 2
+    if args.pronunciations:  # added after research: re-hash the package
+        from .package.job import write_package_manifest
+
+        shutil.copy(args.pronunciations, job / "research" / "topic" / "pronunciations.yaml")
+        old = json.loads((job / "package.json").read_text(encoding="utf-8"))
+        write_package_manifest(job, {k: old[k] for k in ("topic", "language_mode", "label", "languages") if k in old})
     _gh_output(job_dir=str(job), job_id=job.name)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
@@ -285,7 +294,8 @@ def cmd_render(args) -> int:
     try:
         ri = RenderInputs(Path(args.research_dir), args.languages, audio, scripts, modes, Path(args.voice_reference) if args.voice_reference else None,
                           bool(parse_bool(args.voice_consent)), args.render_quality, bool(parse_bool(args.subtitles)),
-                          Path(args.music) if args.music else None, bool(parse_bool(args.allow_restricted_models)), args.config)
+                          Path(args.music) if args.music else None, bool(parse_bool(args.allow_restricted_models)), args.config,
+                          Path(args.pronunciations) if args.pronunciations else None)
         out = Path(args.output or Path(args.repo_root) / "output").resolve()
         job, results = render_package(ri, out, _log)
     except (RenderError, JobError, ConfigError) as exc:
@@ -328,7 +338,9 @@ def main(argv=None) -> int:
     r.add_argument("--research-depth", default="standard", choices=["standard", "deep"])
     r.add_argument("--label", default="")
     r.add_argument("--auto-translate", default="false")
-    r.add_argument("--draft-model", default="none")
+    r.add_argument("--pronunciations", default="", help="YAML map written word -> spoken form, stored in the package for the voice")
+    r.add_argument("--draft-model", default="none", help="local Ollama model for drafts/translation (e.g. qwen2.5:7b)")
+    r.add_argument("--ollama-host", default="http://127.0.0.1:11434")
     r.add_argument("--output", default="")
     r.add_argument("--config", default="")
     r.add_argument("--repo-root", default=str(REPO_ROOT))
@@ -345,6 +357,7 @@ def main(argv=None) -> int:
     v.add_argument("--subtitles", default="false")
     v.add_argument("--music", default="")
     v.add_argument("--allow-restricted-models", default="false", help="true: non-commercial voice models may be used")
+    v.add_argument("--pronunciations", default="", help="YAML map: written word -> how the voice says it (voice only)")
     v.add_argument("--output", default="")
     v.add_argument("--config", default="")
     v.add_argument("--repo-root", default=str(REPO_ROOT))

@@ -265,6 +265,27 @@ def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids
     short = [f"{st.id}:{st.t_out - st.t_in:.1f}s" for st in layout.stages
              if st.kind in ("article", "chart", "news") and st.t_out - st.t_in < need and st.t_out < end - 0.05]
     report.add("source_labels_visible_long_enough", not short, True, short, f">= {need + 0.05:.1f} s on screen")
+    def hit(a, b):
+        return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+    overlaps = []
+    for sc in layout.scenes:
+        for w in sc.words:
+            t = w.t + 0.05
+            overlaps += [f"{sc.scene_id}:'{w.text}'/{st.id}" for st in layout.stages if st.t_in <= t < st.t_out and hit(w.bbox, st.region)]
+            overlaps += [f"{sc.scene_id}:'{w.text}'/{sp.name}" for sp in sc.sprites
+                         if sp.t <= t and (sp.end is None or t < sp.end) and sc.start <= sp.t and hit(w.bbox, sp.box)]
+        for st in layout.stages:
+            if not st.label:
+                continue
+            x1, y1 = st.region[2] - 10, st.region[3] - 4
+            label = (x1 - 14.5 * len(st.label) - 20, y1 - 44, x1, y1)  # 26 px label at the stage's bottom right
+            overlaps += [f"{sc.scene_id}:{sp.name}/label of {st.id}" for sp in sc.sprites
+                         if sp.t < st.t_out and (sp.end is None or sp.end > st.t_in) and sc.start < st.t_out and st.t_in < sc.end
+                         and hit(sp.box, label)]
+    report.add("no_overlaps", not overlaps, False, sorted(set(overlaps))[:10], 0, "text, evidence, drawings and source labels")
+    small = {k: v for k, v in getattr(layout, "text_px", {}).items() if v < float(cfg["animation"]["explainer"]["min_text_px"])}
+    report.add("evidence_text_readable", not small, False, small, f">= {cfg['animation']['explainer']['min_text_px']} px")
     labelled = [st.id for st in layout.stages if st.kind in ("article", "news") and not st.label]
     report.add("evidence_labelled", not labelled or not cfg["animation"]["explainer"]["source_label"], False, labelled)
     # research packages promise their evidence: a cue that cannot be shown is a failure there, a warning elsewhere

@@ -74,6 +74,20 @@ def urdu_form(text: str, mode: str) -> tuple[str, str]:
     return "roman_urdu", f"detected Latin script, treated as Roman Urdu ({det.code}, {det.confidence:.2f})"
 
 
+WORDS_PER_SECOND = {"en": 2.5, "ur": 2.2, "roman_urdu": 2.3}  # typical narration pace (150 / 130 / 140 words a minute)
+
+
+def estimate_seconds(text: str, code: str) -> float:
+    words = len(extract_cues(text)[0].split())
+    return round(words / WORDS_PER_SECOND.get(code, 2.4), 1)
+
+
+def _model_available(host: str, model: str) -> bool:
+    from ..explainer.prepare import model_available
+
+    return model_available(host, model)
+
+
 def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
@@ -147,6 +161,14 @@ class Research:
         self.warnings: list[str] = []
         self.docs: list[claims_mod.Doc] = []
         self.sid_of: dict[str, str] = {}  # discovered URL -> source id it resolved to (after redirects/canonical links)
+        self._lines: list[str] = []  # research.log
+        outer = log
+
+        def logged(msg: str) -> None:
+            self._lines.append(f"{_now()} {msg}")
+            outer(msg)
+
+        self.log = logged
 
     # -- helpers ---------------------------------------------------------------------
     def warn(self, msg: str) -> None:
@@ -203,10 +225,45 @@ class Research:
             self.script_info[key] = {"origin": "supplied", "form": why, "sha256": sha256_text(text), "characters": len(text)}
         for lang in wanted:
             have = lang in out or (lang == "urdu" and ("urdu" in out or "roman_urdu" in out))
-            if not have and lang != "english":
-                self.warn(f"no {lang} script supplied; it is not translated (research.auto_translate_missing_language is "
-                          f"{self.rc['auto_translate_missing_language']})")
+            if have or not out:
+                continue
+            if not self.rc["auto_translate_missing_language"]:
+                self.warn(f"no {lang} script supplied; it is not translated (research.auto_translate_missing_language is false)")
+                continue
+            out[lang] = self.translate(lang, out)
+        for key, text in out.items():  # SRS: duration is inferred from the narration unless given
+            self.script_info[key]["estimated_seconds"] = estimate_seconds(text, CODES[key])
+            if self.inp.duration_seconds and abs(self.script_info[key]["estimated_seconds"] - self.inp.duration_seconds) > 0.25 * self.inp.duration_seconds:
+                self.warn(f"{key} narration is about {self.script_info[key]['estimated_seconds']:.0f} s, target is {self.inp.duration_seconds:.0f} s")
         return out
+
+    def translate(self, lang: str, have: dict[str, str]) -> str:
+        """Only with research.auto_translate_missing_language: a free local model (Ollama). The result is
+        marked machine-translated; its numbers are compared with the source script."""
+        from .. import numbers as nums
+
+        if self.draft_model in ("", "none") or not _model_available(self.ollama_host, self.draft_model):
+            raise ResearchError(f"auto_translate_missing_language is true but no local model is reachable ({self.draft_model!r} at "
+                                f"{self.ollama_host}); supply the {lang} script or start Ollama and pass --draft-model")
+        src_key = "english" if "english" in have else next(iter(have))
+        src = have[src_key]
+        if lang == "urdu":
+            prompt = draft.urdu_prompt(src)
+        else:
+            prompt = ("Translate this narration into natural spoken English. Keep every number, name and date exactly as given, "
+                      "keep the paragraph breaks, add nothing. Return only the translation.\n\n" + src)
+        text = draft.clean_output(draft.ollama(prompt, self.draft_model, self.ollama_host, temperature=0.2))
+        if not text.strip():
+            raise ResearchError(f"the local model returned no {lang} translation")
+        key = "urdu" if lang == "urdu" else "english"
+        (self.res / "scripts" / f"{key}.machine_translated.txt").write_text(text, encoding="utf-8")
+        a = sorted(round(q.value, 4) for q in nums.extract_quantities(src, CODES[src_key]))
+        b = sorted(round(q.value, 4) for q in nums.extract_quantities(text, CODES[key]))
+        self.script_info[key] = {"origin": "machine_translated", "from": src_key, "model": self.draft_model, "sha256": sha256_text(text),
+                                 "numbers_match_source": a == b}
+        self.warn(f"{key} script was machine-translated from {src_key} with {self.draft_model}: review it before rendering"
+                  + ("" if a == b else f" (numbers differ: {a} vs {b})"))
+        return unicodedata.normalize("NFC", text)
 
     def discover(self) -> list[providers.Found]:
         limit = self.rc["max_news_items"] * (2 if self.inp.depth == "deep" else 1)
@@ -217,7 +274,7 @@ class Research:
         self.user_urls = urls
         feed_errors: list[str] = []
         jobs = [("official_feeds", lambda: providers.official_feeds(self.f, self.inp.topic, self.rc["official_feeds"], limit, feed_errors)),
-                ("gdelt", lambda: providers.gdelt(self.f, self.inp.topic, limit)),
+                ("gdelt", lambda: providers.gdelt(self.f, self.inp.topic, limit, region=self.inp.region)),
                 ("bing_news_rss", lambda: providers.bing_news(self.f, self.inp.topic, limit)),
                 ("google_news_rss", lambda: providers.google_news(self.f, self.inp.topic, limit))]
         for name, run in jobs:
@@ -292,9 +349,14 @@ class Research:
                     src.extracted_text_path = self._save_text(src.source_id, text)
                     src.screenshot_path = f"research/screenshots/article_{k}.png"
                     self.docs.append(claims_mod.Doc(src.source_id, text, stype, src.domain, src.published_at))
+                    # a readable alternative from the same verified text, used when the page's own text is too small on screen
+                    best = max(cap.paragraphs, key=lambda p: (providers.relevance(self.inp.topic, p), bool(re.search(r"\d", p))), default="")
+                    alt = make_card(self.shots / f"article_{k}_card.png", src.publisher or src.domain, src.title, src.canonical_url,
+                                    src.published_at, excerpt_of(best) if best else "", "Source card · text from the captured page")
                     articles.append({"id": str(k), "image": f"../../screenshots/article_{k}.png", "url": src.canonical_url, "title": src.title,
                                      "publisher": src.publisher, "words": cap.words, "source_id": src.source_id, "capture": "screenshot",
-                                     "published": src.published_at, "paragraphs": cap.paragraphs})
+                                     "published": src.published_at, "paragraphs": cap.paragraphs,
+                                     "alt_image": f"../../screenshots/article_{k}_card.png", "alt_words": alt["words"]})
                     self.log(f"  screenshot {src.domain}: {src.title[:70]}")
                     continue
                 if it is not None and not it.resolved:
@@ -535,7 +597,10 @@ class Research:
         flat = [c for cl in all_claims.values() for c in cl]
         (self.res / "claims.json").write_text(json.dumps([c.to_dict() for c in flat], ensure_ascii=False, indent=1), encoding="utf-8")
         self.ledger.write(self.res)
-        cov_lines = ["## Research coverage", ""] + [f"- {k}: {v.get('status')} ({v.get('items', '')} items) {v.get('error', '')}".rstrip()
+        gates = self.qa_gates(tagged, articles, charts, flat)
+        (self.res / "qa.json").write_text(json.dumps(gates, ensure_ascii=False, indent=1), encoding="utf-8")
+        cov_lines = ["## Research QA", ""] + [f"- {k}: {'pass' if v['passed'] else 'FAIL'} {v.get('detail', '')}".rstrip() for k, v in gates.items()]
+        cov_lines += ["", "## Research coverage", ""] + [f"- {k}: {v.get('status')} ({v.get('items', '')} items) {v.get('error', '')}".rstrip()
                                                     for k, v in self.coverage.items()]
         (self.res / "source_report.md").write_text(claims_mod.report_markdown(flat, self.ledger) + "\n" + "\n".join(cov_lines) + "\n" +
                                                    ("\n## Warnings\n\n" + "\n".join(f"- {w}" for w in self.warnings) + "\n" if self.warnings else ""),
@@ -546,12 +611,49 @@ class Research:
                 "charts": [c["id"] for c in charts], "financial_claims": len(fin),
                 "claim_status": {s: sum(1 for c in flat if c.status == s) for s in claims_mod.STATUSES},
                 "requests": {"total": len(self.f.log), "failed": sum(1 for r in self.f.log if not r["status"] or r["status"] >= 400)},
+                "qa": {k: v["passed"] for k, v in gates.items()},
                 "warnings": self.warnings, "created_at_utc": _now()}
         (self.res / "research.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
+        self.log(f"research package ready: {self.job}")
+        (self.res / "research.log").write_text("\n".join(self._lines) + "\n", encoding="utf-8")
         write_package_manifest(self.job, {"topic": inp.topic, "language_mode": inp.language_mode, "label": inp.label,
                                           "languages": {k: v.get("origin") for k, v in self.script_info.items()}})
-        self.log(f"research package ready: {self.job}")
         return self.job
+
+    def qa_gates(self, tagged: dict[str, str], articles: list[dict], charts: list[dict], claims: list) -> dict:
+        """SRS research gates: claims map to sources, URLs canonical, quotes exact, chart values traceable,
+        publication date kept apart from data period, unsupported claims flagged."""
+        from .claims import Doc  # noqa: F401  (same sentence model as matching)
+
+        gates: dict[str, dict] = {}
+        bad_map = [c.claim_id for c in claims if c.status in ("supported", "partially_supported", "contradicted", "outdated") and not c.source_ids]
+        gates["claims_map_to_sources"] = {"passed": not bad_map, "detail": ", ".join(bad_map)}
+        unsupported = [c.claim_id for c in claims if c.kind == "factual" and c.status in ("not_found", "contradicted")]
+        gates["unsupported_claims_flagged"] = {"passed": True, "detail": f"{len(unsupported)} flagged: {', '.join(unsupported)}" if unsupported else "none"}
+        noncanon = [s.source_id for s in self.ledger.ordered() if canonical_url(s.canonical_url) != s.canonical_url]
+        gates["urls_canonical"] = {"passed": not noncanon, "detail": ", ".join(noncanon)}
+        texts = {a["id"]: re.sub(r"\s+", " ", " ".join(a.get("paragraphs", []))).lower() for a in articles}
+        quotes, bad_q = 0, []
+        for key, text in tagged.items():
+            for c in extract_cues(text)[1]:
+                if c.kind == "article" and c.quote:
+                    quotes += 1
+                    q = re.sub(r"\s+", " ", c.quote.replace("'", "\"")).lower().strip(" .,")
+                    src = texts.get(c.ref, "").replace("'", "\"")
+                    if q not in src:
+                        bad_q.append(f"{key}: article {c.ref} \"{c.quote[:50]}\"")
+        gates["quotes_match_extracted_text"] = {"passed": not bad_q, "detail": f"{quotes} quote(s)" + (f"; not exact: {bad_q}" if bad_q else "")}
+        bad_c = []
+        for ch in charts:
+            rows = dict(r for r in fred.parse_csv((self.job / ch["csv"]).read_bytes()))
+            missing = [d for d, v in ch["points"] if rows.get(d) != v]
+            if missing:
+                bad_c.append(f"{ch['id']}: {len(missing)} value(s) not in the downloaded CSV")
+        gates["chart_values_traceable"] = {"passed": not bad_c, "detail": "; ".join(bad_c) or f"{len(charts)} chart(s) checked against their CSV"}
+        mixed = [s.source_id for s in self.ledger.ordered() if s.source_type == "dataset" and not s.data_period]
+        gates["publication_date_vs_data_period"] = {"passed": not mixed, "detail": "datasets without a data period: " + ", ".join(mixed) if mixed else
+                                                    "datasets carry data_period; documents carry published_at"}
+        return gates
 
 
 def run_research(inp: ResearchInputs, cfg: dict, out_root: Path, log=print, **kw) -> Path:

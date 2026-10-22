@@ -38,6 +38,19 @@ class Article:
     source_id: str = ""  # id in the research package's source ledger
     capture: str = "screenshot"  # screenshot | source_card (drawn from verified metadata)
     published: str = ""
+    alt_image: Path | None = None  # readable source card made from the same page text (screenshots only)
+    alt_words: list = field(default_factory=list)
+
+    def text_height(self) -> float:
+        """Median word height in image pixels (0 when unknown)."""
+        hs = sorted(w[4] - w[2] for w in self.words if w[4] > w[2])
+        return hs[len(hs) // 2] if hs else 0.0
+
+    def alternative(self) -> "Article | None":
+        if not self.alt_image or not Path(self.alt_image).exists():
+            return None
+        return Article(self.id, Path(self.alt_image), self.url, self.title, self.publisher, [tuple(w) for w in self.alt_words], self.source_id,
+                       "source_card", self.published)
 
     def find_quote(self, quote: str, min_ratio: float = 0.72) -> list[tuple[float, float, float, float]]:
         """Line rectangles (image pixels) covering the quoted words, [] if not on the page."""
@@ -146,7 +159,8 @@ class Evidence:
                 ev.articles[str(a["id"])] = Article(str(a["id"]), _file(root, a["image"]), a.get("url", ""), a.get("title", ""), a.get("publisher", ""),
                                                      [tuple(w) for w in a.get("words", [])], a.get("source_id") or _sid(a.get("url", "")),
                                                      a.get("capture", "screenshot"),
-                                                     a.get("published", ""))
+                                                     a.get("published", ""), _file(root, a["alt_image"]) if a.get("alt_image") else None,
+                                                     a.get("alt_words", []))
         for c in data.get("charts", []):
             pts = [(d, float(v)) for d, v in ((parse_date(p[0]), p[1]) for p in c.get("points", [])) if d is not None and v is not None]
             if pts:

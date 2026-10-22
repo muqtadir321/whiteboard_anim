@@ -50,6 +50,7 @@ class RenderInputs:
     music: Path | None = None
     allow_restricted_models: bool = False
     config_path: str = ""
+    pronunciations: Path | None = None  # YAML {written word: how the voice should say it}; captions keep the script
 
 
 def _check_audio(p: Path) -> Path:
@@ -99,6 +100,13 @@ def plan_languages(ri: RenderInputs, topic: Path) -> list[tuple[str, str]]:
 def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, transcriber=None, aligner="auto", cloner="auto") -> tuple[Path, list]:
     from ..pipeline import LanguageJob, LanguageResult
 
+    lines: list[str] = []
+    outer = log
+
+    def log(msg: str) -> None:  # also kept as qa/render.log (diagnostics survive a failed render)
+        lines.append(msg)
+        outer(msg)
+
     pkg, problems = verify_package(Path(ri.research_dir))
     if problems:
         raise RenderError("research package failed validation: " + "; ".join(problems[:8]))
@@ -123,6 +131,17 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
         raise RenderError(str(exc)) from exc
     if ri.music and not Path(ri.music).is_file():
         raise RenderError(f"background music not found: {ri.music}")
+    for pfile in [p for p in (topic / "pronunciations.yaml", ri.pronunciations) if p and Path(p).is_file()]:  # package first, yours last
+        import yaml
+
+        try:
+            pron = yaml.safe_load(Path(pfile).read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError) as exc:
+            raise RenderError(f"pronunciations file unreadable: {exc}") from exc
+        if not isinstance(pron, dict):
+            raise RenderError("pronunciations file must map words to spoken forms")
+        base_cfg["voice"]["pronunciations"] = {**base_cfg["voice"]["pronunciations"], **{str(k): str(v) for k, v in pron.items()}}
+    research_info = json.loads((job / "research" / "research.json").read_text(encoding="utf-8")) if (job / "research" / "research.json").exists() else {}
     work = Path(tempfile.mkdtemp(prefix=f"render-{job.name}-"))  # private: audio copies and intermediate files
     results, statuses, warnings = [], {}, []
     try:
@@ -192,11 +211,19 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
                 r = LanguageResult(key, code, Status.PERMANENT_FAILURE, str(exc))
             results.append(r)
             statuses[key] = r
+            est = (research_info.get("scripts", {}).get(key) or {}).get("estimated_seconds")
+            spoken = ((r.metadata or {}).get("timing") or {}).get("sentences") or []
+            if est and spoken and not script_src:
+                real = spoken[-1]["end"]
+                if abs(real - est) > 0.4 * est:
+                    warnings.append(f"{key}: narration is {real:.1f} s, the package script reads in about {est:.0f} s: is the audio for this script?")
             log(f"[{key}] {r.status.value}: {r.message}")
             export_language(job, work / "out" / key, key, sfx, r)
         finalize_job(job, pkg, ri, results, warnings, ledger)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+        (job / "qa").mkdir(exist_ok=True)
+        (job / "qa" / "render.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
     leaked = [p for p in job.rglob("*") if p.is_file() and p.suffix.lower() in MEDIA_EXT]
     if leaked:  # never ship voice-overs or voice samples in the output
         for p in leaked:
