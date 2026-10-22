@@ -11,7 +11,37 @@ hand, in sync with the narration and with captions.
 
 ---
 
-## One-click usage
+## Research-driven explainers in two clicks (recommended)
+
+1. **Actions → A: Research & Prepare**: give a topic and, optionally, your English and Urdu (or Roman
+   Urdu) scripts and source URLs. It finds sources (your URLs, official feeds, GDELT; SEC filings for
+   company figures), captures screenshots or labelled source cards, downloads chart data, checks every
+   claim in your scripts against the sources, and uploads a **research package** artifact. It never
+   renders and never commits.
+2. **Actions → B: Render Video**: give that run's id and your voice-overs (supplied audio always
+   wins). You get separate `explainer_en.mp4` and `explainer_ur.mp4`, plus the scene manifests with
+   claim and source IDs, QA reports, a contact sheet, `sources.txt` and upload notes.
+
+Locally it is the same CLI:
+`python -m engine.cli research --topic "…" --english-script en.txt --urdu-script ur.txt`, then
+`python -m engine.cli render --research-dir output/<job_id> --english-audio en.mp3 --urdu-audio ur.mp3`.
+
+Your scripts are never rewritten; unsupported claims are only reported. Non-commercial models (Meta
+MMS, OmniVoice, the MMS_FA aligner) are off by default in this path, and a video is never marked
+"commercially cleared" while anything on screen or in the voice has unknown rights.
+
+Docs: [workflow guide](docs/WORKFLOW_GUIDE.md) · [local run](docs/LOCAL_RUN.md) ·
+[how it works](docs/HOW_IT_WORKS.md) · [research policy](docs/RESEARCH_POLICY.md) ·
+[voice setup](docs/VOICE_SETUP.md) · [Urdu](docs/URDU_SUPPORT.md) ·
+[rights](docs/RIGHTS_AND_ATTRIBUTION.md) · [licences](docs/THIRD_PARTY_LICENSES.md) ·
+[limitations](docs/KNOWN_LIMITATIONS.md) · [implementation audit](docs/IMPLEMENTATION_AUDIT.md)
+
+> **Privacy:** `input/voice/reference.mp3` is committed to this public repository. See
+> [rights](docs/RIGHTS_AND_ATTRIBUTION.md#voice) for how to remove it and keep your reference private.
+
+---
+
+## One-click usage (classic whiteboard and topic folders)
 
 1. Put a script in `input/scripts/` (for example `english.txt`) and/or a voice-over in
    `input/audio/` (for example `english.mp3`). Every file is optional.
@@ -203,9 +233,9 @@ What was actually tested while building this project:
 
 ### Licences that matter for monetised channels
 
-* **Meta MMS voices are CC-BY-NC-4.0 (non-commercial).** They are used only when
-  `voice.allow_noncommercial_models: true` (the default, so that Urdu and Pashto have a neural
-  voice), and every video that uses one says so in `metadata.json` and
+* **Meta MMS voices, the OmniVoice model and the MMS_FA aligner are non-commercial (CC-BY-NC).**
+  The voices are used only when `voice.allow_noncommercial_models: true` (engine default `false`;
+  this repository's `input/config.yaml` sets it to `true`), and every video that uses one says so in `metadata.json` and
   `reports/asset_licenses.json`. Set the flag to `false` if you monetise, or supply your own
   audio.
 * `edge-tts` (high-quality Urdu, Pashto and English voices) talks to an **unofficial**
@@ -261,7 +291,8 @@ Put a recording of your own voice at `input/voice/reference.wav` (`.mp3`/`.m4a` 
 and run the workflow. Every narration the engine generates from a script is then spoken in
 your voice:
 
-* **OmniVoice** (k2-fsa, Apache-2.0, 600+ languages) speaks English, Urdu (Roman Urdu is
+* **OmniVoice** (k2-fsa; code Apache-2.0, **model weights CC-BY-NC**, so it needs
+  `voice.allow_noncommercial_models: true`; 600+ languages) speaks English, Urdu (Roman Urdu is
   read via derived Urdu text) and Pashto directly in the reference voice. It needs only
   3–10 seconds of clean speech; the engine takes a 12-second excerpt from the start of your
   file. This is also the only free voice that covers **Pashto**, because Meta MMS has no

@@ -112,3 +112,64 @@ Workflows: `0-make-video.yml` (render, also reusable), `1-research-viral-topics.
 * `planner.local_llm` (off by default) is only consulted for whiteboard fallback scenes
   (`scene_planner.py`); the explainer path never calls it.
 * `docs/AUDIT.md` describes a much earlier state (80 tests) and is superseded by this file.
+
+---
+
+## Part B: after implementation (2026-10-23)
+
+### Decision: extend, don't rewrite
+
+The renderer, pipeline, explainer layout, capture, FRED, cue and auto-tag code were sound, so they
+were reused. New code is in `engine/package/` (contract, research, claims, finance, manifest,
+render orchestration). It drives the existing `LanguageJob` through a new optional `package=`
+argument, so the classic `run` path and existing topic folders behave as before. `prepare.py` and
+`2-prepare-topic.yml` were left in place (they still commit topic folders and use Google News RSS);
+the new workflows are the compliant path.
+
+### Changes to existing behaviour (deliberate)
+
+| Change | Why |
+|---|---|
+| `voice.allow_noncommercial_models` engine default `true` → `false` | SRS: restricted models off by default. `input/config.yaml` still sets `true` (user choice, comment corrected). |
+| OmniVoice metadata `Apache-2.0 / commercial yes` → `CC-BY-NC weights / commercial no`, and gated like MMS | Its model card says the pre-trained model is CC-BY-NC. Earlier videos made with it used non-commercial weights. |
+| Render path: forced alignment (MMS_FA, CC-BY-NC) off unless `--allow-restricted-models` | SRS licence policy; timing falls back to whisper or labelled phrase timing. |
+| Text files read and written as UTF-8 everywhere | Urdu/Pashto failed on Windows. |
+| Evidence image paths normalised | Windows 260-character path limit dropped evidence silently. |
+| Source cards are not zoomed into | The zoom cropped the card text. |
+| `evidence_cues_resolved` is critical in package renders | Missing evidence must not pass quietly where the package promised it. |
+
+### SRS gap table: status now
+
+| SRS area | Status |
+|---|---|
+| Two workflows (research artifact → render by run id) | **Done**: `0-research-prepare.yml`, `1-render-video.yml`; actionlint clean. Not yet run on GitHub. |
+| Job folders, output layout, `build_info.json`, `package.json` hashes | Done; reruns create new folders, and tampered packages are refused (tested). |
+| Source ledger with the 18 fields, stable ids | Done (`sources.json/csv/txt`). |
+| Claims: atomic sentence claims, 6 statuses, conservative matching, syndication | Done; rule-based. With fastembed, claims without figures can be fully supported. |
+| Financial module | Done (XBRL, 8-K EX-99, news cross-checks, Yahoo links only, normalisation, restatements, derived values, reports). **Live EDGAR untested** (needs `SEC_USER_AGENT`). |
+| User URLs, providers, robots, rate limits, TTL cache | Done; tested offline. Live: official feeds and FRED worked; GDELT gave 429 after repeated manual use. |
+| Screenshot failure → source card | Done and tested; the live run produced real source cards. |
+| Charts from real data | Existing FRED path, now with CSV, retrieval time, series id and transformation stored. |
+| Scene manifest with schema and validation | Done for the explainer style (the whiteboard style still writes `scene_plan.json` only). |
+| `consistency_report.json` | Done (paragraph alignment). |
+| Urdu: form detection, kept as supplied, NFC, mixed-script tests | Done. |
+| Voice modes, consent, supplied audio first, no audio in outputs | Done; cloning only mocked. |
+| Pen cursor following strokes (explainer) | Done (marker tip at the stroke's current point). |
+| QA: contact sheet, black/frozen frames, clipping, label duration, source ids | Done. Explainer overlap detection: **not done** (see KNOWN_LIMITATIONS). |
+| Docs (11 files) | Done. |
+
+### Tests
+
+`python -m pytest`: **192 passed, 10 skipped** (Windows, Python 3.13; skipped: 8 need espeak-ng, 1
+Playwright, 1 soundfile). New: `tests/test_package.py` (56 tests: unit tests plus offline research →
+render end to end, covering screenshot failure, unsupported claims, missing TTS, one language failing,
+tampered package, cloning without consent, Roman Urdu). Also new: 2 mixed-script Urdu tests and 2
+workflow tests. Live checks (not in CI): one research run against real sites, and a draft render
+from it.
+
+### Still open (human steps)
+
+1. Remove `input/voice/reference.mp3` from the public repository and its history (see RIGHTS_AND_ATTRIBUTION.md).
+2. Set the `SEC_USER_AGENT` secret to enable EDGAR, and optionally `VOICE_REFERENCE_URL` and the audio URL secrets.
+3. Run both workflows once on GitHub (they have been linted, not executed there).
+4. Decide whether `input/config.yaml` should keep `allow_noncommercial_models: true`.

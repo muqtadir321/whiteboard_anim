@@ -114,7 +114,9 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
                                                                 "captions_enabled": bool(ri.subtitles),
                                                                 "background_music_enabled": bool(ri.music),
                                                                 "background_music_path": str(ri.music) if ri.music else ""},
-                 "voice": {"allow_noncommercial_models": bool(ri.allow_restricted_models), "prefer_supplied_audio": True}}
+                 "voice": {"allow_noncommercial_models": bool(ri.allow_restricted_models), "prefer_supplied_audio": True},
+                 # the forced aligner (torchaudio MMS_FA) has CC-BY-NC weights: whisper or phrase timing unless allowed
+                 "timing": {"forced_alignment": bool(ri.allow_restricted_models)}}
     try:
         base_cfg = load_config(ri.config_path or None, overrides)
     except ConfigError as exc:
@@ -280,6 +282,10 @@ def finalize_job(job: Path, pkg: dict, ri: RenderInputs, results: list, warnings
         cu = str(v.get("commercial_use", "unknown"))
         if not (cu.startswith("yes") or cu.startswith("user")):
             blocking.append(f"{k} narration: {v.get('provider', '?')} commercial use '{cu}'")
+    for r in results:
+        details = ((r.metadata or {}).get("timing") or {}).get("details", {})
+        if details.get("model_license"):
+            blocking.append(f"{r.key} word timing: {details['model']} ({details['model_license']})")
     for s in ledger.ordered():
         if s.source_id in used and s.commercial_status != "approved":
             blocking.append(f"{s.source_id} ({s.domain}) shown on screen: rights status {s.commercial_status}")

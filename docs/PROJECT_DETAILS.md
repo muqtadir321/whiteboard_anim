@@ -139,7 +139,7 @@ input files ─► script cleaning + language check ─► voice-over (yours / g
 | `video.captions_enabled` | `true` | Burn captions into the video |
 | `voice.clone.omnivoice_languages` | `[ps]` | Languages cloned with OmniVoice (slow on GitHub; add `en`, `ur` for closer cloning) |
 | `voice.clone.reference_text` | `""` | Words spoken in the first ~12 s of your reference (improves cloning) |
-| `voice.allow_noncommercial_models` | `true` | Allows MMS voices (non-commercial licence) |
+| `voice.allow_noncommercial_models` | `false` (engine default; `input/config.yaml` sets `true`) | Allows MMS voices and the OmniVoice model (non-commercial licences) |
 | `voice.online_providers` | `[]` | Add `edge_tts` for Microsoft online voices (unofficial service) |
 | `timing.forced_alignment` | `true` | Exact word timing of voice-overs |
 | `animation.hand_cursor_style` | `hand` | `hand` or `marker` |
@@ -202,7 +202,7 @@ with SEO titles, hooks, description, tags and a `[tag]`-style script outline (nu
 | Illustrations, hand cursor | original, programmatic | no third-party images |
 | FFmpeg, eSpeak NG | LGPL/GPL | output is not restricted |
 | Piper (English voice) | GPL-3.0 code; LJ Speech voice (public-domain data) | |
-| OmniVoice (voice cloning) | Apache-2.0 | |
+| OmniVoice (voice cloning) | code Apache-2.0; **model weights CC-BY-NC** | Gated like MMS (see docs/THIRD_PARTY_LICENSES.md). |
 | OpenVoice V2 (voice conversion) | MIT | |
 | faster-whisper / Whisper | MIT | transcription |
 | **MMS voices and MMS_FA aligner (Meta)** | **CC-BY-NC-4.0 (non-commercial)** | Recorded in `metadata.json`. Can be disabled. |

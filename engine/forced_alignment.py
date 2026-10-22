@@ -171,4 +171,6 @@ def timing_from_alignment(sentences: list[str], spans: list[tuple[float, float] 
         timed[si].end = timed[si + 1].start if si + 1 < len(timed) else duration
         timed[si].start = min(timed[si].start, timed[si].end - 0.1)
     coverage = len(known) / len(flat)
-    return Timing(timed, "forced_alignment", round(0.6 + 0.35 * coverage, 3), {"aligned_words": len(known), "words": len(flat)})
+    return Timing(timed, "forced_alignment", round(0.6 + 0.35 * coverage, 3), {"aligned_words": len(known), "words": len(flat),
+                  # torchaudio's MMS_FA weights: only word times are taken from it, but the licence is still non-commercial
+                  "model": "torchaudio MMS_FA", "model_license": "CC-BY-NC-4.0", "commercial_use": "no (non-commercial weights)"})

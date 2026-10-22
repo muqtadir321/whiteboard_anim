@@ -197,12 +197,16 @@ jobs:
           key: whiteboard-models-v2-${{ hashFiles('requirements-optional.txt', 'input/config.yaml') }}
           restore-keys: whiteboard-models-v2-
 
-      - name: Install the forced aligner (exact word timing of the voice-over)
+      - name: Install speech recognition for word timing (faster-whisper, MIT code and weights)
         if: steps.inputs.outputs.has_audio == 'true'
+        run: pip install faster-whisper==1.2.1 "av<15" || echo "::warning::faster-whisper unavailable; phrase-level timing (marked low confidence) is used"
+
+      - name: Install the forced aligner (only with allow_restricted_models; MMS_FA weights are CC-BY-NC)
+        if: steps.inputs.outputs.has_audio == 'true' && contains(inputs.options, 'allow_restricted_models')
         run: |
           pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu && pip install uroman \
             && python -c "from torchaudio.pipelines import MMS_FA; print('aligner ready')" \
-            || echo "::warning::forced aligner unavailable; phrase-level timing (marked low confidence) is used"
+            || echo "::warning::forced aligner unavailable; whisper or phrase-level timing is used"
 
       - name: Install Piper (English TTS, MIT voice)
         if: steps.inputs.outputs.tts == 'true'
