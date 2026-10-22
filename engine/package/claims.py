@@ -89,8 +89,17 @@ class Doc:
             self.sents = [s for s in split_sentences(re.sub(r"\s+", " ", self.text)) if len(s) > 12][:600]
 
 
+def _stem(w: str) -> str:
+    if w.endswith("ies") and len(w) > 4:
+        w = w[:-3] + "y"
+    elif w.endswith("s") and not w.endswith("ss") and len(w) > 3:
+        w = w[:-1]
+    return w[:6]
+
+
 def content_words(text: str) -> set[str]:
-    return {w[:6] for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
+    """Content words, plural folded and cut to 6 letters ("rates" = "rate", "housing" = "housin")."""
+    return {_stem(w) for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
 
 
 def key_numbers(text: str, lang: str) -> list[tuple[float, str, str]]:

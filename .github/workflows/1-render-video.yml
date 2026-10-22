@@ -1,0 +1,251 @@
+name: "B: Render Video (from a research package)"
+
+# Downloads the research package uploaded by "A: Research & Prepare" (run id), renders a
+# separate English and/or Urdu video, runs QA and uploads videos and reports. Never uploads
+# to YouTube.
+#
+# Narration audio (supplied audio always wins over generated speech) can be:
+#   - a repository path, e.g. input/audio/english.mp3 (a PUBLIC repository makes it public)
+#   - an https:// link to the file (e.g. a private, expiring download link)
+#   - "secret": the link is read from the repository secret ENGLISH_AUDIO_URL / URDU_AUDIO_URL
+# Audio is downloaded to the runner's temporary folder and is never copied into the artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      research_run_id:
+        description: "Run id of 'A: Research & Prepare' (the number in its URL)"
+        required: true
+      output_languages:
+        description: "Videos to render"
+        type: choice
+        options: [both, english, urdu]
+        default: both
+      english_audio:
+        description: "English voice-over: repository path, https:// link, or 'secret' (blank = none)"
+        required: false
+        default: ""
+      urdu_audio:
+        description: "Urdu voice-over: repository path, https:// link, or 'secret' (blank = none)"
+        required: false
+        default: ""
+      english_script:
+        description: "Optional English narration replacing the package script: repository path or text (|| between paragraphs)"
+        required: false
+        default: ""
+      urdu_script:
+        description: "Optional Urdu / Roman Urdu narration replacing the package script: repository path or text"
+        required: false
+        default: ""
+      voice_modes:
+        description: "Without audio: english=system_tts|clone_voice, urdu=system_tts|clone_voice (e.g. english=system_tts,urdu=clone_voice)"
+        required: false
+        default: ""
+      render_quality:
+        description: "draft = 720x1280 @ 24 fps (fast check), final = 1080x1920 @ 30 fps"
+        type: choice
+        options: [final, draft]
+        default: final
+      options:
+        description: "Optional flags: subtitles, voice_consent (reference is your voice), allow_restricted_models (non-commercial voices), music=<path>"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: read  # download the research package artifact
+
+concurrency:
+  group: render-${{ github.ref }}-${{ inputs.research_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      IN_RUN: ${{ inputs.research_run_id }}
+      IN_LANGS: ${{ inputs.output_languages }}
+      IN_EN_AUDIO: ${{ inputs.english_audio }}
+      IN_UR_AUDIO: ${{ inputs.urdu_audio }}
+      IN_EN_SCRIPT: ${{ inputs.english_script }}
+      IN_UR_SCRIPT: ${{ inputs.urdu_script }}
+      IN_MODES: ${{ inputs.voice_modes }}
+      IN_QUALITY: ${{ inputs.render_quality }}
+      IN_OPTIONS: ${{ inputs.options }}
+      # private links (secrets are masked in logs); used when an audio input is "secret"
+      ENGLISH_AUDIO_URL: ${{ secrets.ENGLISH_AUDIO_URL }}
+      URDU_AUDIO_URL: ${{ secrets.URDU_AUDIO_URL }}
+      VOICE_REFERENCE_URL: ${{ secrets.VOICE_REFERENCE_URL }}
+      WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
+      HF_HOME: ${{ github.workspace }}/.model-cache/huggingface
+      TORCH_HOME: ${{ github.workspace }}/.model-cache/torch
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the run id
+        run: |
+          [[ "$IN_RUN" =~ ^[0-9]{5,20}$ ]] || { echo "::error::research_run_id must be the numeric run id"; exit 1; }
+
+      - name: Download the research package
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.research_run_id }}
+          github-token: ${{ github.token }}
+          pattern: research-package-*
+          path: ${{ runner.temp }}/package
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-lock.txt
+            requirements-optional.txt
+
+      - name: Install FFmpeg, eSpeak NG and Cairo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng libcairo2-dev pkg-config
+          ffmpeg -version | head -1
+
+      - name: Install pinned Python dependencies
+        run: pip install -r requirements-lock.txt
+
+      - name: Resolve narration files (kept in the runner's temp folder)
+        id: inputs
+        run: |
+          python - <<'PY'
+          import os, pathlib, re, shlex, subprocess, urllib.parse
+          tmp = pathlib.Path(os.environ["RUNNER_TEMP"]) / "narration"
+          tmp.mkdir(parents=True, exist_ok=True)
+          repo = pathlib.Path.cwd().resolve()
+          args = []
+          pkgs = sorted(p.parent for p in (pathlib.Path(os.environ["RUNNER_TEMP"]) / "package").rglob("package.json"))
+          if len(pkgs) != 1:
+              raise SystemExit(f"::error::expected one research package in the artifact, found {len(pkgs)}")
+          args += ["--research-dir", str(pkgs[0])]
+
+          def fetch(url, dest):
+              if not url.startswith("https://"):
+                  raise SystemExit("::error::audio links must start with https://")
+              subprocess.run(["curl", "-fsSL", "--max-time", "600", "--max-filesize", "500000000", "-o", str(dest), url], check=True)
+              return dest
+
+          def ext_of(url):
+              e = pathlib.PurePosixPath(urllib.parse.urlsplit(url).path).suffix.lower()
+              return e if re.fullmatch(r"\.(mp3|wav|m4a|aac|ogg|opus|flac|webm)", e or "") else ".mp3"
+
+          for lang, env, secret in (("english", "IN_EN_AUDIO", "ENGLISH_AUDIO_URL"), ("urdu", "IN_UR_AUDIO", "URDU_AUDIO_URL")):
+              v = os.environ.get(env, "").strip()
+              if not v:
+                  continue
+              if v == "secret":
+                  url = os.environ.get(secret, "")
+                  if not url:
+                      raise SystemExit(f"::error::{lang}_audio is 'secret' but the repository secret {secret} is not set")
+                  path = fetch(url, tmp / f"{lang}{ext_of(url)}")
+              elif v.startswith("https://"):
+                  path = fetch(v, tmp / f"{lang}{ext_of(v)}")
+              else:
+                  path = (repo / v).resolve()
+                  if repo not in path.parents or not path.is_file():
+                      raise SystemExit(f"::error::{lang} audio not found in the repository: {v}")
+                  print(f"::warning::{lang} audio comes from the repository; in a public repository it is public")
+              args += [f"--{lang}-audio", str(path)]
+          for lang, env in (("english", "IN_EN_SCRIPT"), ("urdu", "IN_UR_SCRIPT")):
+              v = os.environ.get(env, "").strip()
+              if not v:
+                  continue
+              p = (repo / v).resolve()
+              text = p.read_text(encoding="utf-8-sig") if v.endswith((".txt", ".md")) and repo in p.parents and p.is_file() else v.replace("||", "\n\n")
+              f = tmp / f"{lang}_script.txt"
+              f.write_text(text.strip() + "\n", encoding="utf-8")
+              args += [f"--{lang}-script", str(f)]
+          for part in re.split(r"[\s,]+", os.environ.get("IN_MODES", "")):
+              if part:
+                  lang, _, mode = part.partition("=")
+                  if lang not in ("english", "urdu") or mode not in ("provided_audio", "clone_voice", "system_tts"):
+                      raise SystemExit(f"::error::bad voice_modes entry {part!r}")
+                  args += [f"--{lang}-voice-mode", mode]
+          clone = "clone_voice" in os.environ.get("IN_MODES", "")
+          for opt in re.split(r"[\s,]+", os.environ.get("IN_OPTIONS", "")):
+              if opt in ("subtitles", "voice_consent", "allow_restricted_models"):
+                  args += [f"--{opt.replace('_', '-')}", "true"]
+              elif opt.startswith("music="):
+                  args += ["--music", opt[6:]]
+              elif opt:
+                  raise SystemExit(f"::error::unknown option {opt!r}")
+          if clone:
+              url = os.environ.get("VOICE_REFERENCE_URL", "")
+              if not url:
+                  raise SystemExit("::error::clone_voice needs the repository secret VOICE_REFERENCE_URL (a private link to your own recording)")
+              args += ["--voice-reference", str(fetch(url, pathlib.Path(os.environ["RUNNER_TEMP"]) / f"reference{ext_of(url)}"))]
+          args += ["--languages", os.environ["IN_LANGS"], "--render-quality", os.environ["IN_QUALITY"], "--output", "output"]
+          pathlib.Path("render_args.txt").write_text("\n".join(args) + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"has_audio={'true' if any(a.endswith('-audio') for a in args) else 'false'}\n")
+              fh.write(f"clone={'true' if clone else 'false'}\n")
+              fh.write(f"tts={'true' if 'system_tts' in os.environ.get('IN_MODES', '') or not any(a.endswith('-audio') for a in args) else 'false'}\n")
+          print("render arguments:", shlex.join(a if not a.startswith(os.environ["RUNNER_TEMP"]) else "<temp file>" for a in args))
+          PY
+
+      - name: Restore model cache
+        uses: actions/cache@v4
+        with:
+          path: .model-cache
+          key: whiteboard-models-v2-${{ hashFiles('requirements-optional.txt', 'input/config.yaml') }}
+          restore-keys: whiteboard-models-v2-
+
+      - name: Install the forced aligner (exact word timing of the voice-over)
+        if: steps.inputs.outputs.has_audio == 'true'
+        run: |
+          pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu && pip install uroman \
+            && python -c "from torchaudio.pipelines import MMS_FA; print('aligner ready')" \
+            || echo "::warning::forced aligner unavailable; phrase-level timing (marked low confidence) is used"
+
+      - name: Install Piper (English TTS, MIT voice)
+        if: steps.inputs.outputs.tts == 'true'
+        run: pip install piper-tts==1.8.0 || echo "::warning::piper-tts could not be installed; eSpeak NG is used"
+
+      - name: Install voice conversion (OpenVoice V2, MIT weights)
+        if: steps.inputs.outputs.clone == 'true'
+        run: |
+          pip install torch==2.7.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install librosa soundfile huggingface_hub inflect unidecode eng_to_ipa pypinyin jieba cn2an pydub \
+            && pip install --no-deps "git+https://github.com/myshell-ai/OpenVoice.git" \
+            || echo "::warning::OpenVoice could not be installed; clone_voice languages will fail with a clear message"
+
+      - name: Install the meaning matcher (drawings for the spoken words)
+        run: pip install fastembed==0.9.0 || echo "::warning::fastembed unavailable; hand-made doodles only"
+
+      - name: Render
+        id: render
+        run: |
+          mapfile -t ARGS < render_args.txt
+          set +e
+          python -m engine.cli render "${ARGS[@]}"
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload videos and reports
+        if: always() && steps.render.outputs.job_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: explainer-video-${{ steps.render.outputs.job_id }}
+          path: output/${{ steps.render.outputs.job_id }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Final status
+        if: always()
+        env:
+          RUN_EXIT: ${{ steps.render.outputs.exit_code }}
+        run: |
+          case "${RUN_EXIT:-1}" in
+            0) echo "All requested videos passed QA." ;;
+            3) echo "::error::Some languages failed; the others are in the artifact (see qa/qa_report.md)."; exit 1 ;;
+            *) echo "::error::No video was produced. Download the artifact (if any) and read qa/qa_report.md."; exit 1 ;;
+          esac

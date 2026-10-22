@@ -1,0 +1,158 @@
+name: "A: Research & Prepare (research package, no video)"
+
+# Researches a topic and uploads a reviewable research package as an artifact:
+# sources (ledger), claim report, financial checks, screenshots or source cards, charts,
+# your scripts with visual tags (words unchanged), draft storyboard and consistency report.
+# Nothing is committed. Render it with "B: Render Video" using this run's id.
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic (also the search words)"
+        required: true
+      language_mode:
+        description: "Languages"
+        type: choice
+        options: [both, english, urdu]
+        default: both
+      english_script:
+        description: "Optional English script: a repository path (.txt) or the text itself (use || between paragraphs)"
+        required: false
+        default: ""
+      urdu_script:
+        description: "Optional Urdu script, Urdu or Roman Urdu as you wrote it: a repository path (.txt) or the text (|| between paragraphs)"
+        required: false
+        default: ""
+      duration:
+        description: "Optional target duration in seconds (blank = from the narration)"
+        required: false
+        default: ""
+      region:
+        description: "Research locale (global, US, PK, IN, GB, AE)"
+        required: false
+        default: global
+      source_urls:
+        description: "Optional URLs to use first (comma or space separated)"
+        required: false
+        default: ""
+      research_depth:
+        description: "Research depth"
+        type: choice
+        options: [standard, deep]
+        default: standard
+      label:
+        description: "Optional output label (default: from the topic)"
+        required: false
+        default: ""
+      auto_translate_missing_language:
+        description: "Translate a missing script (not supported: no free engine is configured; must stay false)"
+        type: choice
+        options: ["false", "true"]
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-${{ github.ref }}-${{ inputs.label || inputs.topic }}
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # inputs reach scripts only through the environment (never interpolated into shell code)
+      IN_TOPIC: ${{ inputs.topic }}
+      IN_MODE: ${{ inputs.language_mode }}
+      IN_EN: ${{ inputs.english_script }}
+      IN_UR: ${{ inputs.urdu_script }}
+      IN_DURATION: ${{ inputs.duration }}
+      IN_REGION: ${{ inputs.region }}
+      IN_URLS: ${{ inputs.source_urls }}
+      IN_DEPTH: ${{ inputs.research_depth }}
+      IN_LABEL: ${{ inputs.label }}
+      IN_TRANSLATE: ${{ inputs.auto_translate_missing_language }}
+      # optional: SEC asks for "Name email" in the User-Agent; without it EDGAR is skipped (reported)
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      RESEARCH_USER_AGENT: ${{ vars.RESEARCH_USER_AGENT }}
+      WHITEBOARD_CACHE: ${{ github.workspace }}/.model-cache/whiteboard
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-lock.txt
+            requirements-optional.txt
+
+      - name: Install Cairo
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libcairo2-dev pkg-config ffmpeg
+
+      - name: Install pinned packages and headless Chromium (screenshots)
+        run: |
+          pip install -r requirements-lock.txt playwright==1.48.0 fastembed==0.9.0
+          python -m playwright install --with-deps chromium || echo "::warning::Chromium unavailable: source cards will be used instead of screenshots"
+
+      - name: Restore research and model cache (public metadata only, 1 day TTL in the engine)
+        uses: actions/cache@v4
+        with:
+          path: .model-cache
+          key: research-cache-${{ github.run_id }}
+          restore-keys: research-cache-
+
+      - name: Sanity checks (package tests, offline)
+        run: python -m pytest -q tests/test_package.py
+
+      - name: Prepare script files from inputs
+        run: |
+          python - <<'PY'
+          import os, pathlib
+          out = pathlib.Path(os.environ["RUNNER_TEMP"]) / "scripts"
+          out.mkdir(parents=True, exist_ok=True)
+          for key, env in (("english", "IN_EN"), ("urdu", "IN_UR")):
+              value = os.environ.get(env, "").strip()
+              if not value:
+                  continue
+              repo = pathlib.Path.cwd().resolve()
+              p = (repo / value).resolve()
+              if value.endswith((".txt", ".md")) and repo in p.parents and p.is_file():
+                  text = p.read_text(encoding="utf-8-sig")
+              else:
+                  text = value.replace("||", "\n\n")
+              (out / f"{key}.txt").write_text(text.strip() + "\n", encoding="utf-8")
+              print(f"{key} script: {len(text)} characters")
+          PY
+
+      - name: Research
+        id: research
+        run: |
+          args=(--topic "$IN_TOPIC" --language-mode "$IN_MODE" --region "${IN_REGION:-global}" --research-depth "$IN_DEPTH"
+                --auto-translate "$IN_TRANSLATE" --output output)
+          [ -f "$RUNNER_TEMP/scripts/english.txt" ] && args+=(--english-script "$RUNNER_TEMP/scripts/english.txt")
+          [ -f "$RUNNER_TEMP/scripts/urdu.txt" ] && args+=(--urdu-script "$RUNNER_TEMP/scripts/urdu.txt")
+          [ -n "$IN_URLS" ] && args+=(--source-urls "$IN_URLS")
+          [ -n "$IN_LABEL" ] && args+=(--label "$IN_LABEL")
+          [ -n "$IN_DURATION" ] && args+=(--duration "$IN_DURATION")
+          python -m engine.cli research "${args[@]}"
+
+      - name: Upload research package
+        if: always() && steps.research.outputs.job_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-package-${{ steps.research.outputs.job_id }}
+          path: output/${{ steps.research.outputs.job_id }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Next step
+        if: success()
+        env:
+          JOB_ID: ${{ steps.research.outputs.job_id }}
+        run: |
+          printf '\n**Next:** review `research/source_report.md` in artifact `research-package-%s`, then run **B: Render Video** with `research_run_id` = `%s`.\n' "$JOB_ID" "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"

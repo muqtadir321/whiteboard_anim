@@ -50,8 +50,9 @@ METRICS: dict[str, dict] = {
     "shares_outstanding": {"words": ("shares outstanding",), "tags": ("dei:EntityCommonStockSharesOutstanding",), "unit": "shares", "instant": True},
     "market_cap": {"words": ("market capitalization", "market capitalisation", "market cap", "market value"), "market_data": True, "unit": "USD"},
 }
-FINANCE_HINT = re.compile(r"\b(revenue|sales|profit|loss|earnings|eps|per share|margin|guidance|net income|cash flow|debt|market cap|"
-                          r"quarter|fiscal|shares|dividend|stock|nasdaq|nyse|10-k|10-q|8-k)\b", re.I)
+# a company's reported figures, not "home sales" or "household debt": a company/filing word must be there too
+FINANCE_HINT = re.compile(r"\b(company|companies|corp|inc|earnings|eps|per share|quarter(?:ly)?|fiscal|guidance|shareholders?|dividend|"
+                          r"nasdaq|nyse|10-k|10-q|8-k|reported|revenue|net income|operating income|gross margin|market cap)\b|\([A-Z]{1,5}\)", re.I)
 NON_GAAP = re.compile(r"\b(adjusted|non-gaap|non gaap|excluding|ex-items|core|underlying|pro forma|organic)\b", re.I)
 GAAP = re.compile(r"\bGAAP\b|\bas reported\b", re.I)  # "the company reported X" says nothing about the basis
 ORD = {"first": 1, "second": 2, "third": 3, "fourth": 4, "1st": 1, "2nd": 2, "3rd": 3, "4th": 4}

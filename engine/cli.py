@@ -297,7 +297,7 @@ def cmd_render(args) -> int:
             print(f"::warning title={r.key} failed::{r.message[:300]}")
     _gh_output(job_dir=str(job), job_id=job.name, videos=len(ok))
     _log(f"render job {job.name}: {len(ok)}/{len(results)} language(s) rendered")
-    return 0 if ok else 1
+    return 0 if len(ok) == len(results) else (3 if ok else 1)  # 3: some languages failed (their reports are kept)
 
 
 def cmd_check(args) -> int:

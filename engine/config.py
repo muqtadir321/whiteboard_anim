@@ -233,9 +233,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         # news discovery (see engine/package/providers.py); restricted ones are off unless you turn them on
         "providers": {"official_feeds": True, "gdelt": True, "bing_news_rss": False, "google_news_rss": False},
         "official_feeds": [
+            # robots.txt-allowed public feeds (BLS and BEA disallow theirs for crawlers)
             "https://www.federalreserve.gov/feeds/press_all.xml",
-            "https://www.bls.gov/feed/news_release.rss",
-            "https://apps.bea.gov/rss/rss.xml",
+            "https://www.census.gov/economic-indicators/indicator.xml",
+            "https://www.bankofengland.co.uk/rss/news",
         ],
         "screenshots": True,
         "official_charts": True,

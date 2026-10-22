@@ -91,3 +91,30 @@ def test_research_workflow_is_one_click():
     upload = [s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact")]
     assert upload and upload[0]["with"]["name"] == "viral-topic-research"
     assert wf["permissions"]["contents"] == "read"
+
+
+def test_two_click_workflows_are_safe():
+    import re
+
+    for name, required in (("0-research-prepare.yml", {"topic"}), ("1-render-video.yml", {"research_run_id"})):
+        wf = load(name)
+        inputs = wf["on"]["workflow_dispatch"]["inputs"]
+        assert len(inputs) <= 10 and {k for k, v in inputs.items() if v.get("required")} == required
+        assert wf["permissions"]["contents"] == "read"  # never commits or pushes
+        text = (WF / name).read_text(encoding="utf-8")
+        for step in (s for job in wf["jobs"].values() for s in job["steps"]):
+            run = step.get("run", "")
+            assert "${{ inputs." not in run and "${{ github.event.inputs" not in run, f"{name}: input interpolated into shell"
+            assert "git push" not in run and "git commit" not in run
+        uploads = [s for job in wf["jobs"].values() for s in job["steps"] if str(s.get("uses", "")).startswith("actions/upload-artifact")]
+        assert uploads and all("retention-days" in s["with"] for s in uploads)
+        assert not re.search(r"secrets\.[A-Z_]+ }}\s*$", text.split("env:")[0])  # secrets only via env blocks
+
+
+def test_research_workflow_args_match_cli():
+    import re
+
+    wf = (WF / "0-research-prepare.yml").read_text(encoding="utf-8")
+    used = set(re.findall(r"(--[a-z-]+)", wf.split("- name: Research")[1].split("- name: Upload")[0]))
+    known = set(re.findall(r'r\.add_argument\("(--[a-z-]+)"', (ROOT / "engine" / "cli.py").read_text(encoding="utf-8")))
+    assert used and used <= known, used - known

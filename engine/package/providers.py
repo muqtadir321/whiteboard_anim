@@ -85,10 +85,17 @@ def parse_rss(xml: bytes, provider: str, source_type: str = "news") -> list[Foun
     return out
 
 
-def official_feeds(f: Fetcher, topic: str, feeds: list[str], limit: int) -> list[Found]:
+def official_feeds(f: Fetcher, topic: str, feeds: list[str], limit: int, errors: list[str] | None = None) -> list[Found]:
+    """Each feed on its own: one blocked or broken feed does not hide the others (errors are collected)."""
     out = []
     for url in feeds:
-        items = parse_rss(f.get(url, "application/rss+xml,application/xml,text/xml").body, "official_feeds", "official")
+        try:
+            items = parse_rss(f.get(url, "application/rss+xml,application/xml,text/xml").body, "official_feeds", "official")
+        except Exception as exc:
+            if errors is None:
+                raise
+            errors.append(f"{url}: {getattr(exc, 'reason', exc)}")
+            continue
         for it in items:
             if relevance(topic, it.title + " " + it.snippet) >= 0.5:
                 it.publisher = it.publisher or domain(url)

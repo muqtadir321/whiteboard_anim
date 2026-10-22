@@ -146,6 +146,7 @@ class Research:
         self.coverage: dict[str, dict] = {}
         self.warnings: list[str] = []
         self.docs: list[claims_mod.Doc] = []
+        self.sid_of: dict[str, str] = {}  # discovered URL -> source id it resolved to (after redirects/canonical links)
 
     # -- helpers ---------------------------------------------------------------------
     def warn(self, msg: str) -> None:
@@ -171,6 +172,7 @@ class Research:
                               retrieval_method="cache" if res.from_cache else "http", retrieval_status=status, provider=provider,
                               license_or_terms_url="")
             src = self.ledger.add(src)
+            self.sid_of[url] = src.source_id
             if status in ("ok", "cached"):
                 src.extracted_text_path = self._save_text(src.source_id, page.text)
                 self.docs.append(claims_mod.Doc(src.source_id, page.text, source_type, src.domain, src.published_at))
@@ -213,7 +215,8 @@ class Research:
         for b in bad:
             self.warn(f"source URL rejected: {b}")
         self.user_urls = urls
-        jobs = [("official_feeds", lambda: providers.official_feeds(self.f, self.inp.topic, self.rc["official_feeds"], limit)),
+        feed_errors: list[str] = []
+        jobs = [("official_feeds", lambda: providers.official_feeds(self.f, self.inp.topic, self.rc["official_feeds"], limit, feed_errors)),
                 ("gdelt", lambda: providers.gdelt(self.f, self.inp.topic, limit)),
                 ("bing_news_rss", lambda: providers.bing_news(self.f, self.inp.topic, limit)),
                 ("google_news_rss", lambda: providers.google_news(self.f, self.inp.topic, limit))]
@@ -225,6 +228,10 @@ class Research:
             try:
                 items = run()
                 self.coverage[name] = {"status": "ok", "items": len(items), **meta}
+                if name == "official_feeds" and feed_errors:
+                    self.coverage[name].update(status="partial", error="; ".join(feed_errors)[:300])
+                    for e in feed_errors:
+                        self.warn(f"official feed skipped: {e}")
                 found += items
             except Exception as exc:
                 reason = exc.reason if isinstance(exc, FetchError) else f"{type(exc).__name__}: {exc}"
@@ -280,6 +287,7 @@ class Research:
                     src = self.ledger.add(make_source(cap.final_url, cap.title or title, pub or domain(cap.final_url), _now(), published_at=date,
                                                       source_type=stype, retrieval_method="playwright", retrieval_status="ok",
                                                       provider=it.provider if it else "user"))
+                    self.sid_of[url] = src.source_id
                     text = "\n\n".join(cap.paragraphs)
                     src.extracted_text_path = self._save_text(src.source_id, text)
                     src.screenshot_path = f"research/screenshots/article_{k}.png"
@@ -313,7 +321,7 @@ class Research:
                 cards.append({"source_id": src.source_id, "excerpt": bool(ex)})
                 self.log(f"  source card {src.domain}: {src.title[:70]}")
             heads = [{"title": it.title, "publisher": it.publisher or domain(it.url), "url": it.url, "published": it.published_at,
-                      "source_id": source_id(it.url) if it.resolved else ""} for it in items[:4]]
+                      "source_id": self.sid_of.get(it.url) or (source_id(it.url) if it.resolved else "")} for it in items[:4]]
             news = []
             if heads:
                 if browser is not None:
@@ -322,10 +330,11 @@ class Research:
                     except Exception as exc:
                         self.warn(f"headline cards via browser failed ({exc}); drawing them instead")
                 if not news:
-                    note = "Headlines found via " + ", ".join(sorted({it.provider for it in items[:4]}))
+                    names = {"official_feeds": "official feeds", "gdelt": "GDELT", "bing_news_rss": "Bing News", "google_news_rss": "Google News"}
+                    note = "Headlines found via " + ", ".join(sorted({names.get(it.provider, it.provider) for it in items[:4]}))
                     news = make_headline_cards(self.shots / "news_cards.png", heads, note)
                 for h in heads:
-                    if h["source_id"]:
+                    if h["source_id"] and not self.ledger.get(h["source_id"]):
                         self.ledger.add(make_source(h["url"], h["title"], h["publisher"], _now(), published_at=h["published"], source_type="news",
                                                     retrieval_method="rss", retrieval_status="metadata_only", provider="discovery"))
         finally:

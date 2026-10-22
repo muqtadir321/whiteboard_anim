@@ -25,6 +25,7 @@ from .urls import validate_url
 MAX_BYTES = 15_000_000
 # hosts that publish their own limits (requests per second): GDELT asks for one request every 5 s
 HOST_INTERVALS = {"api.gdeltproject.org": 5.5, "www.sec.gov": 0.17, "data.sec.gov": 0.17}
+HOST_TIMEOUTS = {"api.gdeltproject.org": 75.0}  # GDELT's search is slow to answer
 
 
 class FetchError(Exception):
@@ -88,9 +89,10 @@ class Fetcher:
     @classmethod
     def from_config(cls, rc: dict, **kw) -> "Fetcher":
         ua = os.environ.get("RESEARCH_USER_AGENT") or rc["user_agent"]
-        cache = Path(rc["cache_dir"]) if rc.get("cache_dir") else None
-        return cls(ua, rc["timeout_seconds"], rc["retries"], rc["backoff_seconds"], rc["min_interval_seconds"], cache,
-                   rc["cache_ttl_hours"], rc["respect_robots_txt"], **kw)
+        args = {"timeout": rc["timeout_seconds"], "retries": rc["retries"], "backoff": rc["backoff_seconds"], "min_interval": rc["min_interval_seconds"],
+                "cache_dir": Path(rc["cache_dir"]) if rc.get("cache_dir") else None, "ttl_hours": rc["cache_ttl_hours"],
+                "respect_robots": rc["respect_robots_txt"]}
+        return cls(ua, **{**args, **kw})  # explicit keyword arguments win over the configuration
 
     # -- cache ------------------------------------------------------------------
     def _key(self, url: str, accept: str) -> Path:
@@ -172,7 +174,7 @@ class Fetcher:
             self._wait_turn(host)
             t0 = time.monotonic()
             try:
-                status, final, rh, body = self.opener(url, headers, self.timeout)
+                status, final, rh, body = self.opener(url, headers, max(self.timeout, HOST_TIMEOUTS.get(host, 0.0)))
             except Exception as exc:
                 status, final, rh, body = None, url, {}, b""
                 err = f"{type(exc).__name__}: {exc}"
@@ -187,7 +189,7 @@ class Fetcher:
             retryable = status is None or status == 429 or status >= 500
             if not retryable or attempt >= self.retries:
                 raise FetchError(url, err or f"HTTP {status}", status)
-            wait = self.backoff * (2 ** attempt)
+            wait = max(self.backoff * (2 ** attempt), 2 * HOST_INTERVALS.get(host, 0.0))  # never faster than the host asks
             ra = next((v for k, v in rh.items() if k.lower() == "retry-after"), "")
             if ra.strip().isdigit():
                 wait = max(wait, float(ra))
