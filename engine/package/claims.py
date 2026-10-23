@@ -32,7 +32,9 @@ STOP = set("""a an the and or but of to in on at for from by with as is are was 
 there their they them he she his her we our you your i me my not no so than then too very can could will would should may might
 just about into over under after before more most less also has have had do does did what which who whom how why when where
 all any some each other such only own same up down out off again further once here both few many much said says
-percent per cent percentage million billion trillion thousand dollars dollar rupees""".split())
+percent per cent percentage million billion trillion thousand dollars dollar rupees
+zero one two three four five six seven eight nine ten eleven twelve twenty thirty hundred""".split())
+ALIASES = {"fed": "federal"}  # "the Fed" names the Federal Reserve
 OPINION = re.compile(r"\b(i think|i believe|i feel|in my (?:view|opinion)|we think|should|must|ought to|best|worst|amazing|terrible|"
                      r"meri raye|mere khayal|میرے خیال|میری رائے|چاہیے|chahiye)\b", re.I)
 PREDICTION = re.compile(r"\b(will|won't|going to|could|might|expected to|expects?|forecasts?|predicts?|projected|likely to|"
@@ -86,7 +88,11 @@ class Doc:
 
     def __post_init__(self):
         if not self.sents:
-            self.sents = [s for s in split_sentences(re.sub(r"\s+", " ", self.text)) if len(s) > 12][:600]
+            # citation marks ("[35]", "[citation needed]") are not figures: they would match narration numbers by chance
+            text = re.sub(r"\[(?:\d+|[a-z]|citation needed|note \d+)\]", " ", self.text, flags=re.I)
+            # paragraph by paragraph: a paragraph without a final full stop must not run into the next one
+            paras = [re.sub(r"\s+", " ", p) for p in re.split(r"\n\s*\n", text) if p.strip()]
+            self.sents = [s for p in paras for s in split_sentences(p) if len(s) > 12 and not _junk(s)][:600]
 
 
 def _stem(w: str) -> str:
@@ -97,9 +103,18 @@ def _stem(w: str) -> str:
     return w[:6]
 
 
+def _junk(sentence: str) -> bool:
+    """Lists of numbers, catalogue identifiers and reference entries: their numbers are not facts about anything."""
+    toks = sentence.split()
+    numeric = sum(1 for t in toks if re.fullmatch(r"[\d.,:/()\-–]+", t))
+    if len(toks) < 6 and any(ch.isdigit() for ch in sentence):  # "Bank of England: 17, 18-44." (a reference entry)
+        return True
+    return numeric >= max(4, len(toks) * 0.5) or bool(re.search(r"\b(ISSN|ISBN|doi:|DOI|Retrieved|Archived from|pp\.\s*\d)", sentence))
+
+
 def content_words(text: str) -> set[str]:
     """Content words, plural folded and cut to 6 letters ("rates" = "rate", "housing" = "housin")."""
-    return {_stem(w) for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
+    return {_stem(ALIASES.get(w, w)) for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
 
 
 def key_numbers(text: str, lang: str) -> list[tuple[float, str, str]]:
@@ -112,8 +127,8 @@ def key_numbers(text: str, lang: str) -> list[tuple[float, str, str]]:
 def _variants(value: float) -> set[float]:
     """The value and the same amount written with a scale word (51 lakh -> 5,100,000 and 51)."""
     out = {round(value, 4)}
-    for scale in (1e3, 1e5, 1e6, 1e7, 1e9, 1e12):
-        if abs(value) >= scale and abs(value / scale - round(value / scale, 3)) < 1e-9:
+    for scale in (1e3, 1e5, 1e6, 1e7, 1e9, 1e12):  # "5.1 million" = 5,100,000; not 3409 = "3.409 thousand"
+        if abs(value) >= scale and abs(value / scale - round(value / scale, 2)) < 1e-9:
             out.add(round(value / scale, 4))
     return out
 
@@ -128,6 +143,11 @@ def same_value(a: float, b: float) -> bool:
             if abs(x - y) <= 0.5 * 10 ** (-decimals) + 1e-9 and abs(x) >= 1:
                 return True
     return False
+
+
+def _val(display: str) -> float:
+    m = re.search(r"-?\d[\d,]*(?:\.\d+)?", display.replace(",", ""))
+    return float(m.group(0)) if m else 0.0
 
 
 def distinctive(value: float) -> bool:
@@ -192,14 +212,22 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
         for d in docs:
             for i, s in enumerate(d.sents):
                 sf = doc_figs[(d.source_id, i)]
-                found = [(v, disp) for v, k, disp in figs if any(same_value(v, sv) for sv, _ in sf)]
+                # a year is also confirmed by the document's own date ("in 2012" <-> a statement released 25 Jan 2012)
+                pub_year = d.published_at[:4]
+                found = [(v, disp) for v, k, disp in figs if any(same_value(v, sv) for sv, _ in sf)
+                         or (k == "year" and pub_year and f"{int(v)}" == pub_year)]
                 matched = [disp for _, disp in found]
                 ctx = " ".join(d.sents[max(0, i - 1):i + 2])
                 ov = len(words & content_words(ctx)) / len(words) if words else 0.0
-                same_year = bool(years and any(y in s for y in years))  # "3% in 2021" next to a 2021 value
-                if found and (ov >= 0.2 or same_year or any(distinctive(v) for v, _ in found)):
-                    hits.append((len(matched), ov, d, i, matched))
-                elif figs and ov >= max(0.6, min_overlap) and any(k == fk for _, fk, _ in figs for _, k in sf):
+                same_year = bool(years and any(y in s or y == d.published_at[:4] for y in years))  # in the sentence or the release date
+                # small whole numbers and years match by chance: they only count next to strong shared wording
+                weak = all(not distinctive(v) or (1900 <= v <= 2100 and float(v).is_integer()) for v, _ in found)
+                if found and (ov >= (min_overlap if weak else 0.2) or not weak
+                              or (same_year and (ov >= 0.3 or d.source_type == "dataset"))  # a dated data point is structured evidence
+                              or (bool(pub_year) and pub_year in years and ov >= 0.2)):  # released in the year the claim names
+                    hits.append((len(matched), ov, d, i, matched, weak))
+                elif (figs and ov >= max(0.6, min_overlap) and any(k == fk for _, fk, _ in figs for _, k in sf)
+                      and any(distinctive(v) and not 1900 <= v <= 2100 for v, _, _ in figs)):  # "zero" vs "three" is no contradiction
                     conflicts.append((d, i))
         sem: dict[tuple[str, int], float] = {}
         if emb is not None and docs:
@@ -211,10 +239,17 @@ def match_claims(claims: list[Claim], docs: list[Doc], min_overlap: float = 0.5,
             except Exception as exc:
                 c.notes.append(f"meaning model failed ({type(exc).__name__}); lexical matching only")
         need = len(figs)
-        full = [h for h in hits if h[0] == need and need > 0 and (h[1] >= min_overlap * 0.6 or c.language != "en")]
+        full = [h for h in hits if h[0] == need and need > 0 and (h[1] >= (min_overlap if h[5] else min_overlap * 0.6) or
+                                                                 (c.language != "en" and not h[5]))]
+        hits = [h[:5] for h in hits]
+        full = [h[:5] for h in full]
         part = [h for h in hits if h not in full]
         status = "not_found"
         chosen: list[tuple] = []
+        weak_only = bool(full) and all(all(not distinctive(v) or 1900 <= v <= 2100 for v in [_val(m) for m in h[4]]) for h in full)
+        if weak_only and not any(sem.get((h[2].source_id, h[3]), 0) >= 0.75 for h in full):
+            part, full = full + part, []  # only small numbers/years matched: not enough to call it supported
+            c.notes.append("matched only on small numbers or years and wording: not verified")
         if full:
             chosen = sorted(full, key=lambda h: -h[1])
             cross = c.language != "en"

@@ -55,6 +55,29 @@ class Beat:
     objective: str = ""
 
 
+SMALL_NUMBERS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split())}
+
+
+def find_contrast(tokens: list[str], times: list[float], unit: str) -> "Contrast | None":
+    """'Not zero. Not five. Exactly two.' -> values with the rejected ones and the chosen one, in spoken order.
+    Needs at least two values and one rejection; English wording only."""
+    items = []
+    for i in range(len(tokens) - 1):
+        lead = re.sub(r"\W", "", tokens[i].lower())
+        word = re.sub(r"[^\w.]", "", tokens[i + 1].lower()).rstrip(".")
+        if lead not in ("not", "no", "exactly", "only", "just"):
+            continue
+        value = SMALL_NUMBERS.get(word)
+        if value is None and re.fullmatch(r"\d+(\.\d+)?", word):
+            value = float(word) if "." in word else int(word)
+        if value is None:
+            continue
+        items.append((f"{value}{unit}", lead in ("exactly", "only", "just"), times[i + 1]))
+    if len(items) >= 2 and any(not c for _, c, _ in items) and any(c for _, c, _ in items):
+        return Contrast(items)
+    return None
+
+
 @dataclass
 class _Block:
     box: tuple[float, float, float, float]
@@ -147,28 +170,30 @@ def label_for(tokens: list[str], i: int, lang: str) -> str:
 
 
 def slots(n: int, top: float, bottom: float = BOTTOM) -> list[tuple[tuple[float, float, float, float], tuple[float, float]]]:
-    """(drawing box, label centre) per node, in narration order."""
+    """(drawing box, label centre) per node, in narration order. One dominant drawing: the first node (the idea's
+    subject) is large at the top; the steps that follow are smaller below it, in reading order."""
     avail = bottom - top
     lh = LABEL_SIZE * 1.35
     cx = (SAFE_X0 + SAFE_X1) / 2
     if n <= 1:
-        s = max(260.0, min(600.0, avail - lh - 60))
+        s = max(260.0, min(680.0, avail - lh - 60))
         y0 = top + (avail - s - lh) / 2
         return [((cx - s / 2, y0, cx + s / 2, y0 + s), (cx, y0 + s + lh * 0.75))]
-    if n == 4:
-        s = max(220.0, min(430.0, (avail - 2 * lh - 120) / 2))
-        xs = (cx - 245, cx + 245)
-        row_h = (avail - 2 * (s + lh)) / 3
-        ys = (top + row_h, top + 2 * row_h + s + lh)
-        order = [(0, 0), (1, 0), (1, 1), (0, 1)]  # clockwise: the arrows go round the board
-        return [((xs[c] - s / 2, ys[r], xs[c] + s / 2, ys[r] + s), (xs[c], ys[r] + s + lh * 0.75)) for c, r in order]
-    s = max(220.0, min(520.0 if n == 2 else 430.0, (avail - n * lh - (n + 1) * 30) / n))
-    gap = (avail - n * (s + lh)) / (n + 1)
-    out = []
-    for k in range(n):
-        x = cx - 210 if k % 2 == 0 else cx + 210  # zigzag, so arrows run diagonally and labels never collide
-        y0 = top + gap + k * (s + lh + gap)
-        out.append(((x - s / 2, y0, x + s / 2, y0 + s), (x, y0 + s + lh * 0.75)))
+    support = {2: 1, 3: 2, 4: 3}[n]
+    sw = {1: 440.0, 2: 420.0, 3: 300.0}[support]  # supporting drawings
+    hero = max(300.0, min({2: 660.0, 3: 620.0, 4: 600.0}[n], avail - sw - 2 * lh - 3 * 95))  # gaps >= 95: arrows stay readable
+    gap = (avail - hero - sw - 2 * lh) / 3
+    y_hero = top + gap
+    y_sup = y_hero + hero + lh + gap
+    out = [((cx - hero / 2, y_hero, cx + hero / 2, y_hero + hero), (cx, y_hero + hero + lh * 0.75))]
+    if support == 1:
+        xs = [cx + 150]
+    elif support == 2:
+        xs = [cx - 235, cx + 235]
+    else:
+        xs = [SAFE_X0 + sw / 2 + 10, cx, SAFE_X1 - sw / 2 - 10]
+    for x in xs:
+        out.append(((x - sw / 2, y_sup, x + sw / 2, y_sup + sw), (x, y_sup + sw + lh * 0.75)))
     return out
 
 
@@ -191,26 +216,120 @@ def text_word(text: str, size: float, centre: tuple[float, float], t: float, lan
     return w
 
 
-def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layout, lang: str, key_phrase: str) -> None:
-    """Fill beat.sprites / beat.words: nodes on the grid, arrows between them, labels under them."""
+# colour carries meaning, used sparingly: red for falling values and warnings, green for gains
+RED, GREEN = "#C0392B", "#2E8B57"
+NEGATIVE = set("""fall falls fell falling drop drops dropped decline declines cut cuts cutting loss losses lose shrink shrinks
+danger dangerous risk worse crash recession slowdown layoffs debt deflation lower down weaker expensive""".split())
+# no "higher"/"rise": whether more is good depends on what rises (higher inflation is not good news)
+POSITIVE = set("""gain gains profit profits save savings safety cushion stronger stable recovery""".split())
+
+
+def tone_color(label: str, context: str = "") -> str:
+    words = {w.lower() for w in re.findall(r"[A-Za-z]+", label + " " + context)}
+    if words & NEGATIVE:
+        return RED
+    if words & POSITIVE and not words & NEGATIVE:
+        return GREEN
+    return INK
+
+
+@dataclass
+class Contrast:
+    """'Not zero. Not five. Exactly two.': values compared, the rejected ones crossed out, the chosen one circled."""
+    items: list[tuple[str, bool, float]]  # (shown value, chosen?, time said)
+
+
+def stroke_sprite(layout, strokes, box, t: float, draw: float, name: str) -> Sprite:
+    """Hand-drawn strokes (geometry.Pen) as a sprite revealed stroke by stroke."""
+    from ..geometry import Element
+    from .layout import element_surface, fit_box
+
+    w, h = box[2] - box[0], box[3] - box[1]
+    el = Element(name, w, h)
+    el.add(*strokes)
+    surf, st = element_surface(el, max(w, h) * layout.scale, layout.style, layout.lang)
+    return Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), t, "draw", name=name, strokes=st, draw=draw)
+
+
+def compose_contrast(beat: Beat, c: Contrast, top: float, layout, lang: str) -> float:
+    """Value cards in a row at the top of the board. Returns the y where the rest of the board can start."""
+    import random
+
+    from ..geometry import Pen
+
+    n = len(c.items)
+    cw, ch = min(270.0, (SAFE_X1 - SAFE_X0 - (n - 1) * 30) / n), 190.0
+    x = (SAFE_X0 + SAFE_X1) / 2 - (n * cw + (n - 1) * 30) / 2
+    for k, (value, chosen, t) in enumerate(c.items):
+        box = (x, top + 30, x + cw, top + 30 + ch)
+        pen = Pen(random.Random(k + 7), wobble=0.5)
+        card = stroke_sprite(layout, [pen.rect(0, 0, cw, ch, r=18, width=1.0)], box, t, 0.45, "value_card")
+        card.end = beat.end
+        beat.sprites.append(card)
+        w = text_word(value, 104.0, ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2), t + 0.25, lang, color=INK, max_width=cw - 30)
+        if w:
+            w.end = beat.end
+            beat.words.append(w)
+        mark_t = max(t + 0.7, (c.items[k + 1][2] - 0.2) if k + 1 < n else t + 0.7)
+        if chosen:  # circled in green
+            ring = Pen(random.Random(k + 11), wobble=0.4).ellipse(cw / 2 + 20, ch / 2 + 20, cw / 2 + 12, ch / 2 + 14, width=1.5, color="positive")
+            sp = stroke_sprite(layout, [ring], (box[0] - 20, box[1] - 20, box[2] + 20, box[3] + 20), t + 0.5, 0.6, "circle_choice")
+        else:  # crossed out in red
+            p = Pen(random.Random(k + 13), wobble=0.4)
+            sp = stroke_sprite(layout, [p.line((14, 14), (cw - 14, ch - 14), width=1.6, color="negative"),
+                                        p.line((cw - 14, 14), (14, ch - 14), width=1.6, color="negative")], box, mark_t, 0.35, "cross_out")
+        sp.end = beat.end
+        beat.sprites.append(sp)
+        x += cw + 30
+    beat.objective = "compare: " + " / ".join(("✓ " if ch_ else "✗ ") + v for v, ch_, _ in c.items)
+    return top + 30 + ch + 50
+
+
+def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layout, lang: str, key_phrase: str,
+            memory: dict | None = None, contrast: Contrast | None = None) -> None:
+    """Fill beat.sprites / beat.words: one dominant drawing and its supporting steps, arrows between them in the
+    order they are explained, labels under them. `memory` (name -> label) keeps objects from earlier boards:
+    they come back looking the same and are recognised faster than they were first drawn."""
+    memory = memory if memory is not None else {}
+
     def stage_at(t):
         return next((st for st in stages if st.t_in <= t < st.t_out), None)
 
+    if contrast is not None:
+        # evidence first: values said while a screenshot is up are shown, in order, as soon as it has gone
+        st = stage_at(contrast.items[0][2])
+        if st is None or st.t_out < contrast.items[-1][2] + 1.0:
+            free = st.t_out if st is not None else 0.0
+            items, t_prev = [], 0.0
+            for v, ch, t in contrast.items:
+                t = max(t, free, t_prev + 0.35)
+                items.append((v, ch, t))
+                t_prev = t
+            top = compose_contrast(beat, Contrast(items), top, layout, lang)
+            values = {v for v, _, _ in items}
+            picks = [p for p in picks if p.label not in values]  # the circled card already shows that value
+        else:
+            contrast = None
+    max_nodes = MAX_NODES if contrast is None else 2
     chosen: list[Node] = []
-    for nd in sorted(picks, key=lambda p: (not p.forced, p.t)):
-        if len(chosen) >= MAX_NODES:
+    # spoken-word drawings first, then objects the viewer already knows from earlier boards, then the rest
+    for nd in sorted(picks, key=lambda p: (not p.forced, p.name not in memory, p.t)):
+        if len(chosen) >= max_nodes:
             break
         if any(c.name == nd.name or (nd.label and c.label.lower() == nd.label.lower()) for c in chosen):
             continue  # one drawing per thing said
-        st = stage_at(nd.t)
-        if st is not None:  # evidence first: the drawing waits until the screenshot/chart has gone
-            if st.t_out > beat.end - 1.2:
+        # evidence first, and room between drawings; each move is checked against both again
+        for _ in range(6):
+            st = stage_at(nd.t)
+            if st is not None:  # the drawing waits until the screenshot/chart has gone
+                nd.t = st.t_out + 0.05
                 continue
-            nd.t = st.t_out - 0.1
-        if any(abs(c.t - nd.t) < MIN_GAP for c in chosen):
-            nd.t = max(c.t for c in chosen) + MIN_GAP
-            if nd.t > beat.end - 0.8:
+            if any(abs(c.t - nd.t) < MIN_GAP for c in chosen):
+                nd.t = max(c.t for c in chosen) + MIN_GAP
                 continue
+            break
+        if nd.t > beat.end - 0.8 or stage_at(nd.t) is not None:
+            continue
         chosen.append(nd)
     chosen.sort(key=lambda n: n.t)
     beat.nodes = chosen
@@ -218,7 +337,7 @@ def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layo
     # a screenshot arriving later in the beat clears the drawings that came before it
     later = [st.t_in for st in stages if beat.start < st.t_in < beat.end]
     if not chosen:
-        if stage_at(beat.start + 0.2) is None and key_phrase:
+        if contrast is None and stage_at(beat.start + 0.2) is None and key_phrase:
             w = text_word(key_phrase, 92.0, ((SAFE_X0 + SAFE_X1) / 2, top + (BOTTOM - top) * 0.42), beat.start + 0.15, lang)
             if w:
                 w.dur = min(2.2, 0.3 + 0.06 * len(key_phrase))
@@ -228,11 +347,17 @@ def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layo
     boxes = slots(len(chosen), top)
     prev = prev_block = None
     for k, (nd, (box, lab)) in enumerate(zip(chosen, boxes)):
-        sp = layout.icon_sprite(nd.name, nd.params, box, nd.t + (0.35 if prev else 0.0), f"beat{beat.scenes[0]}:{k}:{nd.name}")
+        known = nd.name in memory
+        # the same object always looks the same (seeded by its name), so it reads as the same thing coming back
+        sp = layout.icon_sprite(nd.name, nd.params, box, nd.t + (0.35 if prev else 0.0), f"object:{nd.name}")
         if sp is None:
             continue
+        if known:
+            sp.draw = min(sp.draw, 0.6)
         sp.float_amp = 3.0
         stop = next((x for x in later if x > nd.t), None)
+        if stop is not None and stop - sp.t < 1.5:
+            continue  # cannot be drawn and labelled before evidence takes the board: a flicker, not an explanation
         sp.end = stop if stop is not None else end
         block = (box, lab[1] + LABEL_SIZE * 0.55)  # drawing box and the bottom of its label
         if prev is not None:
@@ -241,9 +366,13 @@ def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layo
             arrow.end = sp.end
             beat.sprites.append(arrow)
         beat.sprites.append(sp)
-        w = text_word(nd.label, LABEL_SIZE, lab, sp.t + min(sp.draw, 1.0) * 0.7, lang, max_width=(box[2] - box[0]) + 160)
+        size = LABEL_SIZE if k == 0 or len(chosen) < 4 else 46.0
+        w = text_word(nd.label, size, lab, sp.t + min(sp.draw, 1.0) * 0.7, lang, color=tone_color(nd.label),
+                      max_width=(box[2] - box[0]) + (160 if len(chosen) < 4 else 30))
         if w:
             w.end = sp.end
             beat.words.append(w)
+        memory.setdefault(nd.name, nd.label)
         prev, prev_block = sp, block
-    beat.objective = " → ".join(n.label or n.name for n in chosen)
+    chain = " → ".join(n.label or n.name for n in chosen)
+    beat.objective = f"{beat.objective}; {chain}" if beat.objective else chain

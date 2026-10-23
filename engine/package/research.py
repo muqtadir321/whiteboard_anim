@@ -132,6 +132,9 @@ def chart_doc(sid: str, chart: dict) -> claims_mod.Doc:
     for p in pts:
         years[p[0][:4]] = p
     keep |= set(years.values())
+    last = str(pts[-1][0])
+    since = f"{int(last[:4]) - 1}{last[4:]}" if last[:4].isdigit() else ""
+    keep |= {p for p in pts if str(p[0]) > since}  # every value of the last 12 months: "right now" claims need them
     sents = [f"{chart['title']} was {v}{'%' if u == '%' else ''} on {d}." if u != "$" else f"{chart['title']} was ${v} on {d}."
              for d, v in sorted(keep)]
     return claims_mod.Doc(sid, " ".join(sents), "dataset", domain(chart["url"]), pts[-1][0], sents=sents)
@@ -652,7 +655,10 @@ class Research:
         gates["unsupported_claims_flagged"] = {"passed": True, "detail": f"{len(unsupported)} flagged: {', '.join(unsupported)}" if unsupported else "none"}
         noncanon = [s.source_id for s in self.ledger.ordered() if canonical_url(s.canonical_url) != s.canonical_url]
         gates["urls_canonical"] = {"passed": not noncanon, "detail": ", ".join(noncanon)}
-        texts = {a["id"]: re.sub(r"\s+", " ", " ".join(a.get("paragraphs", []))).lower() for a in articles}
+        from ..explainer.draft import CITATION
+
+        # citation marks ("[6]") are not words of a quote
+        texts = {a["id"]: re.sub(r"\s+", " ", CITATION.sub("", " ".join(a.get("paragraphs", [])))).lower() for a in articles}
         quotes, bad_q = 0, []
         for key, text in tagged.items():
             for c in extract_cues(text)[1]:

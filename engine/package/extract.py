@@ -46,6 +46,7 @@ class _Parser(HTMLParser):
         self.times: list[str] = []
         self.ld: list[str] = []
         self.paras: list[str] = []
+        self.date_texts: list[str] = []  # text of elements whose class says date/time/published
         self._stack: list[str] = []
         self._skip = 0
         self._buf: list[str] | None = None
@@ -73,6 +74,8 @@ class _Parser(HTMLParser):
             self._skip += 1
         elif tag in ("title", "h1") and not self._skip:
             self._grab, self._buf = tag, []
+        elif re.search(r"date|time|publish", a.get("class", ""), re.I) and self._buf is None and not self._skip:
+            self._grab, self._buf = "date", []  # before <p>: a dated paragraph is often a <p class="...time">
         elif tag in ("p", "li", "blockquote") and not self._skip and self._buf is None:
             self._grab, self._buf = "p", []
 
@@ -86,6 +89,7 @@ class _Parser(HTMLParser):
             if top == tag:
                 break
         if self._buf is not None and (tag == self._grab or (self._grab == "p" and tag in ("p", "li", "blockquote")) or
+                                      (self._grab == "date" and tag in ("p", "li", "div", "span", "time")) or
                                       (self._grab == "ld" and tag == "script")):
             text = re.sub(r"\s+", " ", "".join(self._buf)).strip()
             if self._grab == "title" and not self.title:
@@ -96,6 +100,8 @@ class _Parser(HTMLParser):
                 self.ld.append("".join(self._buf))
             elif self._grab == "p" and len(text) >= 40:
                 self.paras.append(text)
+            elif self._grab == "date" and text:
+                self.date_texts.append(text)
             self._grab, self._buf = None, None
 
     def handle_data(self, data):
@@ -133,6 +139,19 @@ def _ld_fields(blobs: list[str]) -> dict:
     return out
 
 
+def _parse_date(text: str) -> str:
+    """'January 25, 2012' / '25 January 2012' / '2012-01-25' -> ISO date, else ''."""
+    import datetime as dt
+
+    text = re.sub(r"\s+", " ", text).strip().rstrip(".")
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y", "%Y-%m-%d", "%B %Y"):
+        try:
+            return dt.datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return ""
+
+
 def parse_html(text: str, max_paragraphs: int = 80) -> Page:
     p = _Parser()
     try:
@@ -142,7 +161,8 @@ def parse_html(text: str, max_paragraphs: int = 80) -> Page:
         pass  # malformed markup: keep what was parsed
     ld = _ld_fields(p.ld)
     m = p.meta
-    date = ld.get("datePublished") or next((m[k] for k in DATE_META if m.get(k)), "") or (p.times[0] if p.times else "")
+    date = (ld.get("datePublished") or next((m[k] for k in DATE_META if m.get(k)), "") or (p.times[0] if p.times else "")
+            or next((d for d in (_parse_date(t) for t in p.date_texts) if d), ""))
     seen, paras = set(), []
     for t in p.paras:
         if t not in seen:

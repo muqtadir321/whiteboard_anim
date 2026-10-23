@@ -738,3 +738,37 @@ def test_new_narration_is_retagged_and_rechecked_with_package_charts(package, tm
     assert results[0].status.ok, results[0].message
     m = json.loads((job / "storyboard" / "scene_manifest.en.json").read_text(encoding="utf-8"))
     assert any(s["visual_type"] == "data_chart" for s in m["scenes"])  # the package's chart still reaches the new words
+
+
+def test_citation_marks_never_leak_into_the_narration(tmp_path):
+    from engine.explainer import draft
+    from engine.explainer.cues import extract_cues
+
+    words = "New Zealand became the first country to adopt[1] an inflation target in 1990.[2] Others followed.".split()
+    art = Article("1", tmp_path / "x.png", words=[(w, 10.0 * i, 0, 10.0 * i + 9, 9) for i, w in enumerate(words)])
+    script = "It started in New Zealand, around 1990, with the first inflation target.\n"
+    out, _ = draft.auto_tag(script, "en", {"1": art}, {"1": [" ".join(words)]}, [], False)
+    assert extract_cues(out)[0].split() == script.split()
+    assert "[1]" not in out and "[2]" not in out
+
+
+def test_source_noise_never_supports_a_claim():
+    noise = ("Inflation targeting was pioneered in New Zealand in 1990.[6] 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20. "
+             "ISSN 2352-3409. Bank of England: 17, 18–44. Since 2010 the CNB uses 2 percent as the target.[26]")
+    doc = C.Doc("S-w", noise, "reference", "en.wikipedia.org")
+    assert not any("ISSN" in s or s.startswith("1 2 3") or "18–44" in s for s in doc.sents)
+    assert not any("[6]" in s for s in doc.sents)
+    cl = C.extract_claims("Inflation is running at about three point four percent.\n\nPrices double in about eighteen years.\n\n"
+                          "Because zero is dangerous for central banks.", "en", "EN")
+    C.match_claims(cl, [doc])
+    assert [c.status for c in cl if c.kind == "factual"] == ["not_found", "not_found", "not_found"]
+
+
+def test_year_is_confirmed_by_the_documents_release_date():
+    html = ('<html><body><p class="article__time">January 25, 2012</p><main><p>The Committee judges that inflation at the rate of '
+            '2 percent is most consistent over the longer run with the Federal Reserve mandate for price stability.</p></main></body></html>')
+    page = parse_html(html)
+    assert page.published_at == "2012-01-25"
+    cl = C.extract_claims("And in 2012, the Fed made two percent its official goal for inflation over the longer run.", "en", "EN")
+    C.match_claims(cl, [C.Doc("S-fed", page.text, "official", "federalreserve.gov", page.published_at)])
+    assert cl[0].status in ("supported", "partially_supported") and cl[0].source_ids == ["S-fed"]

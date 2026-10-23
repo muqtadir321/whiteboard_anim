@@ -41,10 +41,14 @@ def evidence_brief(topic: str, news: list[dict], articles: list[dict], charts: l
     return "\n".join(lines)
 
 
+CITATION = re.compile(r"\[(?:\d+|[a-z]|citation needed|note \d+)\]", re.I)
+
+
 def key_sentences(paragraphs: list[str], limit: int = 14, max_len: int = 260) -> list[str]:
     """Sentences with numbers first: they carry the facts a short video needs."""
     sents = []
     for p in paragraphs:
+        p = CITATION.sub("", p)  # "1990.[6] The" is two sentences, and "[6]" is not part of a quote
         # sentences only: bylines and captions start with a symbol ("✍️ Anshul Majumdar looks at ...")
         sents += [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if 40 <= len(s.strip()) <= max_len and s.strip()[0].isalnum()]
     with_num = [s for s in sents if re.search(r"\d", s)]
@@ -212,7 +216,9 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
         toks = c[1].split()
         hit = next((i for i, t in enumerate(toks) if _numbers(t, "en") & nums), 0)
         a = max(0, min(hit - 4, len(toks) - 10))
-        quote = " ".join(toks[a:a + 10]).replace('"', "'").strip(" ,;:")
+        # citation marks ("[1]") and stray brackets would end the [article ...] tag early and leak into the narration
+        quote = re.sub(r"\[[^\]]*\]", "", " ".join(toks[a:a + 10])).replace("[", "").replace("]", "")
+        quote = re.sub(r"\s+", " ", quote).replace('"', "'").strip(" ,;:")
         return f'[article {c[0]} "{quote}"] ' if articles[c[0]].find_quote(quote) else ""
 
     paras = []  # per paragraph, per sentence: [lead tags, body, new cue]

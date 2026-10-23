@@ -145,3 +145,38 @@ def test_arrows_never_cross_labels(ex_cfg):
             for x, y in pts:
                 X, Y = ar.box[0] + x * k, ar.box[1] + y * k
                 assert not any(b[0] <= X <= b[2] and b[1] <= Y <= b[3] for b in labels), (X, Y)
+
+
+def test_comparison_values_are_crossed_out_and_circled(ex_cfg):
+    from engine.explainer.beats import Contrast, find_contrast
+
+    toks = "Why does the Fed want two percent inflation? Not zero. Not five. Exactly two.".split()
+    c = find_contrast(toks, [i * 0.4 for i in range(len(toks))], "%")
+    assert [(v, chosen) for v, chosen, _ in c.items] == [("0%", False), ("5%", False), ("2%", True)]
+    assert find_contrast("This is not easy, not now.".split(), [0.0] * 6, "") is None
+    lay = ExplainerLayout(ex_cfg, "en", None, 1.0)
+    beat = Beat([0], 0.0, 10.0)
+    compose(beat, [Node("rate_badge", {}, 1.0, "2%"), Node("price_tag", {}, 6.0, "inflation")], [], 170.0, lay, "en", "", contrast=c)
+    names = [sp.name for sp in beat.sprites]
+    assert names.count("value_card") == 3 and names.count("cross_out") == 2 and names.count("circle_choice") == 1
+    assert "rate_badge" not in names  # the circled card already shows 2%
+    assert [w.text for w in beat.words][:3] == ["0%", "5%", "2%"]
+
+
+def test_returning_objects_look_the_same_and_come_back_faster(ex_cfg):
+    lay = ExplainerLayout(ex_cfg, "en", None, 1.0)
+    memory: dict = {}
+    first, later = Beat([0], 0.0, 8.0), Beat([1], 8.0, 16.0)
+    compose(first, [Node("price_tag", {}, 1.0, "inflation")], [], 170.0, lay, "en", "", memory=memory)
+    compose(later, [Node("price_tag", {}, 9.0, "inflation"), Node("house", {}, 11.0, "homes")], [], 170.0, lay, "en", "", memory=memory)
+    a = next(sp for sp in first.sprites if sp.name == "price_tag")
+    b = next(sp for sp in later.sprites if sp.name == "price_tag")
+    assert len(a.strokes) == len(b.strokes) and a.strokes[0][0][:3] == [(x * 1, y * 1) for x, y in a.strokes[0][0][:3]]
+    assert b.draw <= 0.6 < a.draw or b.draw <= 0.6
+
+
+def test_colour_means_something():
+    from engine.explainer.beats import GREEN, INK, RED, tone_color
+
+    assert tone_color("falling prices") == RED and tone_color("savings") == GREEN
+    assert tone_color("aim higher") == INK and tone_color("central bank") == INK

@@ -657,7 +657,7 @@ class ExplainerLayout:
 
     def build_beats(self, layout: Layout, texts: list, timed: list[TimedCue], para_ends: list[float], sentence_ends: list[float]) -> None:
         """Scenes grouped into beats; each beat is one board that builds up (see beats.py)."""
-        from .beats import Beat, compose, group_beats
+        from .beats import Beat, compose, find_contrast, group_beats
 
         tokens: list[str] = []
         tok0 = []
@@ -667,6 +667,7 @@ class ExplainerLayout:
         icons = [(tc.t, tc.cue.ref, tc.cue.word) for tc in timed if tc.cue.kind == "icon"]
         groups = group_beats([(s0, s1) for _, s0, s1, *_ in texts], para_ends, sentence_ends)
         layout.beats = []
+        memory: dict = {}  # objects already drawn: they come back the same way (visual continuity)
         for g in groups:
             beat = Beat(g, texts[g[0]][1], texts[g[-1]][2])
             picks = []
@@ -678,7 +679,17 @@ class ExplainerLayout:
             top = max([texts[i][5] for i in g] + [300.0]) + 40 if has_words else 170.0
             first = texts[g[0]][0]["narration_text"]
             phrase = " ".join(w for w in first.split()[:6]).rstrip(".,;:!?")
-            compose(beat, picks, layout.stages, top, self, self.lang, phrase)
+            contrast = None
+            if self.lang == "en":
+                btoks, btimes = [], []
+                for i in g:
+                    scene, s0, s1, times, words, bottom = texts[i]
+                    toks = scene["narration_text"].split()
+                    btoks += toks
+                    btimes += [times[min(k, len(times) - 1)][0] for k in range(len(toks))] if times else [s0] * len(toks)
+                pct = any(q.get("kind") == "percent" for i in g for q in texts[i][0].get("quantities", []))
+                contrast = find_contrast(btoks, btimes, "%" if pct else "")
+            compose(beat, picks, layout.stages, top, self, self.lang, phrase, memory=memory, contrast=contrast)
             # the first drawing starts with the beat and is drawn more slowly, so the board is never empty
             lead = min((sp for sp in beat.sprites if sp.name != "arrow"), key=lambda sp: sp.t, default=None)
             # never over evidence: the earliest start is after every stage that is up between the beat start and the drawing

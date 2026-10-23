@@ -272,9 +272,15 @@ def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids
     for sc in layout.scenes:
         for w in sc.words:
             t = w.t + 0.05
-            overlaps += [f"{sc.scene_id}:'{w.text}'/{st.id}" for st in layout.stages if st.t_in <= t < st.t_out and hit(w.bbox, st.region)]
+            w_end = getattr(w, "end", None) or sc.end
+            if w_end <= w.t:
+                continue  # never on screen
+            overlaps += [f"{sc.scene_id}:'{w.text}'/{st.id}" for st in layout.stages
+                         if min(w_end, st.t_out) - max(w.t, st.t_in) > 0.1 and hit(w.bbox, st.region)]
+            # value cards, crosses and circles are annotations around their own value: not collisions
             overlaps += [f"{sc.scene_id}:'{w.text}'/{sp.name}" for sp in sc.sprites
-                         if sp.t <= t and (sp.end is None or t < sp.end) and sc.start <= sp.t and hit(w.bbox, sp.box)]
+                         if sp.name not in ("value_card", "cross_out", "circle_choice")
+                         and sp.t <= t and (sp.end is None or t < sp.end) and sc.start <= sp.t and hit(w.bbox, sp.box)]
         for st in layout.stages:
             if not st.label:
                 continue
