@@ -186,7 +186,8 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
                         sp = ledger.get(a.get("source_id", ""))
                         if sp and sp.extracted_text_path and (job / sp.extracted_text_path).is_file():
                             paras[a["id"]] = (job / sp.extracted_text_path).read_text(encoding="utf-8").split("\n\n")
-                    tagged, _ = draft.auto_tag(text, code, ev.articles, paras, [], bool(ev.news_image))
+                    charts = [json.loads(f.read_text(encoding="utf-8")) for f in sorted((job / "research" / "charts").glob("*.json"))]
+                    tagged, _ = draft.auto_tag(text, code, ev.articles, paras, charts, bool(ev.news_image))
                     script_path = work / f"{key}.txt"
                     script_path.write_text(tagged, encoding="utf-8")
                     from ..script_analyzer import normalize_script_with_cues
@@ -209,6 +210,11 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
                 r = lj.run()
             except (RenderError, JobError) as exc:
                 r = LanguageResult(key, code, Status.PERMANENT_FAILURE, str(exc))
+            except Exception as exc:  # a bug fails this language with a clear message; the others still render
+                import traceback
+
+                log(traceback.format_exc())
+                r = LanguageResult(key, code, Status.PERMANENT_FAILURE, f"unexpected error: {type(exc).__name__}: {exc}")
             results.append(r)
             statuses[key] = r
             est = (research_info.get("scripts", {}).get(key) or {}).get("estimated_seconds")

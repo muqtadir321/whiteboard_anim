@@ -14,6 +14,17 @@ import math
 from dataclasses import dataclass, field
 
 from .results import StageError, Status
+
+
+def _pcm16k(path: str):
+    """Mono 16 kHz float32 samples, the input faster-whisper expects."""
+    import subprocess
+
+    import numpy as np
+
+    proc = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-ac", "1", "-ar", "16000", "-f", "f32le", "-"], capture_output=True,
+                          timeout=900, check=True)
+    return np.frombuffer(proc.stdout, dtype=np.float32)
 from .transliteration import urdu_to_roman
 
 WHISPER_LANG = {"en": "en", "ur": "ur", "roman_urdu": "ur", "ps": "ps", "ps_latn": "ps"}
@@ -73,7 +84,9 @@ class FasterWhisperTranscriber(Transcriber):
         model = self._load()
         segments, words, logps = [], [], []
         try:
-            segments_iter, info = model.transcribe(audio_path, language=WHISPER_LANG.get(language, language), word_timestamps=True, vad_filter=True)
+            # decoded with FFmpeg, not PyAV: faster-whisper 1.2.1 breaks with PyAV >= 15, which is all Python 3.13 has
+            segments_iter, info = model.transcribe(_pcm16k(audio_path), language=WHISPER_LANG.get(language, language), word_timestamps=True,
+                                                   vad_filter=True)
             for seg in segments_iter:
                 segments.append({"start": seg.start, "end": seg.end, "text": seg.text.strip(), "avg_logprob": seg.avg_logprob})
                 logps.append(seg.avg_logprob)

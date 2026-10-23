@@ -125,7 +125,7 @@ def mark_syndicated(docs: list[claims_mod.Doc], ledger: Ledger) -> None:
 
 def chart_doc(sid: str, chart: dict) -> claims_mod.Doc:
     """Verified chart values as sentences, so narration figures can be matched to the dataset."""
-    pts = chart["points"]
+    pts = [tuple(p) for p in chart["points"]]  # JSON gives lists
     u = chart["units"]
     keep = {pts[0], pts[-1], min(pts, key=lambda p: p[1]), max(pts, key=lambda p: p[1])}
     years: dict[str, tuple] = {}

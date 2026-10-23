@@ -280,9 +280,11 @@ def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids
                 continue
             x1, y1 = st.region[2] - 10, st.region[3] - 4
             label = (x1 - 14.5 * len(st.label) - 20, y1 - 44, x1, y1)  # 26 px label at the stage's bottom right
+            # only while both are really on screen: the label fades out with the stage, so a drawing that starts in
+            # the last 0.3 s of the exit does not collide with it
             overlaps += [f"{sc.scene_id}:{sp.name}/label of {st.id}" for sp in sc.sprites
-                         if sp.t < st.t_out and (sp.end is None or sp.end > st.t_in) and sc.start < st.t_out and st.t_in < sc.end
-                         and hit(sp.box, label)]
+                         if min(st.t_out, sp.end if sp.end is not None else st.t_out) - max(st.t_in, sp.t) > 0.3
+                         and sc.start < st.t_out and st.t_in < sc.end and hit(sp.box, label)]
     report.add("no_overlaps", not overlaps, False, sorted(set(overlaps))[:10], 0, "text, evidence, drawings and source labels")
     small = {k: v for k, v in getattr(layout, "text_px", {}).items() if v < float(cfg["animation"]["explainer"]["min_text_px"])}
     report.add("evidence_text_readable", not small, False, small, f">= {cfg['animation']['explainer']['min_text_px']} px")

@@ -41,12 +41,12 @@ def evidence_brief(topic: str, news: list[dict], articles: list[dict], charts: l
     return "\n".join(lines)
 
 
-def key_sentences(paragraphs: list[str], limit: int = 14) -> list[str]:
+def key_sentences(paragraphs: list[str], limit: int = 14, max_len: int = 260) -> list[str]:
     """Sentences with numbers first: they carry the facts a short video needs."""
     sents = []
     for p in paragraphs:
         # sentences only: bylines and captions start with a symbol ("✍️ Anshul Majumdar looks at ...")
-        sents += [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if 40 <= len(s.strip()) <= 260 and s.strip()[0].isalnum()]
+        sents += [s.strip() for s in re.split(r"(?<=[.!?])\s+", p) if 40 <= len(s.strip()) <= max_len and s.strip()[0].isalnum()]
     with_num = [s for s in sents if re.search(r"\d", s)]
     rest = [s for s in sents if s not in with_num]
     return (with_num + rest)[:limit]
@@ -167,7 +167,9 @@ def drop_unverified(script: str) -> tuple[str, int]:
     return "\n\n".join(paras) + "\n", removed
 
 
-SENT_SPLIT = re.compile(r"(?<=[.!?۔؟])\s+")
+# sentence ends, but not after initials such as "U.S." or titles such as "Dr."
+SENT_SPLIT = re.compile(r"(?<!\b[A-Z]\.[A-Z]\.)(?<!\b[A-Z]\.)(?<!\bMr\.)(?<!\bMs\.)(?<!\bDr\.)(?<=[.!?۔؟])\s+")
+PCT = re.compile(r"%|percent|per cent|fisad|فیصد", re.I)
 LEAD_TAGS = re.compile(r"^(\s*\[[^\]]*\]\s*)*")
 WORD = re.compile(r"[a-z]{4,}")
 EN_STOP = {"that", "this", "with", "from", "have", "they", "their", "there", "about", "which", "would", "into", "than", "more", "most",
@@ -197,7 +199,7 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
     notes: list[str] = []
     cands = []  # (article id, sentence, numbers, concepts, words)
     for aid, art in articles.items():
-        for sent in key_sentences(paragraphs.get(aid, []), limit=40):
+        for sent in key_sentences(paragraphs.get(aid, []), limit=40, max_len=480):  # official pages write long sentences
             if art.find_quote(" ".join(sent.split()[:10])):
                 low = sent.lower()
                 cands.append((aid, sent, _numbers(sent, "en"), {m.concept for m in match_concepts(sent, "en")},
@@ -221,13 +223,15 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
             rows.append([lead, sent[len(lead):], ""])
         paras.append(rows)
     first = news
+    prev = ""
     for rows in paras:
         for row in rows:
             body = row[1]
+            context, prev = prev, body
             if first:
                 row[2], first = "[news] ", False
                 # the hook's figure can still show its chart, at the number word, once the headlines have had their time
-                hit = chart_cue(charts, body, _numbers(body, lang), chart_done)
+                hit = chart_cue(charts, body, _numbers(body, lang), chart_done, context)
                 if hit:
                     toks = body.split(" ")
                     at = next((i for i, t in enumerate(toks) if _numbers(t, lang) & {hit[1]}), -1)
@@ -243,13 +247,14 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
                 if c[1] in used:
                     continue
                 shared = {n for n in nums & c[2] if n not in (0, 1)}
-                score = 3 * len(shared) + len(cons & c[3]) + 0.5 * len(words & c[4])
+                same_unit = bool(shared) and bool(PCT.search(body)) and bool(PCT.search(c[1]))  # "2 percent" said and written
+                score = 3 * len(shared) + len(cons & c[3]) + 0.5 * len(words & c[4]) + (1 if same_unit else 0)
                 if score > best_score:
                     best, best_score = c, score
             if best and best_score >= 4:
                 row[2] = article_cue(best, nums)
             if not row[2]:
-                hit = chart_cue(charts, body, nums, chart_done)
+                hit = chart_cue(charts, body, nums, chart_done, context)
                 if hit:
                     row[2] = hit[0]
                     chart_done.add(hit[2])
@@ -264,21 +269,51 @@ def auto_tag(script: str, lang: str, articles: dict, paragraphs: dict[str, list[
     return "\n\n".join(out_paras) + "\n", notes
 
 
-def chart_cue(charts: list[dict], body: str, nums: set[float], done: set) -> tuple[str, float, tuple] | None:
+# what a chart measures, for cues (download choice uses fred.SERIES keywords): naming the Fed is not naming its rate
+CHART_SUBJECT = {"FEDFUNDS": ("interest rate", "fed funds", "federal funds", "rate cut", "rate hike", "raising rates", "cutting rates",
+                              "raise rates", "cut rates", "policy rate")}
+
+
+def _said_precision(n: float) -> float:
+    """Half a unit of the last digit said: "7 percent" covers 6.5-7.5, "3.4 percent" covers 3.35-3.45."""
+    text = f"{n:.6f}".rstrip("0").rstrip(".")
+    decimals = len(text.split(".")[1]) if "." in text else 0
+    return 0.5 * 10 ** -decimals + 1e-9
+
+
+def chart_cue(charts: list[dict], body: str, nums: set[float], done: set, context: str = "") -> tuple[str, float, tuple] | None:
     """(cue, matched number, key) when a figure in the sentence is a value of a chart: at a year the sentence names
     ("around 3% in 2021" -> marker on 2021), else among the latest values. Each chart/date is used once."""
+    if body.rstrip().endswith(("?", "؟")):
+        return None  # a question ("why not aim for four percent?") is not a claim about the data
     years = {m for m in re.findall(r"\b(?:19|20)\d\d\b", body)}
-    figs = {n for n in nums if not (1900 <= n <= 2100 and float(n).is_integer())}
+    unit = bool(re.search(r"%|percent|per cent|fisad|فیصد|\$|dollar", body, re.I))
+    # small whole numbers ("Not zero.", "Not five.") only count next to a unit; years are dates, not values
+    figs = {n for n in nums if not (1900 <= n <= 2100 and float(n).is_integer()) and (unit or not (float(n).is_integer() and abs(n) <= 10))}
+    from . import fred
+
+    low = " " + (context + " " + body).lower() + " "  # the subject may be named in the sentence before
     for ch in charts:
         pts = ch["points"]
+        # the sentence must be about what the chart measures (its subject words), not just share a number with it
+        keys = CHART_SUBJECT.get(ch["id"]) or (fred.SERIES[ch["id"]][3] if ch["id"] in fred.SERIES else
+                                                tuple(w for w in re.findall(r"[a-z]{5,}", ch.get("title", "").lower())))
+        if keys and not any(k in low for k in keys):
+            continue
         for y in sorted(years):
             vals = [v for d, v in pts if str(d).startswith(y)]
             n = next((n for n in figs for v in vals if abs(n - v) <= max(0.5, abs(v) * 0.03)), None)
             if n is not None and (ch["id"], y) not in done:
                 return f"[chart {ch['id']} {y}] ", n, (ch["id"], y)
-        n = next((n for n in figs for _, v in pts[-60:] if abs(n - v) <= max(0.5, abs(v) * 0.03)), None)
-        if n is not None and (ch["id"], "latest") not in done:
-            return f"[chart {ch['id']} {pts[-1][0]}] ", n, (ch["id"], "latest")
+        # the most recent date whose value is the figure said: the marker shows that value, not a different latest one
+        # no year named: the figure describes the present, so only the latest 12 months count, closest value first
+        last = str(pts[-1][0]) if pts else ""
+        since = f"{int(last[:4]) - 1}{last[4:]}" if last[:4].isdigit() else ""
+        recent = [(d, v) for d, v in pts if str(d) > since]
+        close = [(abs(n - v), -i, n, d) for i, (d, v) in enumerate(recent) for n in figs if abs(n - v) <= _said_precision(n)]
+        hit = (min(close)[2], min(close)[3]) if close else None  # the value closest to what is said, then the most recent
+        if hit is not None and (ch["id"], hit[1]) not in done:
+            return f"[chart {ch['id']} {hit[1]}] ", hit[0], (ch["id"], hit[1])
     return None
 
 

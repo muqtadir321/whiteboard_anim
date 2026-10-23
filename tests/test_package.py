@@ -693,3 +693,48 @@ def test_chart_year_labels_clear_the_source_line():
     h = min(region[3] - region[1], 760)
     year_baseline, source_top = plot[3] + 32, region[1] + h - 24 - 26
     assert year_baseline + 4 <= source_top  # 20 px year labels and the 26 px source line never touch
+
+
+def test_spoken_decimals_are_one_number():
+    from engine.numbers import extract_quantities
+
+    assert [(q.value, q.display) for q in extract_quantities("at about three point four percent.", "en")] == [(3.4, "3.4%")]
+    assert extract_quantities("two point five million homes", "en")[0].value == 2_500_000
+    assert extract_quantities("the point is clear", "en") == []
+
+
+def test_fed_script_cues_follow_the_data_not_stray_numbers():
+    from engine.explainer import draft
+
+    cpi = {"id": "CPIAUCSL", "points": [["2026-05-01", 4.167], ["2026-06-01", 3.464], ["2026-08-01", 3.353], ["2026-09-01", 3.717]]}
+    fed = {"id": "FEDFUNDS", "points": [["2026-08-01", 3.63], ["2026-09-01", 3.75]]}
+    script = ("Why does the Fed want two percent inflation? Not zero. Not five. Exactly two.\n\n"
+              "So why not aim higher, like four percent?\n\n"
+              "And right now? Inflation is running well above that target, at about three point four percent.\n")
+    out, _ = draft.auto_tag(script, "en", {}, {}, [cpi, fed], True)
+    assert "[chart" not in out.split("\n\n")[0] and "[chart" not in out.split("\n\n")[1]  # stray "zero"/"five", a question
+    assert "[chart CPIAUCSL 2026-08-01] Inflation is running" in out  # marker where the data says 3.4, not the latest 3.7
+    assert C.classify("Not zero.") == "narrative"
+
+
+def test_long_official_sentences_can_be_quoted():
+    from engine.explainer.draft import key_sentences
+
+    long = ("In its Statement on Longer-Run Goals and Monetary Policy Strategy, the Federal Open Market Committee judges that "
+            "inflation of 2 percent over the longer run, as measured by the annual change in the price index for personal "
+            "consumption expenditures, is most consistent with the Federal Reserve's mandate for maximum employment and price stability.")
+    assert key_sentences([long]) == [] and key_sentences([long], max_len=480) == [long]
+
+
+def test_new_narration_is_retagged_and_rechecked_with_package_charts(package, tmp_path):
+    from engine.package.render import RenderInputs, render_package
+
+    pkg, _ = package
+    (tmp_path / "en.txt").write_text("Mortgage rates rose this week, Freddie Mac data show.\n\nMany owners locked in mortgage rates "
+                                     "around 4% in 2021.\n", encoding="utf-8")  # fixture 2021 values are 3.8-5.9
+    tone(tmp_path / "en.wav", 8.0)
+    job, results = render_package(RenderInputs(pkg, "english", {"english": tmp_path / "en.wav"}, {"english": tmp_path / "en.txt"},
+                                               quality="draft"), tmp_path / "out", log=lambda m: None, transcriber=None, aligner=None)
+    assert results[0].status.ok, results[0].message
+    m = json.loads((job / "storyboard" / "scene_manifest.en.json").read_text(encoding="utf-8"))
+    assert any(s["visual_type"] == "data_chart" for s in m["scenes"])  # the package's chart still reaches the new words

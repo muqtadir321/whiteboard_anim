@@ -18,6 +18,7 @@ EN_UNITS = {
     "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
     "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
 }
+DIGIT_WORDS = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
 EN_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90}
 EN_SCALES = {"hundred": 100, "thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000, "trillion": 1_000_000_000_000,
              "lakh": 100_000, "crore": 10_000_000}
@@ -161,6 +162,17 @@ def _parse_english_words(tokens, i):
     value = total + current
     if tokens[i][0].lower() == "and":
         return None
+    # spoken decimals: "three point four" = 3.4, "two point six five million" = 2,650,000
+    if j + 1 < len(tokens) and tokens[j][0].lower() == "point" and tokens[j + 1][0].lower() in DIGIT_WORDS:
+        k, digits = j + 1, ""
+        while k < len(tokens) and tokens[k][0].lower() in DIGIT_WORDS:
+            digits += str(EN_UNITS[tokens[k][0].lower()])
+            k += 1
+        value = float(f"{int(value)}.{digits}")
+        j = k
+        if j < len(tokens) and tokens[j][0].lower() in EN_SCALES and EN_SCALES[tokens[j][0].lower()] >= 1000:
+            value *= EN_SCALES[tokens[j][0].lower()]
+            j += 1
     return value, j
 
 

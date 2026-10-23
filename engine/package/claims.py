@@ -141,6 +141,8 @@ def classify(text: str) -> str:
         return "question"
     if OPINION.search(t):
         return "opinion"
+    if len(t.split()) < 4:  # "Not zero." "Exactly two." - rhetoric, not a checkable claim
+        return "narrative"
     has_fig = bool(re.search(r"\d", t)) or bool(extract_quantities(t, "en"))
     if PREDICTION.search(t) and not (ATTRIBUTED.search(t) and has_fig):
         return "prediction"
