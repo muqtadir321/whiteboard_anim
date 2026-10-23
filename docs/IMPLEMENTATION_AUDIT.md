@@ -171,5 +171,28 @@ from it.
 
 1. Remove `input/voice/reference.mp3` from the public repository and its history (see RIGHTS_AND_ATTRIBUTION.md).
 2. Set the `SEC_USER_AGENT` secret to enable EDGAR, and optionally `VOICE_REFERENCE_URL` and the audio URL secrets.
-3. Run both workflows once on GitHub (they have been linted, not executed there).
 4. Decide whether `input/config.yaml` should keep `allow_noncommercial_models: true`.
+
+### Hosted validation (GitHub Actions, branch `feature/explainer-screenshots`)
+
+| Run | Result |
+|---|---|
+| Tests (push), runs 39843904086 and 39845331153 | success: full suite on Ubuntu, including the eSpeak NG and Chromium tests that are skipped on Windows |
+| A: Research & Prepare, 39843937068 and 39845334725 | success: real screenshots (freddiemac.com, census.gov) with readable card alternatives, FRED charts, all six research gates passed; GDELT returned HTTP 429 (recorded, run continued) |
+| B: Render Video, 39846066803 | success: `explainer_en.mp4` (14.7 s) and `explainer_ur.mp4` (23.5 s), 1080×1920, 30 fps, H.264/AAC; QA passed for both with no warnings; every evidence scene has a source ID; the chart marks 7.32 % (22 Oct 2026) and 2.98 % (1 Jul 2021) on the narrated figures; `commercial_clearance` not cleared (FRED content rights unknown) |
+
+Found in the hosted output and fixed afterwards: the chart's source line touched the year labels (bottom margin
+increased, regression test added); the axis now shows units; Piper's English voice licence is recorded as verified
+(MIT voice, public-domain training data).
+
+**Voice quality (not a measured check):** the Urdu narration in run 39846066803 was eSpeak NG, the only local Urdu
+voice whose licence allows commercial use. It is robotic; the owner listened and rejected it. Supplied voice-overs
+remain the intended path for Urdu.
+
+### Remaining open items (2026-10-23)
+
+* Urdu voice: supply your own voice-over (best, always used first). Non-commercial voices stay off. A commercially
+  licensed neural Urdu voice was looked for: AI4Bharat Indic Parler-TTS is Apache-2.0 and lists Urdu, but it is
+  gated on Hugging Face (needs an accepted licence and a token) and has not been integrated or tested.
+* Old commits still contain `input/voice/reference.mp3` (history rewrite is the owner's decision).
+* Live SEC EDGAR needs `SEC_USER_AGENT`.

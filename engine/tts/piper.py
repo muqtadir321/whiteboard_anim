@@ -28,9 +28,21 @@ class PiperProvider(TTSProvider):
     license = "piper: GPL-3.0 (piper1) / MIT (legacy); voice: see model card (LJ Speech dataset is public domain)"
     commercial_use = "check voice model card"
 
+    # voices whose model card and repository licence were checked (rhasspy/piper-voices is MIT on Hugging Face)
+    VERIFIED = {"en_US-ljspeech-medium": "voice MIT (rhasspy/piper-voices), trained on LJ Speech (public domain, model card)"}
+
     def __init__(self, cfg: dict):
         super().__init__(cfg)
         self._loaded: dict[str, object] = {}
+
+    def describe(self, language: str) -> dict:
+        d = super().describe(language)
+        voice = self.cfg["voice"]["piper_voices"].get(language, "")
+        if voice in self.VERIFIED:
+            d["license"] = f"program GPL-3.0-or-later (output not covered); {self.VERIFIED[voice]}"
+            d["commercial_use"] = "yes (MIT voice, public-domain training data)"
+        d["voice"] = voice
+        return d
 
     def _module(self):
         try:

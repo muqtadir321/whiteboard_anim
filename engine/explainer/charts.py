@@ -45,7 +45,7 @@ class ChartPainter:
     def plot_rect(self, region) -> tuple[float, float, float, float]:
         x0, y0, x1, y1 = region
         h = min(y1 - y0, 760)
-        return x0 + 84, y0 + 96, x1 - 34, y0 + h - 74
+        return x0 + 84, y0 + 96, x1 - 34, y0 + h - 104  # room below for year labels and the 26 px source line
 
     def xy(self, plot, d: dt.date, v: float) -> tuple[float, float]:
         px0, py0, px1, py1 = plot
@@ -87,7 +87,8 @@ class ChartPainter:
             ctx.stroke()
             ctx.set_source_rgb(0.4, 0.4, 0.4)
             ctx.move_to((x0 + 12) * s, (y + 7) * s)
-            ctx.show_text(f"{v:.1f}")
+            u = self.chart.units  # units on the axis (SRS: label units)
+            ctx.show_text(f"{v:.1f}%" if u == "%" else (f"${v:,.0f}" if u == "$" and v >= 100 else (f"${v:.1f}" if u == "$" else f"{v:,.1f}")))
         # year ticks
         years = range(self.d0.year + 1, self.d1.year + 1)
         step = max(1, len(years) // 7)

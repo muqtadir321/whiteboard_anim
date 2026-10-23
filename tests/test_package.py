@@ -679,3 +679,17 @@ def test_matched_release_row_becomes_a_labelled_evidence_card(tmp_path):
     cards = r.finance_cards(2, [fc])
     assert cards and cards[0]["id"] == "3" and cards[0]["capture"] == "source_card" and cards[0]["source_id"]
     assert (r.shots / "finance_3.png").exists() and "35,082" in " ".join(w[0] for w in cards[0]["words"])
+
+
+def test_chart_year_labels_clear_the_source_line():
+    import datetime as dt
+
+    from engine.explainer.charts import ChartPainter
+    from engine.explainer.evidence import Chart
+
+    ch = Chart("X", "T", "%", "Src", "u", [(dt.date(2019, 1, 1), 1.0), (dt.date(2026, 1, 1), 2.0)])
+    region = (0, 700, 1080, 1800)
+    plot = ChartPainter(ch, 0.0).plot_rect(region)
+    h = min(region[3] - region[1], 760)
+    year_baseline, source_top = plot[3] + 32, region[1] + h - 24 - 26
+    assert year_baseline + 4 <= source_top  # 20 px year labels and the 26 px source line never touch

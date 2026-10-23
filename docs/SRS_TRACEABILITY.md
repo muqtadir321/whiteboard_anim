@@ -141,7 +141,7 @@ Section numbers follow `WHITEBOARD_VIDEO_PIPELINE_SRS.md`.
 | B: artifact by run id, languages, audio, voice mode, quality, hashes, cache, QA, no secrets exposed, no private audio upload | Met | workflow B |
 | Critical QA failures fail the job but keep reports | Met | exit codes 0/3/1/2; upload `if: always()` |
 | CLI equivalents | Met | `engine.cli research` / `render`; LOCAL_RUN |
-| Workflows validated on GitHub | see "Hosted validation" below | |
+| Workflows validated on GitHub | Met | see "Hosted validation" below |
 
 ## §11 Output layout
 
@@ -219,6 +219,18 @@ URDU_SUPPORT, RESEARCH_POLICY, RIGHTS_AND_ATTRIBUTION, THIRD_PARTY_LICENSES, KNO
 | 15 | Docs explain usage, limits and costs | Met |
 | 16 | Honest reporting | Met |
 
-## Hosted validation (GitHub Actions)
+## Hosted validation (GitHub Actions, branch `feature/explainer-screenshots`)
 
-Recorded after the runs on the pushed branch; see the end of IMPLEMENTATION_AUDIT Part B.
+| Run | Result |
+|---|---|
+| Tests (push), runs 39843904086 and 39845331153 | success: full suite on Ubuntu, including the eSpeak NG and Chromium tests that are skipped on Windows |
+| A: Research & Prepare, 39843937068 and 39845334725 | success: real screenshots (freddiemac.com, census.gov) with readable card alternatives, FRED charts, all six research gates passed; GDELT returned HTTP 429 (recorded, run continued) |
+| B: Render Video, 39846066803 | success: `explainer_en.mp4` (14.7 s) and `explainer_ur.mp4` (23.5 s), 1080×1920, 30 fps, H.264/AAC; QA passed for both with no warnings; every evidence scene has a source ID; the chart marks 7.32 % (22 Oct 2026) and 2.98 % (1 Jul 2021) on the narrated figures; `commercial_clearance` not cleared (FRED content rights unknown) |
+
+Found in the hosted output and fixed afterwards: the chart's source line touched the year labels (bottom margin
+increased, regression test added); the axis now shows units; Piper's English voice licence is recorded as verified
+(MIT voice, public-domain training data).
+
+**Voice quality (not a measured check):** the Urdu narration in run 39846066803 was eSpeak NG, the only local Urdu
+voice whose licence allows commercial use. It is robotic; the owner listened and rejected it. Supplied voice-overs
+remain the intended path for Urdu.
