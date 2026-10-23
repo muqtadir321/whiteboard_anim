@@ -46,6 +46,9 @@ class Word:
     text: str = ""
     pop: bool = False  # key amounts bounce in instead of being written
     underline: bool = False  # hand-drawn swoosh under the word once it is there
+    end: float | None = None  # leaves the board (beat labels go with their drawing)
+    rtl: bool = False  # written right to left (Urdu, Pashto)
+    missing: list = field(default_factory=list)  # characters the font could not draw
 
 
 @dataclass
@@ -156,7 +159,7 @@ class ExplainerRenderer:
         self.pop = cfg["animation"]["explainer"]["pop_seconds"]
         # a marker tip that sits exactly where the current stroke is being drawn
         pen = cfg["animation"]["explainer"].get("pen_cursor", True) and cfg["animation"]["hand_cursor_enabled"]
-        self.pen = HandCursor(self.scale * 0.42, "marker", cfg["animation"]["primary_stroke"]) if pen else None
+        self.pen = HandCursor(self.scale * 0.62, "marker", cfg["animation"]["primary_stroke"]) if pen else None  # visible at phone size
         self._pen_at: tuple[float, float] | None = None
 
     # -- painting ------------------------------------------------------------
@@ -245,7 +248,7 @@ class ExplainerRenderer:
         ctx.fill()
 
     def paint_word(self, ctx: cairo.Context, w: Word, t: float) -> None:
-        if t < w.t:
+        if t < w.t or (w.end is not None and t >= w.end):
             return
         s = self.scale
         age = t - w.t
@@ -262,10 +265,12 @@ class ExplainerRenderer:
             ctx.translate(-cx, -cy)
         else:
             p = age / max(1e-6, w.dur)
-            if p < 1:  # written left to right
-                ctx.rectangle((x0 - 4) * s, (y0 - 30) * s, (x1 - x0 + 8) * p * s, (y1 - y0 + 60) * s)
+            if p < 1:  # written left to right (Urdu: right to left)
+                wdt = (x1 - x0 + 8) * p
+                left = (x1 + 4 - wdt) if w.rtl else (x0 - 4)
+                ctx.rectangle(left * s, (y0 - 30) * s, wdt * s, (y1 - y0 + 60) * s)
                 ctx.clip()
-                self._pen_at = ((x0 + (x1 - x0) * p) * s, (y0 + y1) / 2 * s)
+                self._pen_at = ((left if w.rtl else left + wdt) * s, (y0 + y1) / 2 * s)
         self._glyphs(ctx, w)
         ctx.restore()
         if w.underline and age > 0.3:

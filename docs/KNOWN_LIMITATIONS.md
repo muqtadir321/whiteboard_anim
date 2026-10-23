@@ -38,6 +38,16 @@
 * The older `0-make-video.yml` has 18 `workflow_dispatch` inputs. GitHub accepts this (limit 25), but
   actionlint 1.7.7 reports its older limit of 10.
 
+## Visual composition
+
+* Node labels come from the narration words around the word a drawing was tied to (rules, not language
+  understanding). Most read well ("central bank", "interest rates", "2%"), but some are thin ("first",
+  "people") when the drawing was matched to a loosely related word.
+* Drawings come from a fixed library (doodles + Fluent Emoji). A concept without a fitting drawing gets a
+  near match or none; nothing is generated.
+* Beat boundaries come from paragraph breaks in the script: a script without blank lines between ideas
+  gives boards split only by length (about 14 s).
+
 ## Free is not unlimited
 
 GitHub Actions minutes and artifact storage, GDELT and SEC rate limits, website changes, and model

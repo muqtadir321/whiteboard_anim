@@ -29,7 +29,12 @@ TONES = ("-light", "-medium-light", "-medium", "-medium-dark", "-dark")
 # drawings that rarely say anything about a sentence (symbols, letters, zodiac, clocks, ...)
 SKIP_NAME = re.compile(r"button|symbol|sign$|^keycap|^regional|^input|flag-for|oclock|thirty$|face\b|^facepalm|^hundred-points$|^(aries|taurus|gemini|cancer|leo|virgo|"
                        r"libra|scorpio|sagittarius|capricorn|aquarius|pisces|ophiuchus)$|^family-|^couple|^kiss|^people-holding|"
-                       r"^(man|woman|person)-(and|with)-|-(man|woman)$|^(man|woman)-")
+                       r"^(man|woman|person)-(and|with)-|-(man|woman)$|^(man|woman)-|"
+                       # math and punctuation marks and plain shapes: a purple "minus" bar is not a picture of anything
+                       r"^(minus|plus|multiply|divide|wavy-dash|curly-loop|double-curly-loop|infinity|copyright|registered|trade-mark|"
+                       r"check-mark|cross-mark|check-box-with-check|dashing-away)$|question-mark$|exclamation-mark$|"
+                       r"^(red|orange|yellow|green|blue|purple|brown|black|white)-(circle|large-square|medium-square|small-square|"
+                       r"medium-small-square|square|diamond|large-diamond|small-diamond)$|triangle-pointed|^radio-button")
 OUTLINE = (0.13, 0.13, 0.15)
 
 

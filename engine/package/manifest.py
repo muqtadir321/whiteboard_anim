@@ -154,7 +154,11 @@ def build(job_id: str, lang: str, topic: str, script_sha: str, audio_sha: str, c
             notes.append("drawings from the previous scene stay until this scene's first drawing")
         if ps.get("fallback"):
             notes.append("no specific concept recognised: key phrase or amounts only")
+        beat_id, objective = getattr(layout, "scene_beat", {}).get(sc.scene_id, (None, ""))
+        if not objective and stage_kinds:
+            objective = f"show evidence: {max(stage_kinds, key=lambda x: x[0])[1].label or vt}"
         scenes.append({"scene_id": sc.scene_id, "start_sec": s0, "end_sec": s1, "narration_text": ps["narration_text"], "word_or_phrase_anchors": anchors,
+                       "beat_id": f"beat_{beat_id + 1:02d}" if beat_id is not None else "", "visual_objective": objective,
                        "claim_ids": cids, "visual_type": vt, "assets": sorted(assets.values(), key=lambda a: a["asset_id"]),
                        "source_ids": sorted(src_ids), "animation_events": events,
                        "transition_in": "card_reveal" if starts_stage else ("stroke_reveal" if sc.sprites else "cut"),
@@ -178,10 +182,16 @@ def build(job_id: str, lang: str, topic: str, script_sha: str, audio_sha: str, c
 
 
 def repeated_types(manifest: dict, limit: int = 2) -> list[str]:
-    """Runs of more than `limit` scenes of the same non-evidence visual type (SRS: vary the visuals unless
-    the evidence requires it)."""
+    """Runs of more than `limit` boards of the same non-evidence visual type (SRS: vary the visuals unless
+    the evidence requires it). A board (beat) spanning several scenes on purpose counts once."""
     out, run = [], []
-    for sc in manifest["scenes"] + [{"visual_type": None, "scene_id": ""}]:
+    boards, seen = [], set()
+    for sc in manifest["scenes"]:
+        key = sc.get("beat_id") or sc["scene_id"]
+        if key not in seen:
+            seen.add(key)
+            boards.append(sc)
+    for sc in boards + [{"visual_type": None, "scene_id": ""}]:
         if run and sc["visual_type"] == run[-1]["visual_type"]:
             run.append(sc)
             continue

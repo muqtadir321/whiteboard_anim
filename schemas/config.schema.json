@@ -607,6 +607,9 @@
               "type": "number",
               "minimum": 8,
               "maximum": 80
+            },
+            "beats": {
+              "type": "boolean"
             }
           }
         }

@@ -105,7 +105,15 @@ class LanguageJob:
         if visual_cues and not self.evidence_dir:
             st.warnings.append("visual cue tags found but no topic folder (evidence) was given")
         timed = time_cues(visual_cues, timing.sentences, paragraphs or None, intro)
-        self._layout = ExplainerLayout(cfg, self.lang, self._evidence, renderer.scale).build(plan, timed, intro, total)
+        # paragraph and sentence ends (absolute): the layout groups scenes into one board per idea
+        para_ends, sentence_ends = [], [ts.end + intro for ts in timing.sentences]
+        if paragraphs and len(paragraphs) == len(timing.sentences):
+            para_ends = [timing.sentences[i].end + intro for i in range(len(paragraphs) - 1) if paragraphs[i + 1] != paragraphs[i]]
+        self._layout = ExplainerLayout(cfg, self.lang, self._evidence, renderer.scale).build(plan, timed, intro, total, para_ends, sentence_ends)
+        st.data["beats"] = [{"scenes": [plan["scenes"][i]["scene_id"] for i in b.scenes], "start": round(b.start, 2), "end": round(b.end, 2),
+                             "objective": b.objective} for b in self._layout.beats]
+        st.data["paragraph_ends"] = [round(p, 2) for p in para_ends]
+        st.data["paragraph_count"] = (len(set(paragraphs or [])), len(paragraphs or []), len(timing.sentences))
         st.warnings.extend(self._layout.warnings)
         st.data["evidence_stages"] = [f"{s.id}@{s.t_in:.1f}-{s.t_out:.1f}s" for s in self._layout.stages]
         st.data["highlights"] = self._layout.highlights
@@ -189,6 +197,10 @@ class LanguageJob:
             if raw is None:
                 st.status, st.message = Status.SKIPPED, "no script supplied"
                 return
+            if isinstance(raw, bytes) and b"\r" in raw:  # Windows line endings: paragraphs are found by "\n\n" below
+                raw = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+            elif isinstance(raw, str):
+                raw = raw.replace("\r\n", "\n").replace("\r", "\n")
             if self.explainer and cfg["animation"]["explainer"]["drawings"] == "emoji":
                 from .explainer.drawings import render_time_drawings
 

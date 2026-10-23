@@ -14,6 +14,7 @@ has gone, or sit small in the corner while it is up.
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass, field, replace
 
 import cairo
@@ -78,6 +79,8 @@ class Layout:
     missing_glyphs: set = field(default_factory=set)
     text_px: dict = field(default_factory=dict)  # stage id -> on-screen height of the evidence text (design px)
     shown: dict = field(default_factory=dict)  # stage id -> the Article actually shown (screenshot or its card)
+    beats: list = field(default_factory=list)
+    scene_beat: dict = field(default_factory=dict)  # scene id -> (beat index, visual objective)
 
 
 # -- timing helpers -----------------------------------------------------------------
@@ -620,7 +623,80 @@ class ExplainerLayout:
             sp.box = fit_box(sp.surf.get_width(), sp.surf.get_height(), box)
 
     # all ------------------------------------------------------------------------
-    def build(self, plan: dict, timed: list[TimedCue], offset: float, total: float) -> Layout:
+    def beat_picks(self, scene: dict, times, tok0: int, tokens: list[str], forced: list[tuple[float, str, int]]) -> list:
+        """Candidate nodes of one scene: drawings tagged on spoken words (labelled with those words), then the
+        planner's specific doodles (labelled with the word that triggered them)."""
+        from .beats import NUMBER_WORDS, Node, label_for
+
+        text = scene["narration_text"]
+        starts, pos = [], 0
+        for tok in text.split():
+            pos = text.find(tok, pos)
+            starts.append(pos)
+            pos += len(tok)
+        amounts = [q for q in scene.get("quantities", []) if q.get("kind") in ("percent", "currency", "multiplier", "ratio")]
+
+        def label(local: int) -> str:
+            # a drawing tied to an amount ("two percent") is labelled with the amount as shown on screen ("2%")
+            ch = starts[min(max(local, 0), len(starts) - 1)] if starts else 0
+            q = next((q for q in amounts if q["span"][0] <= ch < q["span"][1] or abs(q["span"][0] - ch) <= 1), None)
+            return q["display"] if q else label_for(tokens, tok0 + local, self.lang)
+
+        out = [Node(ICON_SWAP.get(n, n), {}, t, label(w - tok0), forced=True) for t, n, w in forced]
+        for a in sorted(scene["visual_actions"], key=lambda a: a["draw_order"]):
+            name = ICON_SWAP.get(a.get("object", ""), a.get("object", ""))
+            if a["action"] != "draw" or not is_doodle(name) or name in ("person", "people_group"):
+                continue
+            k = max([i for i, c in enumerate(starts) if c <= a.get("anchor_char", 0)] or [0])
+            word = re.sub(r"\W+", "", text.split()[k].lower()) if text.split() else ""
+            if (word in NUMBER_WORDS or word.isdigit()) and label(k) not in {q["display"] for q in amounts}:
+                continue  # a doodle for a bare number ("zero is dangerous") says nothing; amounts are labelled "2%"
+            t = times[min(k, len(times) - 1)][0] if times else scene["start_seconds"]
+            out.append(Node(name, a.get("params") or {}, t, label(k), forced=name in SPECIFIC))
+        return out
+
+    def build_beats(self, layout: Layout, texts: list, timed: list[TimedCue], para_ends: list[float], sentence_ends: list[float]) -> None:
+        """Scenes grouped into beats; each beat is one board that builds up (see beats.py)."""
+        from .beats import Beat, compose, group_beats
+
+        tokens: list[str] = []
+        tok0 = []
+        for scene, *_ in texts:
+            tok0.append(len(tokens))
+            tokens += scene["narration_text"].split()
+        icons = [(tc.t, tc.cue.ref, tc.cue.word) for tc in timed if tc.cue.kind == "icon"]
+        groups = group_beats([(s0, s1) for _, s0, s1, *_ in texts], para_ends, sentence_ends)
+        layout.beats = []
+        for g in groups:
+            beat = Beat(g, texts[g[0]][1], texts[g[-1]][2])
+            picks = []
+            for i in g:
+                scene, s0, s1, times, words, bottom = texts[i]
+                forced = [(t, n, w) for t, n, w in icons if s0 <= t < s1]
+                picks += self.beat_picks(scene, times, tok0[i], tokens, forced)
+            has_words = any(texts[i][4] for i in g)  # key amounts written at the top during this beat
+            top = max([texts[i][5] for i in g] + [300.0]) + 40 if has_words else 170.0
+            first = texts[g[0]][0]["narration_text"]
+            phrase = " ".join(w for w in first.split()[:6]).rstrip(".,;:!?")
+            compose(beat, picks, layout.stages, top, self, self.lang, phrase)
+            # the first drawing starts with the beat and is drawn more slowly, so the board is never empty
+            lead = min((sp for sp in beat.sprites if sp.name != "arrow"), key=lambda sp: sp.t, default=None)
+            # never over evidence: the earliest start is after every stage that is up between the beat start and the drawing
+            free = max([beat.start] + [st.t_out for st in layout.stages if lead is not None and st.t_in < lead.t and st.t_out > beat.start])
+            if lead is not None and lead.t > free + 0.3:
+                finish = lead.t + lead.draw
+                lead.t, lead.draw = free + 0.1, min(max(lead.draw, finish - free - 0.1), 2.5)
+            for w in beat.words:
+                self.missing_glyphs.update(getattr(w, "missing", []))
+            for i in g:
+                scene, s0, s1, times, words, bottom = texts[i]
+                layout.scenes.append(ExScene(scene["scene_id"], s0, s1, words + beat.words, list(beat.sprites), bottom))
+                layout.scene_beat[scene["scene_id"]] = (len(layout.beats), beat.objective)
+            layout.beats.append(beat)
+
+    def build(self, plan: dict, timed: list[TimedCue], offset: float, total: float, para_ends: list[float] | None = None,
+              sentence_ends: list[float] | None = None) -> Layout:
+        """`para_ends` (absolute paragraph end times) switches on beats: one board per idea (beats.py)."""
         layout = Layout([], [], self.warnings)
         n = len(plan["scenes"])
         texts = []
@@ -633,6 +709,10 @@ class ExplainerLayout:
             self.text_spans.append((s0, s1, bottom))
         spoken_end = max((sc["end_seconds"] for sc in plan["scenes"]), default=0.0) + offset
         layout.stages = self.build_stages(timed, total, layout.warnings, layout, narration_end=spoken_end)
+        if para_ends is not None and self.ex.get("beats", True):
+            self.build_beats(layout, texts, timed, para_ends, sentence_ends or [])
+            layout.missing_glyphs = self.missing_glyphs
+            return layout
         icon_cues = [(tc.t, tc.cue.ref) for tc in timed if tc.cue.kind == "icon"]
         for scene, s0, s1, times, words, bottom in texts:
             forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]

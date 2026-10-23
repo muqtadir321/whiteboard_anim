@@ -4,105 +4,350 @@
   "title": "Explainer scene manifest (one language)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "job_id", "language", "topic", "script_sha256", "audio_sha256", "video_settings", "sources", "claims", "scenes",
-               "qa_expectations"],
+  "required": [
+    "schema_version",
+    "job_id",
+    "language",
+    "topic",
+    "script_sha256",
+    "audio_sha256",
+    "video_settings",
+    "sources",
+    "claims",
+    "scenes",
+    "qa_expectations"
+  ],
   "properties": {
-    "schema_version": {"const": "1.0"},
-    "job_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,80}$"},
-    "language": {"enum": ["en", "ur", "roman_urdu", "ps"]},
-    "topic": {"type": "string"},
-    "script_sha256": {"type": "string", "pattern": "^([0-9a-f]{64})?$"},
-    "audio_sha256": {"type": "string", "pattern": "^([0-9a-f]{64})?$"},
+    "schema_version": {
+      "const": "1.0"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,80}$"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "ur",
+        "roman_urdu",
+        "ps"
+      ]
+    },
+    "topic": {
+      "type": "string"
+    },
+    "script_sha256": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64})?$"
+    },
+    "audio_sha256": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{64})?$"
+    },
     "video_settings": {
       "type": "object",
-      "required": ["width", "height", "fps", "duration_seconds"],
+      "required": [
+        "width",
+        "height",
+        "fps",
+        "duration_seconds"
+      ],
       "properties": {
-        "width": {"type": "integer", "minimum": 16},
-        "height": {"type": "integer", "minimum": 16},
-        "fps": {"type": "number", "minimum": 1},
-        "duration_seconds": {"type": "number", "exclusiveMinimum": 0}
+        "width": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "fps": {
+          "type": "number",
+          "minimum": 1
+        },
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
       }
     },
     "sources": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["source_id", "label"],
-        "properties": {"source_id": {"type": "string", "minLength": 3}, "label": {"type": "string"}, "url": {"type": "string"}}
+        "required": [
+          "source_id",
+          "label"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 3
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
       }
     },
     "claims": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["claim_id", "status"],
-        "properties": {"claim_id": {"type": "string"}, "status": {"type": "string"}, "source_ids": {"type": "array", "items": {"type": "string"}}}
+        "required": [
+          "claim_id",
+          "status"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       }
     },
-    "scenes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scene"}},
-    "qa_expectations": {"type": "object"}
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
+    },
+    "qa_expectations": {
+      "type": "object"
+    }
   },
   "$defs": {
-    "time": {"type": "number", "minimum": 0},
+    "time": {
+      "type": "number",
+      "minimum": 0
+    },
     "scene": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scene_id", "start_sec", "end_sec", "narration_text", "word_or_phrase_anchors", "claim_ids", "visual_type", "assets",
-                   "source_ids", "animation_events", "transition_in", "transition_out", "layout", "timing_confidence", "render_notes"],
+      "required": [
+        "scene_id",
+        "start_sec",
+        "end_sec",
+        "narration_text",
+        "word_or_phrase_anchors",
+        "claim_ids",
+        "visual_type",
+        "assets",
+        "source_ids",
+        "animation_events",
+        "transition_in",
+        "transition_out",
+        "layout",
+        "timing_confidence",
+        "render_notes"
+      ],
       "properties": {
-        "scene_id": {"type": "string", "pattern": "^scene_[0-9]{3,}$"},
-        "start_sec": {"$ref": "#/$defs/time"},
-        "end_sec": {"$ref": "#/$defs/time"},
-        "narration_text": {"type": "string"},
+        "scene_id": {
+          "type": "string",
+          "pattern": "^scene_[0-9]{3,}$"
+        },
+        "start_sec": {
+          "$ref": "#/$defs/time"
+        },
+        "end_sec": {
+          "$ref": "#/$defs/time"
+        },
+        "narration_text": {
+          "type": "string"
+        },
         "word_or_phrase_anchors": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["anchor_id", "text", "start_sec", "end_sec"],
-            "properties": {"anchor_id": {"type": "string"}, "text": {"type": "string"}, "start_sec": {"$ref": "#/$defs/time"},
-                           "end_sec": {"$ref": "#/$defs/time"}}
+            "required": [
+              "anchor_id",
+              "text",
+              "start_sec",
+              "end_sec"
+            ],
+            "properties": {
+              "anchor_id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "start_sec": {
+                "$ref": "#/$defs/time"
+              },
+              "end_sec": {
+                "$ref": "#/$defs/time"
+              }
+            }
           }
         },
-        "claim_ids": {"type": "array", "items": {"type": "string"}},
-        "visual_type": {"enum": ["hand_drawn_illustration", "article_evidence_card", "official_report_card", "data_chart", "number_callout",
-                                 "timeline", "comparison", "map_or_location", "logo_or_icon", "process_diagram", "quote_highlight",
-                                 "simple_photo_evidence", "transition_or_pause"]},
+        "claim_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visual_type": {
+          "enum": [
+            "hand_drawn_illustration",
+            "article_evidence_card",
+            "official_report_card",
+            "data_chart",
+            "number_callout",
+            "timeline",
+            "comparison",
+            "map_or_location",
+            "logo_or_icon",
+            "process_diagram",
+            "quote_highlight",
+            "simple_photo_evidence",
+            "transition_or_pause"
+          ]
+        },
         "assets": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["asset_id", "kind"],
-            "properties": {"asset_id": {"type": "string"}, "kind": {"type": "string"}, "path": {"type": "string"}, "source_id": {"type": "string"},
-                           "license": {"type": "string"}}
+            "required": [
+              "asset_id",
+              "kind"
+            ],
+            "properties": {
+              "asset_id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "source_id": {
+                "type": "string"
+              },
+              "license": {
+                "type": "string"
+              }
+            }
           }
         },
-        "source_ids": {"type": "array", "items": {"type": "string"}},
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "animation_events": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["event_id", "start_sec", "end_sec", "action", "target_asset", "parameters", "source_id"],
+            "required": [
+              "event_id",
+              "start_sec",
+              "end_sec",
+              "action",
+              "target_asset",
+              "parameters",
+              "source_id"
+            ],
             "properties": {
-              "event_id": {"type": "string"},
-              "start_sec": {"$ref": "#/$defs/time"},
-              "end_sec": {"$ref": "#/$defs/time"},
-              "trigger_text": {"type": "string"},
-              "anchor_id": {"type": "string"},
-              "action": {"enum": ["show_evidence", "hold_evidence", "highlight", "camera_move", "chart_draw", "chart_marker", "draw", "pop",
-                                  "write", "connect"]},
-              "target_asset": {"type": "string"},
-              "parameters": {"type": "object"},
-              "source_id": {"type": ["string", "null"]}
+              "event_id": {
+                "type": "string"
+              },
+              "start_sec": {
+                "$ref": "#/$defs/time"
+              },
+              "end_sec": {
+                "$ref": "#/$defs/time"
+              },
+              "trigger_text": {
+                "type": "string"
+              },
+              "anchor_id": {
+                "type": "string"
+              },
+              "action": {
+                "enum": [
+                  "show_evidence",
+                  "hold_evidence",
+                  "highlight",
+                  "camera_move",
+                  "chart_draw",
+                  "chart_marker",
+                  "draw",
+                  "pop",
+                  "write",
+                  "connect"
+                ]
+              },
+              "target_asset": {
+                "type": "string"
+              },
+              "parameters": {
+                "type": "object"
+              },
+              "source_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
             },
-            "anyOf": [{"required": ["trigger_text"]}, {"required": ["anchor_id"]}]
+            "anyOf": [
+              {
+                "required": [
+                  "trigger_text"
+                ]
+              },
+              {
+                "required": [
+                  "anchor_id"
+                ]
+              }
+            ]
           }
         },
-        "transition_in": {"type": "string"},
-        "transition_out": {"type": "string"},
-        "layout": {"type": "object"},
-        "timing_confidence": {"enum": ["high", "medium", "low"]},
-        "render_notes": {"type": "array", "items": {"type": "string"}}
+        "transition_in": {
+          "type": "string"
+        },
+        "transition_out": {
+          "type": "string"
+        },
+        "layout": {
+          "type": "object"
+        },
+        "timing_confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "render_notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "beat_id": {
+          "type": "string"
+        },
+        "visual_objective": {
+          "type": "string"
+        }
       }
     }
   }

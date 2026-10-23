@@ -189,7 +189,7 @@ def render_package(ri: RenderInputs, out_root: Path, log=print, tts_chain=None, 
                     charts = [json.loads(f.read_text(encoding="utf-8")) for f in sorted((job / "research" / "charts").glob("*.json"))]
                     tagged, _ = draft.auto_tag(text, code, ev.articles, paras, charts, bool(ev.news_image))
                     script_path = work / f"{key}.txt"
-                    script_path.write_text(tagged, encoding="utf-8")
+                    script_path.write_text(tagged, encoding="utf-8", newline="\n")  # same text on every OS
                     from ..script_analyzer import normalize_script_with_cues
 
                     cl = claims_mod.extract_claims(normalize_script_with_cues(tagged)[0], code, {"english": "EN", "urdu": "UR", "roman_urdu": "RU"}[key])

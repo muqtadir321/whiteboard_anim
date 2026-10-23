@@ -201,6 +201,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "min_text_px": 18,
             # pen tip that follows the stroke being drawn
             "pen_cursor": True,
+            # one board per idea: drawings with labels from the narration, connected by arrows (engine/explainer/beats.py)
+            "beats": True,
         },
     },
     "planner": {

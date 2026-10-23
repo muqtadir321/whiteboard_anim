@@ -36,8 +36,15 @@ from the URLs, with the same function the ledger uses.
   highlighter sweep), FRED chart drawn from the data with a dated marker, logos. Each is timed to the
   word that names it, stays on screen for at least `min_evidence_seconds` (2.2 s), and carries a
   readable source label.
-* Between evidence: hand-drawn doodles and Fluent Emoji for the things being said, drawn stroke by
-  stroke with a marker tip that sits exactly on the end of the current stroke, joined by arrows.
+* Between evidence: **one board per idea (beat)**, built in `engine/explainer/beats.py`. A beat is a paragraph
+  of the script (split after about 14 s at a sentence end). Up to 4 nodes (a drawing plus a handwritten label
+  taken from the narration words that named it, or the amount as shown, e.g. "2%") appear when their words
+  are spoken. Each is drawn stroke by stroke, with a marker tip on the end of the current stroke, and
+  connected to the previous node by an arrow routed clear of the labels. Layout is a fixed grid by node
+  count (1 large; 2–3 zigzag; 4 as a clockwise 2×2) inside the safe area. The board stays until the idea
+  ends. Evidence has priority: nodes wait while a screenshot or chart is up. A beat with nothing drawable gets
+  its key phrase handwritten large. The manifest records `beat_id` and `visual_objective`
+  (e.g. "interest rates → inflation → room left → economy").
 * Key amounts pop up in their display form. There are no subtitles unless `--subtitles true`.
 
 ## Timing ("word by word")
