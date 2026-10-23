@@ -86,3 +86,19 @@ class FakeTranscriber(Transcriber):
         w = [{"word": x, "start": i * step, "end": (i + 1) * step, "probability": 0.9} for i, x in enumerate(words)]
         seg = [{"start": 0.0, "end": self.duration, "text": self.text, "avg_logprob": -0.2}]
         return finalize_transcript(seg, w, [-0.2], language, self.name)
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Tests never use the internet (SRS): any connection to a non-local host fails at once instead of
+    hanging on DNS. Code under test falls back exactly as it does offline."""
+    import socket
+
+    real = socket.getaddrinfo
+
+    def local_only(host, *args, **kwargs):
+        if host in (None, "localhost", "127.0.0.1", "::1") or str(host).startswith("127."):
+            return real(host, *args, **kwargs)
+        raise socket.gaierror(f"network disabled in tests: {host}")
+
+    monkeypatch.setattr(socket, "getaddrinfo", local_only)
