@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import LANGUAGE_CODES, __version__
-from .audio_processor import AudioError, build_final_track, detect_silences, normalize, validate_audio
+from .audio_processor import AudioError, build_final_track, detect_silences, mix_effects, normalize, resolve_music, tighten, validate_audio
 from .audio_sync import build_timeline, order_by_mention
 from .audio_timing import Timing, align_words, estimate_timing
 from .caption_renderer import write_srt, write_vtt
@@ -117,6 +117,10 @@ class LanguageJob:
         st.warnings.extend(self._layout.warnings)
         st.data["evidence_stages"] = [f"{s.id}@{s.t_in:.1f}-{s.t_out:.1f}s" for s in self._layout.stages]
         st.data["highlights"] = self._layout.highlights
+        renderer.karaoke, renderer.hook_end = self._layout.captions, self._layout.hook_end
+        st.data["hook"] = {"text": self._layout.hook_text, "seconds": round(self._layout.hook_end, 2)}
+        st.data["caption_chunks"] = len(self._layout.captions)
+        st.data["static_gaps"] = self._layout.static_gaps
         return renderer, (self._layout.scenes, self._layout.stages)
 
     def _write_manifest(self, plan, timing, offset: float, total: float, script_text: str, st) -> None:
@@ -136,6 +140,23 @@ class LanguageJob:
         st.data["scene_manifest_problems"] = self._manifest_problems[:20]
         if self._manifest_problems:
             st.warnings.append(f"scene manifest has {len(self._manifest_problems)} problem(s), e.g. {self._manifest_problems[0]}")
+
+    def _publish_kit(self, script_text: str, voice_desc: dict, hook: str, thumbnail, st) -> None:
+        """Titles, description, tags, pinned comment and upload.json next to the video (engine/publish.py)."""
+        from .publish import build_kit
+
+        topic = (self.package or {}).get("topic", "")
+        if not topic and self.evidence_dir and (Path(self.evidence_dir).parent / "topic.yaml").exists():
+            import yaml
+            try:
+                topic = (yaml.safe_load((Path(self.evidence_dir).parent / "topic.yaml").read_text(encoding="utf-8")) or {}).get("topic", "")
+            except yaml.YAMLError:
+                topic = ""
+        try:
+            build_kit(self.out, script_text, topic, hook, thumbnail=thumbnail,
+                      synthetic_voice=voice_desc.get("provider") not in ("supplied", None))
+        except OSError as exc:  # the kit is a convenience: the video still counts
+            st.warnings.append(f"publish kit not written: {exc}")
 
     # -- stage helper ------------------------------------------------------
     def stage(self, name: str, fn):
@@ -277,6 +298,11 @@ class LanguageJob:
             sr = cfg["video"]["audio_sample_rate"]
             if audio_info and cfg["voice"]["prefer_supplied_audio"]:
                 info = normalize(self.inp.audio_path, narration_wav, sr, trim_silence=True)
+                speed, max_pause = float(cfg["voice"]["voiceover_speed"]), float(cfg["voice"]["voiceover_max_pause"])
+                if abs(speed - 1.0) > 1e-3 or max_pause > 0:
+                    tight = self.tmp / "narration_tight.wav"
+                    info, st.data["voiceover_edit"] = tighten(narration_wav, tight, speed, max_pause, sr)
+                    shutil.move(str(tight), str(narration_wav))
                 voice_desc = {"provider": "supplied", "source": str(self.inp.audio_path), "license": "user supplied", "commercial_use": "user responsibility"}
                 st.data["normalized_audio"] = info.to_dict()
                 tr = get_tr() if (not script_text or cfg["voice"]["transcribe_missing_scripts"]) else None
@@ -373,6 +399,8 @@ class LanguageJob:
         # 4. Duration policy (checked before rendering)
         narration_duration = timing.sentences[-1].end
         intro, outro = cfg["video"]["intro_seconds"], cfg["video"]["outro_seconds"]
+        if self.explainer and str(cfg["animation"]["explainer"].get("hook", "auto")) != "off":
+            intro = 0.0  # the hook card is on screen from the first frame: no silent blank start
         total = narration_duration + intro + outro
 
         def do_duration(st):
@@ -457,7 +485,12 @@ class LanguageJob:
         timelines = []
 
         def do_sync(st):
-            music = cfg["video"]["background_music_path"] if cfg["video"]["background_music_enabled"] else None
+            music = None
+            if cfg["video"]["background_music_enabled"]:
+                from .config import REPO_ROOT
+                music, how = resolve_music(cfg["video"]["background_music_path"], REPO_ROOT / "input" / "music")
+                st.data["background_music"] = f"{music} ({how})" if music else how
+                self._music_pad = how == "generated pad"
             if music and not Path(music).exists():
                 st.warnings.append(f"background music not found: {music}; continuing without music")
                 music = None
@@ -509,8 +542,20 @@ class LanguageJob:
                 else:
                     renderer = WhiteboardRenderer(cfg, cfg["video"]["width"], cfg["video"]["height"], self.lang)
                     scenes_in = [RenderScene(tl, items) for tl, items in zip(timelines, programs)]
+                track = final_audio
+                if self.explainer and (cfg["video"].get("sound_effects") or getattr(self, "_music_pad", False)):
+                    from .audio_fx import events_from_layout, render_track
+                    events = events_from_layout(self._layout) if cfg["video"].get("sound_effects") else []
+                    fx = render_track(events, total, self.tmp / "effects.wav", float(cfg["video"].get("sound_effects_volume", 0.35)),
+                                      music_pad=getattr(self, "_music_pad", False))
+                    try:
+                        mix_effects(final_audio, fx, self.tmp / "final_audio_fx.wav", cfg["video"]["audio_sample_rate"])
+                        track = self.tmp / "final_audio_fx.wav"
+                        st.data["sound_effects"] = len(events)
+                    except AudioError as exc:  # sound effects are a nicety: never fail a video over them
+                        st.warnings.append(f"sound effects skipped: {exc}")
                 try:
-                    render_stats = assemble(renderer, scenes_in, str(final_audio), video_path, total, cfg)
+                    render_stats = assemble(renderer, scenes_in, str(track), video_path, total, cfg)
                 except StageError as exc:
                     last_exc = exc
                     continue
@@ -555,9 +600,17 @@ class LanguageJob:
                 renderer.render_still((lay.scenes, lay.stages), best, str(self.out / "thumbnail.png"))
                 write_sources(self.out / "sources.txt", self._evidence, lay.used_evidence)
                 self._write_manifest(plan, timing, intro, total, script_text, st)
+                # Shorts thumbnail: the hook card with Mo (big words read at thumbnail size)
+                thumb = None
+                if lay.hook_end > 0:
+                    (self.out / "publish").mkdir(exist_ok=True)
+                    thumb = self.out / "publish" / "thumbnail.png"
+                    renderer.render_at((lay.scenes, lay.stages), max(0.3, lay.hook_end - 0.3), str(thumb))
+                self._publish_kit(script_text, voice_desc, lay.hook_text, thumb, st)
                 return
             best = max(range(len(programs)), key=lambda i: sum(len(it.ops) for it in programs[i])) if programs else 0
             renderer.render_still(RenderScene(timelines[best], programs[best]), str(self.out / "thumbnail.png"))
+            self._publish_kit(script_text, voice_desc, "", None, st)
 
         self.stage("outputs", do_outputs)
 

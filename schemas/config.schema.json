@@ -343,6 +343,16 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "voiceover_max_pause": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "voiceover_speed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
         }
       }
     },
@@ -454,6 +464,14 @@
           "enum": [
             "shorts_9_16"
           ]
+        },
+        "sound_effects": {
+          "type": "boolean"
+        },
+        "sound_effects_volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       }
     },
@@ -610,6 +628,47 @@
             },
             "beats": {
               "type": "boolean"
+            },
+            "hook": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "hook_seconds": {
+              "type": "number",
+              "minimum": 0.8,
+              "maximum": 5
+            },
+            "captions": {
+              "type": "string",
+              "enum": [
+                "karaoke",
+                "off"
+              ]
+            },
+            "mascot": {
+              "type": "string",
+              "enum": [
+                "mo",
+                "off"
+              ]
+            },
+            "loop_end": {
+              "type": "boolean"
+            },
+            "loop_end_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 2
+            },
+            "board_motion": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.1
+            },
+            "max_static_seconds": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10
             }
           }
         }

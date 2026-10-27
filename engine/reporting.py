@@ -27,6 +27,9 @@ GENERATED_ASSETS = [
     {"asset_id": "illustrations", "generation": "programmatic SVG (engine/character_generator.py, object_generator.py, chart_generator.py, diagram_generator.py)",
      "license": "same as this repository", "redistribution": True},
     {"asset_id": "hand-cursor", "generation": "programmatic cairo drawing (engine/hand_cursor.py)", "license": "same as this repository", "redistribution": True},
+    {"asset_id": "mascot", "generation": "programmatic character 'Mo' (engine/explainer/mascot.py)", "license": "same as this repository", "redistribution": True},
+    {"asset_id": "sound-effects", "generation": "synthesised with numpy (engine/audio_fx.py): pops, whooshes, optional pad",
+     "license": "same as this repository", "redistribution": True},
 ]
 PACKAGES = ["numpy", "pillow", "pycairo", "uharfbuzz", "fonttools", "jsonschema", "PyYAML", "faster-whisper", "piper-tts", "transformers", "torch", "edge-tts"]
 
@@ -67,7 +70,8 @@ def license_manifest(results) -> dict:
         "system_tools": {"ffmpeg": {"version": _tool_version(["ffmpeg", "-version"]), "license": "LGPL-2.1+/GPL-2.0+ depending on build (Ubuntu build includes GPL x264)"},
                          "espeak-ng": {"version": _tool_version(["espeak-ng", "--version"]), "license": "GPL-3.0-or-later"}},
         "voices_used": voices,
-        "background_music": "none (disabled by default)",
+        "background_music": ("the first track in input/music/ when present (video.background_music_path: auto); its licence is "
+                             "yours to check and should be recorded here; 'generated' uses the synthesised pad"),
         "commercial_use_notice": ("Some videos used NON-COMMERCIAL voice models: " + ", ".join(v["language"] for v in noncommercial))
         if noncommercial else "No non-commercial voice models were used in this run. Verify all licences yourself before commercial use.",
     }

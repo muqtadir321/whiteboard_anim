@@ -173,3 +173,65 @@ def build_final_track(narration: str | Path, dst: str | Path, intro: float, outr
         cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(narration), "-filter_complex", base + "[out]", "-map", "[out]"]
     run(cmd + ["-ar", str(sample_rate), "-c:a", "pcm_s16le", str(dst)], timeout=900)
     return probe(dst)
+
+
+MUSIC_EXTENSIONS = (".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac")
+
+
+def resolve_music(setting: str, music_dir: str | Path) -> tuple[str | None, str]:
+    """background_music_path -> (file to use or None, how it was chosen). "auto" takes the first track in
+    input/music/ (none there: no music); "generated" means the synthesised pad (audio_fx), returned as None here."""
+    setting = (setting or "").strip()
+    if setting in ("", "auto"):
+        files = sorted(p for p in Path(music_dir).glob("*") if p.suffix.lower() in MUSIC_EXTENSIONS) if Path(music_dir).is_dir() else []
+        return (str(files[0]), "input/music") if files else (None, "none (no track in input/music)")
+    if setting == "generated":
+        return None, "generated pad"
+    return setting, "configured path"
+
+
+def mix_effects(track: str | Path, effects: str | Path, dst: str | Path, sample_rate: int = 48000) -> AudioInfo:
+    """Lay the sound-effects track under the finished voice (+ music) track, same length as the voice track."""
+    graph = (f"[0:a]aformat=channel_layouts=stereo,aresample={sample_rate}[a];"
+             f"[1:a]aformat=channel_layouts=stereo,aresample={sample_rate}[b];"
+             f"[a][b]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[out]")
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(track), "-i", str(effects), "-filter_complex", graph,
+         "-map", "[out]", "-ar", str(sample_rate), "-c:a", "pcm_s16le", str(dst)], timeout=900)
+    return probe(dst)
+
+
+def tighten(src: str | Path, dst: str | Path, speed: float = 1.0, max_pause: float = 0.0, sample_rate: int = 48000,
+            timeout: float = 900) -> tuple[AudioInfo, dict]:
+    """Shorten every pause inside the narration to `max_pause` seconds and speed the voice up by `speed`
+    (atempo keeps the pitch). Runs before transcription, so word timing is measured on the result.
+    Returns the new audio info and a summary (pauses shortened, seconds saved)."""
+    info = probe(src)
+    keep: list[tuple[float, float]] = []
+    cut = 0.0
+    if max_pause > 0:
+        cursor = 0.0
+        for s, e in detect_silences(src, noise_db=-40.0, min_duration=max_pause + 0.08):
+            if s <= 0.05 or e >= info.duration - 0.05:
+                continue  # edges were trimmed by normalize
+            a, b = s + max_pause / 2, e - max_pause / 2
+            if b - a < 0.05:
+                continue
+            keep.append((cursor, a))
+            cut += b - a
+            cursor = b
+        keep.append((cursor, info.duration))
+    speed = min(2.0, max(0.5, speed))
+    if len(keep) <= 1 and abs(speed - 1.0) < 1e-3:
+        shutil.copyfile(src, dst)
+        return probe(dst), {"pauses_shortened": 0, "seconds_cut": 0.0, "speed": 1.0}
+    keep = keep or [(0.0, info.duration)]
+    parts = [f"[0:a]atrim=start={a:.3f}:end={b:.3f},asetpts=PTS-STARTPTS[p{i}]" for i, (a, b) in enumerate(keep)]
+    graph = ";".join(parts) + ";" + "".join(f"[p{i}]" for i in range(len(keep))) + f"concat=n={len(keep)}:v=0:a=1"
+    if abs(speed - 1.0) >= 1e-3:
+        graph += f",atempo={speed:.3f}"
+    graph += "[out]"
+    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(src), "-filter_complex", graph, "-map", "[out]",
+         "-ac", "1", "-ar", str(sample_rate), "-c:a", "pcm_s16le", str(dst)], timeout=timeout)
+    out = probe(dst)
+    return out, {"pauses_shortened": len(keep) - 1, "seconds_cut": round(cut, 2), "speed": speed,
+                 "before_seconds": round(info.duration, 2), "after_seconds": round(out.duration, 2)}

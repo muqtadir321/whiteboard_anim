@@ -286,11 +286,16 @@ def compose_contrast(beat: Beat, c: Contrast, top: float, layout, lang: str) -> 
 
 
 def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layout, lang: str, key_phrase: str,
-            memory: dict | None = None, contrast: Contrast | None = None) -> None:
+            memory: dict | None = None, contrast: Contrast | None = None, avoid: set[str] | None = None) -> None:
     """Fill beat.sprites / beat.words: one dominant drawing and its supporting steps, arrows between them in the
     order they are explained, labels under them. `memory` (name -> label) keeps objects from earlier boards:
-    they come back looking the same and are recognised faster than they were first drawn."""
+    they come back looking the same and are recognised faster than they were first drawn. `avoid`: drawings on the
+    previous board, left out when anything else can be drawn (the same picture three boards running reads as a template)."""
     memory = memory if memory is not None else {}
+    bottom = getattr(layout, "board_bottom", BOTTOM)
+    if avoid:
+        fresh = [p for p in picks if p.name not in avoid]
+        picks = fresh or picks
 
     def stage_at(t):
         return next((st for st in stages if st.t_in <= t < st.t_out), None)
@@ -338,13 +343,13 @@ def compose(beat: Beat, picks: list[Node], stages: list[Stage], top: float, layo
     later = [st.t_in for st in stages if beat.start < st.t_in < beat.end]
     if not chosen:
         if contrast is None and stage_at(beat.start + 0.2) is None and key_phrase:
-            w = text_word(key_phrase, 92.0, ((SAFE_X0 + SAFE_X1) / 2, top + (BOTTOM - top) * 0.42), beat.start + 0.15, lang)
+            w = text_word(key_phrase, 92.0, ((SAFE_X0 + SAFE_X1) / 2, top + (bottom - top) * 0.42), beat.start + 0.15, lang)
             if w:
                 w.dur = min(2.2, 0.3 + 0.06 * len(key_phrase))
                 beat.words.append(w)
                 beat.objective = f"key phrase: {key_phrase}"
         return
-    boxes = slots(len(chosen), top)
+    boxes = slots(len(chosen), top, bottom)
     prev = prev_block = None
     for k, (nd, (box, lab)) in enumerate(zip(chosen, boxes)):
         known = nd.name in memory

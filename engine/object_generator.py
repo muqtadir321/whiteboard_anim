@@ -663,6 +663,85 @@ def thought_bubble(rng, **_) -> Element:
     return el
 
 
+def shield(rng, **_) -> Element:
+    """Insurance cover: a shield with a tick."""
+    p = _pen(rng)
+    el = Element("shield", 70, 82)
+    el.add(p.polyline([(35, 2), (66, 12), (64, 44), (35, 80), (6, 44), (4, 12)], closed=True, color="accent", fill="accent", fill_opacity=0.25))
+    el.add(p.polyline([(35, 10), (58, 18), (56, 42), (35, 70)], width=0.6, color="accent"))
+    el.add(p.polyline([(20, 40), (31, 52), (52, 26)], width=1.8, color="positive"))
+    return el
+
+
+def umbrella(rng, **_) -> Element:
+    p = _pen(rng)
+    el = Element("umbrella", 100, 100)
+    el.add(p.arc(50, 48, 46, 180, 360, width=1.2, color="negative", fill="negative", fill_opacity=0.3))
+    for x0, x1 in ((4, 34.7), (34.7, 65.3), (65.3, 96)):
+        el.add(p.bezier((x0, 48), (x0 + 8, 40), (x1 - 8, 40), (x1, 48), width=0.9, color="negative"))
+    el.add(p.bezier((50, 2), (40, 14), (36, 30), (34.7, 48), width=0.6), p.bezier((50, 2), (60, 14), (64, 30), (65.3, 48), width=0.6))
+    el.add(p.line((50, 48), (50, 88), width=1.1), p.arc(42, 88, 8, 0, 180, width=1.1))
+    return el
+
+
+_CAR_BODY = [(4, 40), (6, 26), (24, 24), (36, 8), (74, 8), (88, 24), (104, 28), (106, 40)]
+
+
+def car_crash(rng, **_) -> Element:
+    """Two cars meeting head-on with an impact burst."""
+    p = _pen(rng)
+    el = Element("car_crash", 200, 100)
+    el.extend(car(rng), dx=0, dy=40, s=0.8)
+    # Second car, mirrored and dented at the front.
+    body = [(200 - x * 0.8, 40 + y * 0.8) for x, y in _CAR_BODY]
+    body[-2] = (body[-2][0] + 4, body[-2][1] + 4)
+    el.add(p.polyline(body, color="negative"))
+    el.add(p.line((200 - 4 * 0.8, 72), (200 - 20 * 0.8, 72)), p.line((200 - 40 * 0.8, 72), (200 - 76 * 0.8, 72)), p.line((200 - 96 * 0.8, 72), (113, 72)))
+    for win in ([(40, 12), (54, 12), (54, 24), (30, 24)], [(60, 12), (72, 12), (82, 24), (60, 24)]):
+        el.add(p.polyline([(200 - x * 0.8, 40 + y * 0.8) for x, y in win], width=0.7))
+    el.add(p.circle(200 - 30 * 0.8, 73.6, 8, fill="ink", fill_opacity=0.15), p.circle(200 - 86 * 0.8, 73.6, 8, fill="ink", fill_opacity=0.15))
+    burst = []
+    for i in range(16):
+        r = 24 if i % 2 == 0 else 10
+        a = math.radians(i * 22.5 - 90)
+        burst.append((100 + r * math.cos(a), 52 + r * math.sin(a)))
+    el.add(p.polyline(burst, closed=True, color="negative", fill="gold", fill_opacity=0.6))
+    el.add(p.line((60, 10), (70, 22), width=0.7, color="muted"), p.line((100, 2), (100, 20), width=0.7, color="muted"), p.line((140, 10), (130, 22), width=0.7, color="muted"))
+    return el
+
+
+def _rotated_rect(cx: float, cy: float, w: float, h: float, deg: float) -> list[tuple[float, float]]:
+    a = math.radians(deg)
+    ca, sa = math.cos(a), math.sin(a)
+    return [(cx + x * ca - y * sa, cy + x * sa + y * ca) for x, y in ((-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2))]
+
+
+def injury(rng, **_) -> Element:
+    """Crossed sticking plasters: an injury."""
+    p = _pen(rng)
+    el = Element("injury", 90, 90)
+    for deg in (45, -45):
+        el.add(p.polyline(_rotated_rect(45, 45, 84, 26, deg), closed=True, fill="#F2C9A0", fill_opacity=0.8))
+    el.add(p.polyline(_rotated_rect(45, 45, 26, 26, 45), closed=True, width=0.7, fill="paper", fill_opacity=0.6))
+    for dx, dy in ((-5, 0), (5, 0), (0, -5), (0, 5)):
+        el.add(p.dot(45 + dx, 45 + dy, 1.4))
+    return el
+
+
+def gauge(rng, level: float = 0.85, **_) -> Element:
+    """A dial with a red zone: a limit, minimum or maximum."""
+    p = _pen(rng)
+    el = Element("gauge", 100, 62)
+    el.add(p.arc(50, 56, 46, 180, 360, width=1.2))
+    el.add(p.arc(50, 56, 46, 315, 360, width=3.0, color="negative"))
+    for deg in range(180, 361, 30):
+        a = math.radians(deg)
+        el.add(p.line((50 + 38 * math.cos(a), 56 + 38 * math.sin(a)), (50 + 44 * math.cos(a), 56 + 44 * math.sin(a)), width=0.7))
+    a = math.radians(180 + 180 * max(0.0, min(1.0, level)))
+    el.add(p.line((50, 56), (50 + 34 * math.cos(a), 56 + 34 * math.sin(a)), width=1.6, color="negative"), p.dot(50, 56, 3.2))
+    return el
+
+
 OBJECTS: dict[str, Callable[..., Element]] = {
     "coin": coin, "coin_stack": coin_stack, "banknote": banknote, "wallet": wallet, "money_bag": money_bag,
     "piggy_bank": piggy_bank, "bank": bank, "house": house, "building": building, "shop": shop, "factory": factory,
@@ -675,6 +754,7 @@ OBJECTS: dict[str, Callable[..., Element]] = {
     "check": check_mark, "cross": cross_mark, "star": star, "cloud": cloud, "sun": sun, "rocket": rocket,
     "magnifier": magnifier, "briefcase": briefcase, "envelope": envelope, "map_pin": map_pin, "pill": pill,
     "battery": battery, "chart_icon": chart_icon, "box": box, "handshake": handshake, "chain": chain_link,
+    "shield": shield, "umbrella": umbrella, "car_crash": car_crash, "injury": injury, "gauge": gauge,
 }
 
 

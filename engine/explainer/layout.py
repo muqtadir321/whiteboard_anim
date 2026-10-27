@@ -39,13 +39,15 @@ SKIP_ICONS: set[str] = set()
 # Doodles only: diagrams and charts from the whiteboard planner read poorly as small pop-ins.
 ICON_EXTRA = {"person", "worker", "boss", "student", "teacher", "police", "money_growth", "debt", "loss", "price_tag", "trend_arrow"}
 SPECIFIC = {"phone_call", "handcuffs", "jail", "fraud_mask", "ai_chip", "bubble", "police", "rate_badge", "house", "bank", "lock",
-            "money_bag", "piggy_bank", "price_tag", "trend_arrow", "money_growth", "loss", "debt"}
+            "money_bag", "piggy_bank", "price_tag", "trend_arrow", "money_growth", "loss", "debt",
+            "shield", "umbrella", "car_crash", "injury", "gauge"}
 ICON_SWAP = {"people_group": "person", "pie_chart": "rate_badge", "percent_badge": "rate_badge", "percent": "rate_badge", "%": "rate_badge", "rate": "rate_badge"}
 ICON_TINT = {  # main fill for icons that come without one
     "house": "#C98B5B", "bank": "#B9BEC5", "document": "#F3E7C9", "money_bag": "#8DB27A", "coin": "#E9B949",
     "coin_stack": "#E9B949", "banknote": "#9CCB86", "lock": "#4A4A4A", "building": "#9AA3AD", "shop": "#E7A86B",
     "car": "#6FA8DC", "calendar": "#F4F4F4", "briefcase": "#A47148", "piggy_bank": "#F2A7B8", "wallet": "#A47148",
     "phone": "#3D4A5C", "laptop": "#6FA8DC", "envelope": "#F3E7C9", "warning": "#F5C542", "clock": "#F4F4F4",
+    "shield": "#6FA8DC", "umbrella": "#E06666", "injury": "#F2C9A0",
 }
 VIVID_FILL = 0.92
 _EMOJI: list = []  # loaded once: [EmojiLibrary | None]
@@ -81,6 +83,10 @@ class Layout:
     shown: dict = field(default_factory=dict)  # stage id -> the Article actually shown (screenshot or its card)
     beats: list = field(default_factory=list)
     scene_beat: dict = field(default_factory=dict)  # scene id -> (beat index, visual objective)
+    hook_text: str = ""
+    hook_end: float = 0.0  # the hook card is up until here
+    captions: list = field(default_factory=list)  # captions.Chunk, word-by-word captions
+    static_gaps: list = field(default_factory=list)  # (start, end) stretches where nothing new happens
 
 
 # -- timing helpers -----------------------------------------------------------------
@@ -205,6 +211,13 @@ class ExplainerLayout:
         self.warnings: list[str] = []
         self.missing_glyphs: set[str] = set()
         self.text_spans: list[tuple[float, float, float]] = []  # (start, end, text bottom) per scene
+        self.hook_end = 0.0  # nothing else starts before the hook card has had its moment
+        self.narration_words: list[str] = []
+        self.narration_times: list[tuple[float, float]] = []
+        from .beats import BOTTOM
+        from .captions import BAND
+        # with captions on, drawings stay above the caption band
+        self.board_bottom = BAND[1] - 25 if self.ex.get("captions", "karaoke") == "karaoke" else BOTTOM
 
     # words ----------------------------------------------------------------------
     @staticmethod
@@ -452,8 +465,9 @@ class ExplainerLayout:
 
         for tc in timed:
             hold = tc.paragraph_end if self.ex["evidence_hold"] == "paragraph" else tc.sentence_end
-            c, t, t_out = tc.cue, tc.t, max(hold + 0.35, tc.t + float(self.ex["min_evidence_seconds"]))
-            if c.kind == "icon":
+            c, t = tc.cue, max(tc.t, self.hook_end)
+            t_out = max(hold + 0.35, t + float(self.ex["min_evidence_seconds"]))
+            if c.kind in ("icon", "hook"):
                 continue
             if c.kind == "news":
                 if not ev.news_image:
@@ -465,6 +479,9 @@ class ExplainerLayout:
                                  source_ids=[c["source_id"] for c in ev.news_cards if c.get("source_id")]))
                 cx, cy, _ = self.top_view(st)  # cards hang from the top of the stage, then a slow push-in
                 st.keys = [CameraKey(t, cx, cy, 1.0), CameraKey(t_out, cx, cy / 1.07, 1.07, move=max(0.5, t_out - t))]
+                card = self.matching_card(ev.news_cards, self.words_between(tc.t - 0.1, t_out))
+                if card is not None:  # one card to read, not a wall of headlines
+                    st.focus, st.focus_t = tuple(card["box"]), t + 0.45
                 layout.used_evidence.add("news")
             elif c.kind == "article":
                 art = ev.articles.get(c.ref)
@@ -517,6 +534,23 @@ class ExplainerLayout:
                 cur.t_out = max(cur.t_out, t_out)
                 cur.sprites.append(Sprite(png_surface(lg["path"]), (0, 0, 1, 1), t, "pop", name=lg["name"]))
                 layout.used_evidence.add(f"logo:{lg['name']}")
+        # a stage pushed later (after the hook) must not be cut short by the next one: the next one waits
+        need = float(self.ex["min_evidence_seconds"])
+        for a, b in zip(stages, stages[1:]):
+            d = a.t_in + need - b.t_in
+            if d > 1e-6:
+                b.t_in += d
+                b.t_out += d
+                for h in b.highlights:
+                    h.t0, h.t1 = h.t0 + d, h.t1 + d
+                for k in b.keys:
+                    k.t += d
+                for sp in b.sprites:
+                    sp.t += d
+                if b.painter is not None and hasattr(b.painter, "t_in"):
+                    b.painter.t_in += d
+                    b.painter.markers = [(mt + d, *rest) for mt, *rest in b.painter.markers]
+                a.t_out = b.t_in
         if narration_end is None:
             narration_end = max((max(tc.sentence_end, tc.paragraph_end) for tc in timed), default=0.0)
         for st in stages:
@@ -528,6 +562,20 @@ class ExplainerLayout:
             if st.kind == "logos":
                 self.arrange_logos(st)
         return stages
+
+    def words_between(self, t0: float, t1: float) -> set[str]:
+        """Narration words spoken between t0 and t1 (lower case, no punctuation)."""
+        return {w for w, (a, _) in zip(self.narration_words, self.narration_times) if t0 <= a < t1}
+
+    def matching_card(self, cards: list[dict], words: set[str]) -> dict | None:
+        """The headline card whose title shares the most words with what is said while the cards are up."""
+        from .beats import STOP
+
+        said = {w for w in words if w and w not in STOP}
+        scored = [(len(set(re.findall(r"[a-z']+", c.get("title", "").lower())) & said), -k, c)
+                  for k, c in enumerate(cards) if c.get("box") and len(c["box"]) == 4]
+        best = max(scored, default=None, key=lambda x: x[:2])
+        return best[2] if best and best[0] > 0 and len(cards) > 1 else None
 
     def readable(self, art, layout: Layout):
         """A screenshot whose text would be too small on a phone is replaced by its source card."""
@@ -668,6 +716,7 @@ class ExplainerLayout:
         groups = group_beats([(s0, s1) for _, s0, s1, *_ in texts], para_ends, sentence_ends)
         layout.beats = []
         memory: dict = {}  # objects already drawn: they come back the same way (visual continuity)
+        previous: set[str] = set()  # the main drawing of the board just before: never the lead twice in a row
         for g in groups:
             beat = Beat(g, texts[g[0]][1], texts[g[-1]][2])
             picks = []
@@ -689,7 +738,8 @@ class ExplainerLayout:
                     btimes += [times[min(k, len(times) - 1)][0] for k in range(len(toks))] if times else [s0] * len(toks)
                 pct = any(q.get("kind") == "percent" for i in g for q in texts[i][0].get("quantities", []))
                 contrast = find_contrast(btoks, btimes, "%" if pct else "")
-            compose(beat, picks, layout.stages, top, self, self.lang, phrase, memory=memory, contrast=contrast)
+            compose(beat, picks, layout.stages, top, self, self.lang, phrase, memory=memory, contrast=contrast, avoid=previous)
+            previous = {beat.nodes[0].name} if beat.nodes else set()  # its main drawing does not lead the next board
             # the first drawing starts with the beat and is drawn more slowly, so the board is never empty
             lead = min((sp for sp in beat.sprites if sp.name != "arrow"), key=lambda sp: sp.t, default=None)
             # never over evidence: the earliest start is after every stage that is up between the beat start and the drawing
@@ -711,6 +761,8 @@ class ExplainerLayout:
         layout = Layout([], [], self.warnings)
         n = len(plan["scenes"])
         texts = []
+        all_tokens: list[str] = []
+        all_times: list[tuple[float, float]] = []
         for i, scene in enumerate(plan["scenes"]):
             s0 = 0.0 if i == 0 else scene["start_seconds"] + offset
             s1 = total if i == n - 1 else scene["end_seconds"] + offset
@@ -718,17 +770,246 @@ class ExplainerLayout:
             words, bottom = self.layout_words(scene, times)
             texts.append((scene, s0, s1, times, words, bottom))
             self.text_spans.append((s0, s1, bottom))
+            all_tokens += scene["narration_text"].split()
+            all_times += times
+        self.narration_words = [re.sub(r"[^a-z']", "", tok.lower()) for tok in all_tokens]
+        self.narration_times = list(all_times)
+        hook_words, hook_sprites = self.hook_card(plan, timed, all_tokens, all_times, sentence_ends or [], layout)
         spoken_end = max((sc["end_seconds"] for sc in plan["scenes"]), default=0.0) + offset
         layout.stages = self.build_stages(timed, total, layout.warnings, layout, narration_end=spoken_end)
         if para_ends is not None and self.ex.get("beats", True):
             self.build_beats(layout, texts, timed, para_ends, sentence_ends or [])
-            layout.missing_glyphs = self.missing_glyphs
-            return layout
-        icon_cues = [(tc.t, tc.cue.ref) for tc in timed if tc.cue.kind == "icon"]
-        for scene, s0, s1, times, words, bottom in texts:
-            forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]
-            sprites = self.scene_icons(scene, times, s0, s1, forced, bottom, layout.stages)
-            layout.scenes.append(ExScene(scene["scene_id"], s0, s1, words, sprites, bottom))
-        self.keep_board_busy(layout)
+        else:
+            icon_cues = [(tc.t, tc.cue.ref) for tc in timed if tc.cue.kind == "icon"]
+            for scene, s0, s1, times, words, bottom in texts:
+                forced = [(t, name) for t, name in icon_cues if s0 <= t < s1]
+                sprites = self.scene_icons(scene, times, s0, s1, forced, bottom, layout.stages)
+                layout.scenes.append(ExScene(scene["scene_id"], s0, s1, words, sprites, bottom))
+            self.keep_board_busy(layout)
+        self.after_hook(layout, hook_words, hook_sprites)
+        if self.ex.get("captions", "karaoke") == "karaoke" and all_tokens:
+            from .captions import build as build_captions
+            layout.captions = build_captions(all_tokens, all_times, self.lang, start_after=self.hook_end)
+        if self.ex.get("mascot", "mo") == "mo":
+            self.worried_moments(layout, plan, offset)
+        self.fill_static_gaps(layout, spoken_end)
         layout.missing_glyphs = self.missing_glyphs
         return layout
+
+    # retention: hook card, mascot, no dead air ------------------------------------
+    def hook_text(self, timed: list[TimedCue], tokens: list[str], plan: dict) -> str:
+        """The [hook "..."] tag, or the first sentence; a long first sentence is cut to its amounts or first words."""
+        tagged = next((tc.cue.ref for tc in timed if tc.cue.kind == "hook" and tc.cue.ref), "")
+        if tagged:
+            return tagged
+        hook = str(self.ex.get("hook", "auto"))
+        if hook not in ("auto", "off", ""):
+            return hook
+        first: list[str] = []
+        for tok in tokens:
+            first.append(tok)
+            if tok.rstrip("\"'”)")[-1:] in ".!?؟۔":
+                break
+        if len(first) <= 9:
+            return " ".join(first)
+        sent = " ".join(first)
+        scene0 = plan["scenes"][0] if plan["scenes"] else {}
+        amounts = [q["display"] for q in scene0.get("quantities", [])
+                   if q.get("kind") in ("percent", "currency", "multiplier") and q["span"][1] <= len(sent) + 1][:2]
+        if amounts:
+            return " → ".join(amounts)
+        return " ".join(first[:8]).rstrip(",;:") + "…"
+
+    def hook_card(self, plan: dict, timed: list[TimedCue], tokens: list[str], times, sentence_ends: list[float],
+                  layout: Layout) -> tuple[list[Word], list[Sprite]]:
+        """Big words that pop in at once with Mo pointing at them, up for the first one or two seconds:
+        the viewer knows what the video is about before deciding to swipe."""
+        if str(self.ex.get("hook", "auto")) == "off" and not any(tc.cue.kind == "hook" for tc in timed):
+            return [], []
+        text = self.hook_text(timed, tokens, plan)
+        if not text:
+            return [], []
+        first_end = sentence_ends[0] if sentence_ends else (times[-1][1] if times else 2.0)
+        self.hook_end = max(1.2, min(float(self.ex.get("hook_seconds", 2.2)), first_end + 0.15))
+        layout.hook_text, layout.hook_end = text, self.hook_end
+        x0, y0, x1, y1 = 90.0, 300.0, 990.0, 940.0
+        size = 132.0
+        toks = text.split()
+        while True:
+            shaped = [shape_line(tk, size, self.lang, True) for tk in toks]
+            lines, cur, cur_w = [], [], 0.0
+            for i, sl in enumerate(shaped):
+                w = sl.width + (size * 0.28 if cur else 0)
+                if cur and cur_w + w > x1 - x0:
+                    lines.append(cur)
+                    cur, cur_w = [], 0.0
+                    w = sl.width
+                cur.append(i)
+                cur_w += w
+            if cur:
+                lines.append(cur)
+            widest = max((sum(shaped[i].width for i in ln) + size * 0.28 * (len(ln) - 1)) for ln in lines)
+            if (len(lines) * size * 1.15 <= y1 - y0 and widest <= x1 - x0) or size < 60:
+                break
+            size *= 0.9
+        rtl = self.lang in ("ur", "ps")
+        words: list[Word] = []
+        y = y0 + ((y1 - y0) - len(lines) * size * 1.15) / 2
+        for ln in lines:
+            gap = size * 0.28
+            lw = sum(shaped[i].width for i in ln) + gap * (len(ln) - 1)
+            x = (x0 + x1) / 2 + lw / 2 if rtl else (x0 + x1) / 2 - lw / 2
+            base = y + size * 0.9
+            for i in ln:
+                sl = shaped[i]
+                left = x - sl.width if rtl else x
+                contours = [[(left + px, base + py) for px, py in c] for g in sl.glyphs for c in g.contours()]
+                is_amount = any(ch.isdigit() for ch in toks[i])
+                # the whole hook is on the first frame (started just before 0, so it is already nearly full size)
+                w = Word(contours, self.ex["number_color"] if is_amount else INK, -0.22, 0.2,
+                         (left, base - sl.ascent, left + sl.width, base + sl.descent), toks[i], pop=True,
+                         underline=is_amount, end=self.hook_end)
+                w.rtl = rtl
+                w.wobble, w.phase = 0.035, 0.7 * len(words)  # a slow wave runs through the words: the opening is never still
+                self.missing_glyphs.update(sl.missing_chars)
+                words.append(w)
+                x = left - gap if rtl else x + sl.width + gap
+            y += size * 1.15
+        sprites: list[Sprite] = []
+        if self.ex.get("mascot", "mo") == "mo":
+            from .mascot import mascot
+            top = min(max(w.bbox[3] for w in words) + 30, self.board_bottom - 300)
+            box = (380.0, top, 700.0, min(self.board_bottom, top + 440))
+            surf, _ = element_surface(mascot("hook"), (box[3] - box[1]) * self.scale, self.style, self.lang)
+            sprites.append(Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), -0.2, "pop", end=self.hook_end, name="mascot",
+                                  float_amp=9.0, rock=5.0))
+        return words, sprites
+
+    def after_hook(self, layout: Layout, hook_words: list[Word], hook_sprites: list[Sprite]) -> None:
+        """Everything planned for the hook moment starts just after it, one after another."""
+        if self.hook_end <= 0:
+            return
+        seen: set[int] = set()
+        early = []
+        for sc in layout.scenes:
+            for item in list(sc.words) + list(sc.sprites):
+                if id(item) not in seen and item.t < self.hook_end:
+                    seen.add(id(item))
+                    early.append(item)
+        for k, item in enumerate(sorted(early, key=lambda it: it.t)):
+            item.t = self.hook_end + 0.05 + 0.3 * k
+            if item.end is not None and item.end <= item.t + 0.4:
+                item.end = item.t + 0.8
+        for sc in layout.scenes:
+            if sc.start < self.hook_end:
+                sc.words = hook_words + sc.words
+                sc.sprites = hook_sprites + sc.sprites
+
+    def worried_moments(self, layout: Layout, plan: dict, offset: float) -> None:
+        """Mo peeks in, worried, when the narration names a problem (at most twice, never over evidence or drawings)."""
+        from .mascot import mascot
+
+        bad = {"problem", "loss", "debt", "accident", "injury", "scam", "decrease", "bubble"}
+        box = (40.0, self.board_bottom - 250, 230.0, self.board_bottom)
+
+        def hit(b):
+            return b[0] < box[2] and box[0] < b[2] and b[1] < box[3] and box[1] < b[3]
+
+        last, shown = -99.0, 0
+        for scene in plan["scenes"]:
+            names = {c.get("concept") if isinstance(c, dict) else c for c in scene.get("concepts", [])}
+            t0 = scene["start_seconds"] + offset + 0.2
+            if shown >= 2 or not names & bad or t0 < self.hook_end + 1.0 or t0 - last < 8.0:
+                continue
+            t1 = t0 + 2.4
+            if any(st.t_in < t1 and t0 < st.t_out for st in layout.stages):
+                continue
+            busy = any(hit(sp.box) and sp.t < t1 and (sp.end is None or sp.end > t0)
+                       for sc in layout.scenes if sc.start < t1 and t0 < sc.end for sp in sc.sprites)
+            busy = busy or any(hit(w.bbox) and w.t < t1 and (w.end is None or w.end > t0)
+                               for sc in layout.scenes if sc.start < t1 and t0 < sc.end for w in sc.words)
+            if busy:
+                continue
+            surf, _ = element_surface(mascot("worried"), (box[3] - box[1]) * self.scale, self.style, self.lang)
+            sp = Sprite(surf, fit_box(surf.get_width(), surf.get_height(), box), t0, "pop", end=t1, name="mascot")
+            for sc in layout.scenes:
+                if sc.start < t1 and t0 < sc.end:
+                    sc.sprites.append(sp)
+            last, shown = t0, shown + 1
+
+    @staticmethod
+    def activity(layout: Layout) -> list[tuple[float, float]]:
+        """Intervals when something on the board moves: a drawing being drawn or popping in, words being written,
+        evidence on screen (it pans, zooms and gets highlighted). Captions and the slow board motion do not count."""
+        out: list[tuple[float, float]] = []
+        seen: set[int] = set()
+        for sc in layout.scenes:
+            for sp in sc.sprites:
+                if id(sp) not in seen:
+                    seen.add(id(sp))
+                    out.append((sp.t, sp.t + (sp.draw if sp.anim == "draw" else 0.35)))
+            for w in sc.words:
+                if id(w) not in seen:
+                    seen.add(id(w))
+                    out.append((w.t, w.t + max(w.dur, 0.35)))
+        out += [(st.t_in, st.t_out) for st in layout.stages]
+        return sorted(out)
+
+    def fill_static_gaps(self, layout: Layout, spoken_end: float) -> None:
+        """Wherever nothing new starts for a while, the main drawing on the board gets a hand-drawn red circle,
+        like a teacher pointing back at it. Gaps that remain are reported to QA."""
+        from ..geometry import Pen
+        from .beats import stroke_sprite
+
+        limit = float(self.ex.get("max_static_seconds", 2.5))
+        fill_at = min(limit, 2.0)
+        skip = ("arrow", "emphasis", "value_card", "cross_out", "circle_choice", "mascot")
+
+        def gaps_now():
+            """Stretches between the hook and the end of the narration where nothing on the board moves."""
+            out, t = [], self.hook_end
+            for a, b in self.activity(layout):
+                if a > t:
+                    out.append((t, min(a, spoken_end)))
+                t = max(t, b)
+                if t >= spoken_end:
+                    break
+            if t < spoken_end:
+                out.append((t, spoken_end))
+            return [(a, b) for a, b in out if b > a]
+
+        circles: list[float] = []
+        for _ in range(12):
+            added = False
+            for a, b in gaps_now():
+                if b - a <= fill_at:
+                    continue
+                mid = a + min(0.6, (b - a) / 2)  # soon after the board goes still
+                if any(abs(t - mid) < 8.0 for t in circles):
+                    continue  # a circle on every board would itself become the pattern viewers tune out
+                sc = next((s for s in layout.scenes if s.start <= mid < s.end), None)
+                if sc is None:
+                    continue
+                heroes = [sp for sp in sc.sprites if sp.anim == "draw" and sp.name not in skip
+                          and sp.t + sp.draw <= mid and (sp.end is None or sp.end > mid + 0.8)]
+                if not heroes:
+                    continue
+                circled = {sp.box for sp in sc.sprites if sp.name == "emphasis"}
+                heroes = [sp for sp in heroes if sp.box not in circled]  # one circle per drawing
+                if not heroes:
+                    continue
+                hero = max(heroes, key=lambda sp: (sp.box[2] - sp.box[0]) * (sp.box[3] - sp.box[1]))
+                bx0, by0, bx1, by1 = hero.box
+                w, h = bx1 - bx0, by1 - by0
+                ring = Pen(random.Random(int(mid * 100)), wobble=0.5).ellipse(w / 2, h / 2, w / 2 * 0.98, h / 2 * 0.98, width=1.6, color="negative")
+                sp = stroke_sprite(self, [ring], hero.box, mid, 0.5, "emphasis")
+                sp.end = hero.end
+                for s in layout.scenes:
+                    if any(x is hero for x in s.sprites) and mid < s.end:
+                        s.sprites.append(sp)
+                circles.append(mid)
+                added = True
+            if not added:
+                break
+        limit_gaps = [(round(a, 2), round(b, 2)) for a, b in gaps_now() if b - a > limit]
+        layout.static_gaps = limit_gaps

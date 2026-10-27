@@ -15,7 +15,11 @@ from dataclasses import dataclass
 from ..research.sources import NEWS_LOCALE, _clean, _date, fetch
 
 OFFICIAL = (".gov", ".mil", "federalreserve", "imf.org", "worldbank.org", "oecd.org", "bis.org", "nar.realtor", "urban.org",
-            "brookings.edu", "pewresearch.org", "sbp.org.pk", "pbs.gov.pk", "uaecb", "ecb.europa.eu", "bankofengland", ".edu")
+            "brookings.edu", "pewresearch.org", "sbp.org.pk", "pbs.gov.pk", "uaecb", "ecb.europa.eu", "bankofengland", ".edu",
+            # neutral consumer and regulator sources (US/UK insurance, credit, investing)
+            "naic.org", "iii.org", "finra.org", "fca.org.uk", "moneyhelper.org.uk", "consumerreports.org")
+# "Cheapest X of 2026" / "Best X" lists are affiliate rankings: fine for prices, weak as proof of how something works
+AFFILIATE_TITLE = re.compile(r"\b(cheapest|best|top \d+)\b.*\b20\d\d\b|\b(cheapest|best) .* (companies|providers|cards|plans|deals)\b", re.I)
 OPEN_PUBLISHERS = ("apnews.com", "cnbc.com", "cbsnews.com", "abcnews.go.com", "nbcnews.com", "npr.org", "axios.com", "usatoday.com",
                    "cnn.com", "foxbusiness.com", "yahoo.com", "investopedia.com", "theguardian.com", "bbc.com", "bbc.co.uk",
                    "dawn.com", "tribune.com.pk", "khaleejtimes.com", "gulfnews.com", "thenationalnews.com", "realtor.com",
@@ -40,6 +44,8 @@ class NewsItem:
         d = self.domain
         if any(k in d for k in OFFICIAL):
             return 0
+        if AFFILIATE_TITLE.search(self.title):
+            return 2
         if any(d.endswith(k) for k in OPEN_PUBLISHERS):
             return 1
         if any(d.endswith(k) for k in PAYWALLED):

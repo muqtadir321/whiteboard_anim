@@ -49,6 +49,8 @@ class Word:
     end: float | None = None  # leaves the board (beat labels go with their drawing)
     rtl: bool = False  # written right to left (Urdu, Pashto)
     missing: list = field(default_factory=list)  # characters the font could not draw
+    wobble: float = 0.0  # after popping in, a gentle scale pulse (hook words), as a fraction of the size
+    phase: float = 0.0
 
 
 @dataclass
@@ -64,6 +66,7 @@ class Sprite:
     draw: float = 0.0  # seconds the drawing takes
     float_amp: float = 0.0  # gentle up-and-down drift (design units) so the board never freezes
     phase: float = 0.0
+    rock: float = 0.0  # degrees of side-to-side rocking about the feet (Mo on the hook card)
 
 
 @dataclass
@@ -101,6 +104,8 @@ class Stage:
     source_url: str = ""
     source_ids: list[str] = field(default_factory=list)  # research package ledger ids
     exit: bool = True  # animate out (False when it stays to the end of the video)
+    focus: tuple | None = None  # image box kept bright while the rest fades back (the headline card that matches)
+    focus_t: float = 0.0
 
     def base_scale(self) -> float:
         x0, y0, x1, y1 = self.region
@@ -161,6 +166,12 @@ class ExplainerRenderer:
         pen = cfg["animation"]["explainer"].get("pen_cursor", True) and cfg["animation"]["hand_cursor_enabled"]
         self.pen = HandCursor(self.scale * 0.62, "marker", cfg["animation"]["primary_stroke"]) if pen else None  # visible at phone size
         self._pen_at: tuple[float, float] | None = None
+        ex = cfg["animation"]["explainer"]
+        self.karaoke: list = []  # captions.Chunk list, set by the pipeline from the layout
+        self.hook_end = 0.0  # the hook card is up until here (captions start after it)
+        self.loop_seconds = float(ex.get("loop_end_seconds", 0.6)) if ex.get("loop_end", True) else 0.0
+        self.motion = float(ex.get("board_motion", 0.018))  # slow push in/out of the whole board
+        self.cap_highlight = rgb(ex["highlight_color"])
 
     # -- painting ------------------------------------------------------------
     def paint_stage(self, ctx: cairo.Context, st: Stage, t: float) -> None:
@@ -191,6 +202,14 @@ class ExplainerRenderer:
             ctx.paint()
             for h in st.highlights:
                 self.paint_highlight(ctx, h, t)
+            if st.focus is not None and t > st.focus_t:
+                fx0, fy0, fx1, fy1 = st.focus
+                ctx.rectangle(0, 0, st.image.get_width(), st.image.get_height())
+                ctx.rectangle(fx0 - 8, fy0 - 8, fx1 - fx0 + 16, fy1 - fy0 + 16)
+                ctx.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+                ctx.set_source_rgba(1, 1, 1, 0.82 * ease((t - st.focus_t) / 0.35))
+                ctx.fill()
+                ctx.set_fill_rule(cairo.FILL_RULE_WINDING)
             ctx.restore()
         for sp in st.sprites:
             self.paint_sprite(ctx, sp, t)
@@ -257,7 +276,7 @@ class ExplainerRenderer:
         ctx.set_source_rgb(*rgb(w.color))
         if w.pop:
             p = age / 0.32
-            k = 0.5 + 0.5 * back_out(p) if p < 1 else 1.0
+            k = 0.5 + 0.5 * back_out(p) if p < 1 else 1.0 + w.wobble * math.sin(2 * math.pi * 1.4 * age - w.phase)
             cx, cy = (x0 + x1) / 2 * s, (y0 + y1) / 2 * s
             ctx.translate(cx, cy)
             ctx.scale(k, k)
@@ -363,6 +382,11 @@ class ExplainerRenderer:
         k *= 0.8 + 0.2 * out
         alpha *= out
         ctx.save()
+        if sp.rock:  # rock about the feet
+            fy = y1 * s
+            ctx.translate(cx, fy)
+            ctx.rotate(math.radians(sp.rock * math.sin(age * 5.5 + sp.phase)))
+            ctx.translate(-cx, -fy)
         ctx.translate(cx, cy)
         ctx.scale(k * f, k * f)
         ctx.set_source_surface(sp.surf, -sw / 2, -sh / 2)
@@ -370,24 +394,67 @@ class ExplainerRenderer:
         ctx.paint_with_alpha(alpha)
         ctx.restore()
 
+    def paint_caption(self, ctx: cairo.Context, t: float) -> None:
+        """The caption chunk being spoken: white words with a thick black outline (readable on the board and on
+        screenshots alike), the word being said in yellow."""
+        if t < self.hook_end:
+            return
+        ch = next((c for c in reversed(self.karaoke) if c.t0 <= t < c.t1), None)
+        if ch is None:
+            return
+        s = self.scale
+        x0, y0, x1, y1 = ch.box
+        k = 0.9 + 0.1 * back_out((t - ch.t0) / 0.14)
+        cx, cy = (x0 + x1) / 2 * s, (y0 + y1) / 2 * s
+        said = [w for w in ch.words if w.t0 <= t]
+        cur = said[-1] if said else None
+        size = (ch.words[0].bbox[3] - ch.words[0].bbox[1]) if ch.words else 90
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.scale(k, k)
+        ctx.translate(-cx, -cy)
+        ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+        ctx.set_fill_rule(cairo.FILL_RULE_WINDING)
+        for w in ch.words:
+            for c in w.contours:
+                if len(c) > 1:
+                    ctx.move_to(c[0][0] * s, c[0][1] * s)
+                    for x, y in c[1:]:
+                        ctx.line_to(x * s, y * s)
+                    ctx.close_path()
+            ctx.set_source_rgb(0.05, 0.05, 0.05)
+            ctx.set_line_width(size * 0.13 * s)
+            ctx.stroke_preserve()
+            ctx.set_source_rgb(*(self.cap_highlight if w is cur else (1.0, 1.0, 1.0)))
+            ctx.fill()
+        ctx.restore()
+
     def paint_frame(self, ctx: cairo.Context, scene: ExScene | None, stages: list[Stage], t: float) -> None:
         ctx.set_source_rgb(*self.bg)
         ctx.paint()
         self._pen_at = None
+        ctx.save()
+        if self.motion:  # the board breathes (about 2% over ten seconds): no frame is ever frozen
+            k = 1.0 + self.motion * (0.5 - 0.5 * math.cos(2 * math.pi * t / 10.0))
+            cx, cy = self.width / 2, self.height * 0.42
+            ctx.translate(cx, cy)
+            ctx.scale(k, k)
+            ctx.translate(-cx, -cy)
         for st in stages:
             if st.t_in <= t < st.t_out:
                 self.paint_stage(ctx, st, t)
-        if scene is None:
-            return
-        for w in scene.words:
-            self.paint_word(ctx, w, t)
-        for sp in scene.sprites:
-            self.paint_sprite(ctx, sp, t)
-        if self.pen is not None and self._pen_at is not None:  # on top of everything, at the stroke's end
-            x, y = self._pen_at
-            self.pen.paint(ctx, x, y)
-            if not (0 <= x <= self.width and 0 <= y <= self.height):
-                self.stats.cursor_out_of_bounds += 1
+        if scene is not None:
+            for w in scene.words:
+                self.paint_word(ctx, w, t)
+            for sp in scene.sprites:
+                self.paint_sprite(ctx, sp, t)
+            if self.pen is not None and self._pen_at is not None:  # on top of the board, at the stroke's end
+                x, y = self._pen_at
+                self.pen.paint(ctx, x, y)
+                if not (0 <= x <= self.width and 0 <= y <= self.height):
+                    self.stats.cursor_out_of_bounds += 1
+        ctx.restore()
+        self.paint_caption(ctx, t)  # captions stay still while the board moves
 
     # -- frame loop ----------------------------------------------------------
     def render(self, scenes: tuple[list[ExScene], list[Stage]], total_duration: float, write_frame, sample_times=None) -> ExStats:
@@ -395,16 +462,33 @@ class ExplainerRenderer:
         n_frames = int(math.ceil(total_duration * self.fps))
         frame = cairo.ImageSurface(cairo.FORMAT_RGB24, self.width, self.height)
         ctx = cairo.Context(frame)
+        # loop ending: the last moments cross-fade into the hook frame, so a replay starts seamlessly
+        loop_from = total_duration - self.loop_seconds if self.loop_seconds and self.hook_end > 0 else None
+        hook_frame = None
         k = 0
         for n in range(n_frames):
             t = n / self.fps
             while k + 1 < len(ex_scenes) and ex_scenes[k + 1].start <= t:
                 k += 1
             self.paint_frame(ctx, ex_scenes[k] if ex_scenes else None, stages, t)
+            if loop_from is not None and t >= loop_from and ex_scenes:
+                if hook_frame is None:
+                    hook_frame = cairo.ImageSurface(cairo.FORMAT_RGB24, self.width, self.height)
+                    self.paint_frame(cairo.Context(hook_frame), ex_scenes[0], stages, max(0.0, self.hook_end - 0.3))
+                ctx.set_source_surface(hook_frame, 0, 0)
+                ctx.paint_with_alpha(ease((t - loop_from) / self.loop_seconds))
             frame.flush()
             write_frame(frame.get_data())
             self.stats.frames += 1
         return self.stats
+
+    def render_at(self, scenes: tuple[list[ExScene], list[Stage]], t: float, path: str) -> None:
+        """One frame at time t as a PNG (thumbnails)."""
+        ex_scenes, stages = scenes
+        sc = next((s for s in reversed(ex_scenes) if s.start <= t), ex_scenes[0] if ex_scenes else None)
+        frame = cairo.ImageSurface(cairo.FORMAT_RGB24, self.width, self.height)
+        self.paint_frame(cairo.Context(frame), sc, stages, t)
+        frame.write_to_png(path)
 
     def render_still(self, scenes: tuple[list[ExScene], list[Stage]], index: int, path: str) -> None:
         ex_scenes, stages = scenes

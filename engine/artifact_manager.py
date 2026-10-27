@@ -20,6 +20,8 @@ Each language folder that was processed contains:
   scenes/*.svg        The vector illustration of every scene.
   metadata.json       Voice, timing method, licences and warnings for this video.
   quality_report.json Every quality check and its measured value.
+  publish/            Title options, description (with sources), tags, pinned comment,
+                      Shorts thumbnail (the hook card) and upload.json for YouTube.
 
 reports/ contains the run-level generation report, quality report and the
 asset/dependency licence manifest.

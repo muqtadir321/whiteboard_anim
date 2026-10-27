@@ -50,6 +50,9 @@ def hooks(topic: str) -> dict[str, list[str]]:
             f"Everyone is talking about {t}. But almost nobody runs the real numbers.",
             f"What if everything you heard about {t} is only half the story?",
             f"Here is what {t} actually means for your wallet this month.",
+            # scenario + number: the format of the finance Shorts that break out (e.g. "One hospital bill. 5 years of savings. Gone.")
+            f"One {t} mistake. {{VERIFY: amount}} gone. Here is how it happens.",
+            f"{{VERIFY: amount}}. That is the {t} difference between two people who made one different choice.",
         ],
         "roman_urdu": [
             f"Aaj kal har koi {t} ki baat kar raha hai. Lekin asal hisaab koi nahi karta.",
@@ -83,6 +86,20 @@ def outline(topic: str, language: str) -> str:
         "[pause] [concerned] And here is the mistake most people make: {VERIFY: common mistake}.",
         "[confident] Three questions before you decide. First, {VERIFY}. Second, {VERIFY}. Third, {VERIFY}.",
         "[warm] If this helped, follow for the next breakdown.",
+    ])
+
+
+def shorts_outline(topic: str) -> str:
+    """A 35-55 s Short in the scenario format: hook with a number, the situation, the surprise, one rule, the
+    action, and a last line that calls back to the hook (so a replay loops naturally)."""
+    t = topic
+    return "\n\n".join([
+        f'[hook "One {t} mistake. {{VERIFY: amount}}."] One {t} mistake can cost you {{VERIFY: amount}}.',
+        "Here is how it happens. {VERIFY: the situation in one sentence, with you in it}.",
+        "Most people think {VERIFY: the common belief}. But {VERIFY: what really happens, with a number}.",
+        "The rule is simple: {VERIFY: one rule}.",
+        "So before you {VERIFY: the action}, check {VERIFY: the one thing}.",
+        f"Because one {t} mistake can cost you {{VERIFY: amount}}. Now you know how to avoid it.",
     ])
 
 
@@ -132,6 +149,8 @@ def brief_markdown(rank: int, idea: Idea, year: int | None = None, draft: dict[s
         lines += ["", "## What people search (YouTube suggestions)", ""] + [f"- {k}" for k in idea.keywords]
     lines += ["", "## Description", "", "```", description(idea.topic, idea), "", " ".join(hashtags), "```",
               "", "## Tags", "", "```", ", ".join(tags), "```"]
+    lines += ["", "## Shorts outline (scenario format, 35-55 s)", "",
+              "Check it with `python -m engine.cli lint-script <file>` before recording.", "", "```", shorts_outline(idea.topic), "```"]
     lines += ["", "## Script outline (English)", "",
               "Replace every `{VERIFY: ...}` with a checked figure from the evidence above, then save as",
               "`input/scripts/english.txt` and run **Generate Whiteboard Video**.", "", "```", outline(idea.topic, "english"), "```",

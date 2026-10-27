@@ -78,6 +78,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "generate_missing": True,
         "transcribe_missing_scripts": True,
         "prefer_supplied_audio": True,
+        # your own voice-over: pauses inside it are cut to this many seconds (0 = keep them) and it is
+        # sped up by this factor with the pitch kept (1.0 = as recorded); timing is measured afterwards
+        "voiceover_max_pause": 0.25,
+        "voiceover_speed": 1.1,
         "allow_online_free_tts": True,
         "allow_local_tts": True,
         "allow_wrong_language_fallback": False,
@@ -147,9 +151,14 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "maximum_duration_seconds": 180,
         "allow_longer_than_maximum": False,
         "captions_enabled": True,
-        "background_music_enabled": False,
-        "background_music_path": "",
+        # music under the voice, ducked while you speak. Path "auto": the first file in input/music/
+        # (add a track you have the rights to, e.g. CC0); "generated": a quiet synthesised pad
+        "background_music_enabled": True,
+        "background_music_path": "auto",
         "background_music_volume": 0.08,
+        # explainer: a pop when an amount or the hook appears, a whoosh for evidence (synthesised, no licence; drawing is silent)
+        "sound_effects": True,
+        "sound_effects_volume": 0.35,
         "intro_seconds": 0.4,
         "outro_seconds": 0.8,
         "quality": "standard",
@@ -203,6 +212,21 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "pen_cursor": True,
             # one board per idea: drawings with labels from the narration, connected by arrows (engine/explainer/beats.py)
             "beats": True,
+            # opening card: "auto" = the first sentence (or its amounts), "off", or your own text;
+            # a [hook "..."] tag in the script wins
+            "hook": "auto",
+            "hook_seconds": 2.2,
+            # word-by-word captions above the Shorts title area: karaoke | off
+            "captions": "karaoke",
+            # Mo, the recurring character (hook, worried moments, thumbnails): mo | off
+            "mascot": "mo",
+            # the last moments cross-fade back to the hook, so a replay loops seamlessly
+            "loop_end": True,
+            "loop_end_seconds": 0.6,
+            # slow push in/out of the whole board (fraction of the frame); 0 = still
+            "board_motion": 0.018,
+            # nothing new on the board for longer than this is reported by QA (gaps get a red circle first)
+            "max_static_seconds": 2.5,
         },
     },
     "planner": {

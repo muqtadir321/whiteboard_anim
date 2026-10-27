@@ -186,8 +186,26 @@ CONCEPTS: dict[str, dict] = {
         "en": ["world", "global", "country", "countries", "international", "nation", "planet"], "roman_urdu": ["dunya", "duniya", "mulk", "mumalik", "qaum"],
         "ur": ["دنیا", "عالمی", "ملک", "ممالک", "قوم"], "ps": ["نړۍ", "نړیوال", "هېواد", "هیواد", "ملت"]}},
     "security": {"kind": "entity", "visual": "lock", "kw": {
-        "en": ["safe", "safety", "secure", "security", "protect", "protection", "insurance", "privacy"], "roman_urdu": ["mehfooz", "hifazat", "tahaffuz", "insurance"],
-        "ur": ["محفوظ", "حفاظت", "تحفظ", "انشورنس"], "ps": ["خوندي", "ساتنه", "امنیت", "بیمه"]}},
+        "en": ["safe", "safety", "secure", "security", "privacy"], "roman_urdu": ["mehfooz", "hifazat", "tahaffuz"],
+        "ur": ["محفوظ", "حفاظت", "تحفظ"], "ps": ["خوندي", "ساتنه", "امنیت"]}},
+    "insurance": {"kind": "entity", "visual": "shield", "kw": {
+        "en": ["insurance", "insured", "insure", "insurer", "coverage", "cover", "protect", "protection"], "roman_urdu": ["insurance", "beema", "bima"],
+        "ur": ["انشورنس", "بیمہ"], "ps": ["بیمه"]}},
+    "umbrella": {"kind": "entity", "visual": "umbrella", "kw": {
+        "en": ["umbrella", "umbrella insurance", "umbrella policy", "extra layer"], "roman_urdu": ["chatri", "chhatri"],
+        "ur": ["چھتری"], "ps": ["چتری"]}},
+    "accident": {"kind": "entity", "visual": "car_crash", "kw": {
+        "en": ["accident", "accidents", "collision", "car crash", "serious crash", "road crash", "crashed into"], "roman_urdu": ["hadsa", "haadsa", "accident", "takkar"],
+        "ur": ["حادثہ", "حادثے", "ٹکر"], "ps": ["حادثه", "ټکر"]}},
+    "injury": {"kind": "entity", "visual": "injury", "kw": {
+        "en": ["injury", "injuries", "injured", "hurt", "wound", "wounded"], "roman_urdu": ["zakhm", "zakhmi", "chot"],
+        "ur": ["زخم", "زخمی", "چوٹ"], "ps": ["ټپ", "ټپي"]}},
+    "legal": {"kind": "entity", "visual": "scale", "kw": {
+        "en": ["legal", "legally", "lawyer", "lawyers", "lawsuit", "court", "attorney", "sue", "sued"], "roman_urdu": ["wakeel", "wakil", "adalat", "qanooni"],
+        "ur": ["وکیل", "عدالت", "قانونی"], "ps": ["وکیل", "محکمه", "قانوني"]}},
+    "limit": {"kind": "entity", "visual": "gauge", "kw": {
+        "en": ["limit", "limits", "minimum", "maximum"], "roman_urdu": ["hadd", "kam az kam", "zyada se zyada"],
+        "ur": ["حد", "کم از کم", "زیادہ سے زیادہ"], "ps": ["حد", "لږ تر لږه"]}},
     "police": {"kind": "actor", "visual": "police", "kw": {
         "en": ["police", "policeman", "officer", "officers", "cop", "cops", "cbi", "fia", "agency", "investigator", "inspector"],
         "roman_urdu": ["police", "officer", "thana", "fia", "agency", "inspector"],

@@ -279,7 +279,7 @@ def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids
                          if min(w_end, st.t_out) - max(w.t, st.t_in) > 0.1 and hit(w.bbox, st.region)]
             # value cards, crosses and circles are annotations around their own value: not collisions
             overlaps += [f"{sc.scene_id}:'{w.text}'/{sp.name}" for sp in sc.sprites
-                         if sp.name not in ("value_card", "cross_out", "circle_choice")
+                         if sp.name not in ("value_card", "cross_out", "circle_choice", "emphasis")
                          and sp.t <= t and (sp.end is None or t < sp.end) and sc.start <= sp.t and hit(w.bbox, sp.box)]
         for st in layout.stages:
             if not st.label:
@@ -300,6 +300,10 @@ def check_explainer(report: QualityReport, layout, cfg: dict, require_source_ids
     unresolved = [w for w in layout.warnings if "cue but" in w]
     report.add("evidence_cues_resolved", not unresolved, require_source_ids, unresolved[:10], 0)
     report.add("layout_warnings", not layout.warnings, False, layout.warnings[:10], 0)
+    # retention: something new on the board at least every few seconds (captions and board motion not counted)
+    limit = float(cfg["animation"]["explainer"].get("max_static_seconds", 2.5))
+    gaps = [f"{a:.1f}-{b:.1f}s" for a, b in getattr(layout, "static_gaps", [])]
+    report.add("max_static_seconds", not gaps, False, gaps[:10], f"<= {limit:g} s without anything new")
     h = layout.highlights
     report.add("highlights_found_on_page", h["matched"] == h["requested"], False, f"{h['matched']}/{h['requested']}", "all")
 

@@ -5,6 +5,7 @@
     [chart MORTGAGE30US 2021]       data chart, marker on the date (year, YYYY-MM or YYYY-MM-DD)
     [logo "Fannie Mae"]             organisation logo
     [icon oil-drum]                 a drawing on the next word (Fluent Emoji name, or a doodle from object_generator.OBJECTS)
+    [hook "One crash. $80,000."]    big opening card for the first second (default: the first sentence)
 
 Tags are instructions, not words: they are removed from the narration, captions and TTS
 text and attached to the word that follows them (`word` = index into text.split()).
@@ -16,7 +17,7 @@ import re
 import shlex
 from dataclasses import dataclass, field
 
-CUE_KINDS = ("news", "article", "chart", "logo", "icon")
+CUE_KINDS = ("news", "article", "chart", "logo", "icon", "hook")
 CUE_TAG = re.compile(r"\[(" + "|".join(CUE_KINDS) + r")\b([^\]\n]*)\]", re.IGNORECASE)
 # Voice-direction tags ([curious], [pause]) are stripped in the same pass so word indices
 # refer to the final narration text.
@@ -61,7 +62,7 @@ def parse_cue(kind: str, raw_args: str, word: int) -> Cue:
         cue.ref = args[0].upper() if args else ""
         cue.date = args[1] if len(args) > 1 else ""
         cue.extra = args[2:]
-    elif kind in ("logo", "icon"):
+    elif kind in ("logo", "icon", "hook"):
         cue.ref = " ".join(args)
     else:  # news
         cue.extra = args

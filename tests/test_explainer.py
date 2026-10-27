@@ -161,9 +161,11 @@ def test_layout_stages_follow_cues(tmp_path, ex_cfg):
     assert all(a.t_out <= b.t_in + 1e-6 for a, b in zip(lay.stages, lay.stages[1:]))  # one stage at a time
     assert lay.highlights == {"requested": 1, "matched": 1}
     assert not lay.warnings
-    first = [w.text for w in lay.scenes[0].words]
-    assert first == ["7%"]  # no subtitles: only the spoken amount, written as its figure
-    assert all(is_doodle(sp.name) for sc in lay.scenes for sp in sc.sprites)
+    hook = [w.text for w in lay.scenes[0].words if w.end == lay.hook_end]
+    assert " ".join(hook) == lay.hook_text and lay.hook_text.startswith("Mortgage")  # opening card: the first sentence
+    first = [w.text for w in lay.scenes[0].words if w.end != lay.hook_end]
+    assert first == ["7%"]  # no subtitles on the board: only the spoken amount, written as its figure
+    assert all(is_doodle(sp.name) or sp.name in ("mascot", "emphasis", "arrow") for sc in lay.scenes for sp in sc.sprites)
 
 
 def test_last_evidence_ends_with_its_sentence(tmp_path, ex_cfg):

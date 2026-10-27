@@ -320,6 +320,50 @@ def cmd_check(args) -> int:
     return 0
 
 
+def cmd_lint(args) -> int:
+    from .script_lint import lint
+
+    path = Path(args.path)
+    if not path.exists():
+        print(f"script not found: {path}")
+        return 2
+    notes = lint(path.read_text(encoding="utf-8"), args.lang)
+    for n in notes:
+        print(n)
+    fixes = sum(n.level == "fix" for n in notes)
+    print(f"{fixes} fix(es), {len(notes) - fixes} tip(s)" if notes else "looks good: strong hook, one example amount, 20-60 s, ends on the hook")
+    return 0
+
+
+def cmd_publish_kit(args) -> int:
+    from .publish import build_kit
+
+    job = Path(args.job)
+    if not (job / "video.mp4").exists():
+        print(f"no video.mp4 in {job}")
+        return 2
+    script = Path(args.script).read_text(encoding="utf-8") if args.script else ""
+    out = build_kit(job, script, args.topic, args.hook)
+    print((out / "titles.txt").read_text(encoding="utf-8"))
+    print(f"publish kit: {out}")
+    return 0
+
+
+def cmd_compile(args) -> int:
+    from .compile_long import CompileError, compile_long
+
+    titles = [t.strip() for t in args.chapter_titles.split("|")] if args.chapter_titles else None
+    try:
+        summary = compile_long(args.videos, args.out, args.title, titles)
+    except CompileError as exc:
+        print(exc)
+        return 1
+    print(json.dumps(summary, indent=1))
+    if not summary["youtube_chapters_ok"]:
+        print("note: YouTube shows chapters only with 3+ chapters of at least 10 s each")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="whiteboard-engine")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -361,8 +405,22 @@ def main(argv=None) -> int:
     v.add_argument("--output", default="")
     v.add_argument("--config", default="")
     v.add_argument("--repo-root", default=str(REPO_ROOT))
+    lt = sub.add_parser("lint-script", help="retention advice for a script (never edits it)")
+    lt.add_argument("path")
+    lt.add_argument("--lang", default="en")
+    pk = sub.add_parser("publish-kit", help="titles, description, tags, thumbnail and upload.json for a finished video")
+    pk.add_argument("--job", required=True, help="the language folder with video.mp4, e.g. output/english")
+    pk.add_argument("--topic", default="")
+    pk.add_argument("--hook", default="")
+    pk.add_argument("--script", default="", help="script file (default: the one recorded in metadata.json)")
+    cp = sub.add_parser("compile", help="join finished Shorts into one 16:9 long video with chapters")
+    cp.add_argument("--videos", nargs="+", required=True, help="job folders (output/<job>/english) or mp4 files, in order")
+    cp.add_argument("--title", required=True, help="series title shown on the side panel and chapter cards")
+    cp.add_argument("--chapter-titles", default="", help="First|Second|... (default: the first publish title of each job)")
+    cp.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    return {"run": cmd_run, "deps": cmd_deps, "check-config": cmd_check, "research": cmd_research, "render": cmd_render}[args.cmd](args)
+    return {"run": cmd_run, "deps": cmd_deps, "check-config": cmd_check, "research": cmd_research, "render": cmd_render,
+            "lint-script": cmd_lint, "publish-kit": cmd_publish_kit, "compile": cmd_compile}[args.cmd](args)
 
 
 if __name__ == "__main__":

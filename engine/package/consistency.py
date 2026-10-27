@@ -34,7 +34,7 @@ def _names(text: str) -> set[str]:
 
 
 def _cue_set(text: str) -> set[tuple[str, str]]:
-    return {(c.kind, c.ref) for c in extract_cues(text)[1] if c.kind != "icon"}
+    return {(c.kind, c.ref) for c in extract_cues(text)[1] if c.kind not in ("icon", "hook")}
 
 
 def report(scripts: dict[str, str], codes: dict[str, str], claims: dict[str, list[Claim]]) -> dict:

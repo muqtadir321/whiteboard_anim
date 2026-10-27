@@ -23,6 +23,16 @@ python -m engine.cli render --research-dir output/<job_id> \
 #   -> output/<new job_id>/video/explainer_en.mp4, explainer_ur.mp4, qa/, …
 ```
 
+After rendering:
+
+```bash
+python -m engine.cli lint-script input/scripts/english.txt                     # hook/length/ending advice (never edits)
+python -m engine.cli publish-kit --job output/english --topic "car insurance"  # titles, description, thumbnail, upload.json
+python -m engine.cli compile --videos output/<job1>/english output/<job2>/english output/<job3>/english     --title "Money Basics" --out long/money_basics.mp4                          # weekly long-form with chapters
+```
+
+Background music: put one track you have the rights to in `input/music/` (see the README there).
+
 Useful flags:
 
 * `render --render-quality draft`: 720×1280 at 24 fps, for a quick check.

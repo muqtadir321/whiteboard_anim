@@ -245,6 +245,8 @@ def tag_own_scripts(folder, ev, topic, region, own, card_items, cards, articles,
         tag_notes += draw_notes
         (folder / f"{lang}.txt").write_text(tagged, encoding="utf-8")
         notes += [f"{lang}: {n}" for n in tag_notes]
+        from ..script_lint import lint
+        notes += [f"{lang} script {n}" for n in lint(text, codes[lang])]  # retention advice; the words are not changed
         log(f"{lang}: {len(tag_notes)} visual tag(s) placed")
         for n in tag_notes:
             log(f"    {n}")
